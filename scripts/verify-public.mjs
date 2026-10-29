@@ -3,7 +3,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 
 // Run only after Sites returns the actual public URL. This does not replace an
 // independent, signed-out browser visit; it verifies the anonymous HTTP boundary.
-const [baseArgument, acceptanceId, formalId] = process.argv.slice(2);
+const [baseArgument, acceptanceId, formalId, mode, ...extra] = process.argv.slice(2);
+assert(!extra.length && (!mode || mode === "--active-event"), "Only --active-event is supported; omit it when verifying a pristine formal activity.");
+const activeEvent = mode === "--active-event";
 assert(baseArgument && acceptanceId && formalId, "Usage: node scripts/verify-public.mjs <actual-https-origin> <acceptance-event-id> <formal-event-id>");
 const base = new URL(baseArgument);
 assert.equal(base.protocol, "https:");
@@ -28,7 +30,8 @@ const csv = await request(`/api/events/${acceptanceId}/results.csv`); assert.equ
 const formal = await request(`/api/events/${formalId}`); assert.equal(formal.status, 200);
 const pristine = JSON.parse(formal.body).state;
 assert.equal(pristine.name, "Sophia Sunshine Cup");
-assert.equal(pristine.phase, "PREPARED"); assert.equal(pristine.revision, 0); assert.equal(pristine.lineups.length, 0); assert.equal(pristine.results.length, 0);
-assert.equal(pristine.players.length, 14); assert.equal(pristine.matches.length, 20); assert.equal(pristine.courts.length, 3); assert.equal(pristine.rounds.length, 7); assert(pristine.matches.flatMap(m => m.draftSlots).every(s => s.playerId === null));
-const report = { testedAt: new Date().toISOString(), origin: base.origin, acceptanceId, formalId, anonymousDefaultPage: root.status, anonymousPage: page.status, loginRedirect: page.location, anonymousRead: read.status, anonymousWrite: denied.status, anonymousBackup: backup.status, publicCsv: csv.status, initializationWindowClosed: true, forgedIdentityIgnored: true, formalPristine: true, independentBrowser: "Must be recorded separately. No Cookie, real identity or bypass token is used; a separate negative case sends a fabricated identity." };
+const formalPristine = pristine.phase === "PREPARED" && pristine.revision === 0 && pristine.lineups.length === 0 && pristine.results.length === 0 && pristine.matches.flatMap(m => m.draftSlots).every(s => s.playerId === null);
+if (!activeEvent) assert(formalPristine, "Formal activity is no longer pristine. Use --active-event only for an activity already in use; never reset its records for this check.");
+assert.equal(pristine.players.length, 14); assert.equal(pristine.matches.length, 20); assert.equal(pristine.courts.length, 3); assert.equal(pristine.rounds.length, 7);
+const report = { testedAt: new Date().toISOString(), origin: base.origin, acceptanceId, formalId, anonymousDefaultPage: root.status, anonymousPage: page.status, loginRedirect: page.location, anonymousRead: read.status, anonymousWrite: denied.status, anonymousBackup: backup.status, publicCsv: csv.status, initializationWindowClosed: true, forgedIdentityIgnored: true, formalPristine, formalRevision: pristine.revision, activeEvent, independentBrowser: "Must be recorded separately. No Cookie, real identity or bypass token is used; a separate negative case sends a fabricated identity." };
 mkdirSync("outputs", { recursive: true }); writeFileSync("outputs/public-http-checks.json", JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OrthographicCamera, Plane, Raycaster, Vector2, Vector3 } from "three";
-import { BOARD_SIZE, MAX_PITCH, MAX_ZOOM, MIN_PITCH, boardCenter, cameraView, constrainNavigation, courtCenter, courtNavigation, orbitNavigation, overview, worldLayout, type Navigation, type Point } from "../../src/modules/venue/world";
+import { BOARD_SIZE, MAX_PITCH, MAX_ZOOM, MIN_PITCH, MIN_ZOOM, boardCenter, cameraView, constrainNavigation, courtCenter, courtNavigation, frameOverview, orbitNavigation, overview, worldLayout, type Navigation, type Point } from "../../src/modules/venue/world";
 
 describe("continuous three-court world", () => {
   it.each([[390, 844], [320, 568], [1440, 900]])("keeps distinct court and scoreboard positions while navigating %i×%i", (width, height) => {
@@ -14,9 +14,10 @@ describe("continuous three-court world", () => {
     }
     expect(new Set(before.map(p => p.court.join(","))).size).toBe(3);
   });
-  it("returns to the complete world at minimum zoom and bounds panning", () => {
+  it("bounds zoom and pan without unexpectedly resetting the pivot", () => {
     const layout = worldLayout(390, 844);
-    expect(constrainNavigation({ ...overview(layout), zoom: 0.5, center: [999, 0, -999] }, layout)).toEqual(overview(layout));
+    const far = constrainNavigation({ ...overview(layout), zoom: 0.1, center: [2, 0, 3] }, layout);
+    expect(far.zoom).toBe(MIN_ZOOM); expect(far.center).toEqual([2, 0, 3]);
     const close = constrainNavigation({ ...overview(layout), zoom: 20, center: [999, 0, -999] }, layout);
     expect(close.zoom).toBe(MAX_ZOOM);
     expect(close.center[0]).toBeLessThanOrEqual(layout.width / 2);
@@ -28,19 +29,19 @@ describe("touch orbit and camera projection", () => {
   it("rotates freely above the floor without moving the venue or its focus", () => {
     const layout = worldLayout(390, 844), initial = overview(layout);
     const positions = [1, 2, 3].map(n => courtCenter(n, layout));
-    const rotated = orbitNavigation(initial, 390 * 2, -844 * 5, 390, 844);
+    const rotated = orbitNavigation(initial, 844 * 2, -844 * 5, 844);
     expect(rotated.yaw).toBeLessThan(initial.yaw - Math.PI * 2);
     expect(rotated.pitch).toBe(MAX_PITCH);
     expect(rotated.center).toEqual(initial.center);
-    expect(orbitNavigation(initial, 0, 844 * 5, 390, 844).pitch).toBe(MIN_PITCH);
+    expect(orbitNavigation(initial, 0, 844 * 5, 844).pitch).toBe(MIN_PITCH);
     expect([1, 2, 3].map(n => courtCenter(n, layout))).toEqual(positions);
     expect(cameraView(rotated, layout).offset[1]).toBeGreaterThan(0);
   });
-  it.each([[320, 568], [390, 844], [1280, 720]])("keeps all three courts in an orbiting overview at %i×%i", (width, height) => {
+  it.each([[320, 568], [390, 844], [1280, 720]])("frames all three courts on an explicit overview request at %i×%i", (width, height) => {
     const layout = worldLayout(width, height);
     for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
       for (const pitch of [MIN_PITCH, MAX_PITCH]) {
-        const nav = { ...overview(layout), yaw, pitch }, view = cameraView(nav, layout);
+        const nav = frameOverview(layout, { yaw, pitch }), view = cameraView(nav, layout);
         const camera = new OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 0.1, 180);
         camera.position.copy(new Vector3(...nav.center).add(new Vector3(...view.offset)));
         camera.lookAt(...nav.center); camera.zoom = view.zoom; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
@@ -51,7 +52,7 @@ describe("touch orbit and camera projection", () => {
         }
         const focused = courtNavigation(2, layout, nav);
         expect(focused.yaw).toBe(yaw); expect(focused.pitch).toBe(pitch);
-        expect(cameraView(focused, layout).zoom).toBeGreaterThanOrEqual(view.zoom);
+        expect(focused.zoom).toBeGreaterThan(MIN_ZOOM);
         expect(focused.center).not.toEqual(nav.center);
       }
     }
@@ -60,7 +61,7 @@ describe("touch orbit and camera projection", () => {
     const layout = worldLayout(390, 844), nav = { ...overview(layout), yaw: 1, center: [2, 0, 3] as Point };
     expect(constrainNavigation(nav, layout).center).toEqual([2, 0, 3]);
     const home = constrainNavigation({ ...nav, zoom: 0.8 }, layout);
-    expect(home.center).toEqual(overview(layout).center); expect(home.yaw).toBe(1);
+    expect(home.center).toEqual(nav.center); expect(home.yaw).toBe(1); expect(home.zoom).toBe(0.8);
   });
   it("maps a rotated and panned court position back to the same world point", () => {
     const layout = worldLayout(390, 844), nav = { ...overview(layout), yaw: -1.3, pitch: 1.1, center: [1, 0.2, -3] as Point, zoom: 2.2 };

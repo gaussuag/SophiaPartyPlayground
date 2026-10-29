@@ -21,11 +21,12 @@ courtId 只表达业务操作上下文；cameraRequest 是带序号的本机镜�
 - 全屏按需渲染；world.ts 仅按视口计算布局，三片场地、候场区和人物不随场地选择重排或隐藏。竖屏纵向布场，短屏为操作牌自适应比例与间距；镜头和人物移动支持减少动态效果偏好。
 - 场间距和全景取景为常态牌框留白；短屏相应调整比例与候场间距。点球场的镜头同时保留本场的操作牌，放大操作不重新排布世界。牌框与三块比赛区域的投影间不重叠，见 tests/venue/world.test.ts 的五种视口检查。
 - 单指划空地环绕旋转并调整俯仰，俯仰限制在 32–72 度，不翻到地下；双指同时缩放、平移，桌面支持滚轮缩放及 Shift 拖动平移。人物起手仍点选／拖入，不触发旋转。第二根手指（包括落在场内 UI 上）取消人物代理；抬起其中一指后不会把剩余手指当作人物放置。取消／捕获丢失不提交。
-- world.ts 的 Navigation 只保存本机 center／zoom／yaw／pitch；cameraView、courtNavigation 和 orbitNavigation 统一处理取景和方向。全景随角度适配手机长边，近景同时容纳球场及其记分牌；查看单场保留当前方向。镜头姿态不进入 session、命令或数据库。
-- 提供视角回正、1–5 倍缩放与全景复位；滑动结束有短惯性，减少动态效果偏好下禁用惯性。每次新手势、录分或镜头请求均取消旧惯性，卸载时清理动画帧。远景牌面缩为 84px 宽，保持 44px 点按高度。
+- world.ts 的 Navigation 只保存本机 center／zoom／yaw／pitch。纯旋转保持实际 zoom、枢轴与轨道半径，不随角度自动取景。orbitNavigation 使用与官方 OrbitControls 一致的视口高度归一化角位移；3px 只决定取消点击，镜头从第一个移动样本响应。近景同时容纳球场及其记分牌，查看单场保留方向。
+- CameraMotion 独占实际 pose：手势直接写入，显式近景／全景／回正请求才做角度、中心和 zoom 的统一过渡；Rig 在 useFrame 中重建球面姿态，不对相机世界坐标做直线 lerp。过渡按时间 delta 计算，减少动态效果偏好下直接到目标。没有额外的惯性 requestAnimationFrame 循环，镜头姿态不进入 session 或数据库。
+- CameraHud 把同帧相机姿态投影到工具条及远景属性；高频输入不调用 React setNavigation。React 只处理业务变化、手势起止和浮层状态。0.35–5 倍缩放不隐式重置枢轴；全景显式适配三场、回正只复位方向，品牌总览恢复初始镜头。远景牌面为 84px 宽、44px 热区。
 - 录分期间保持世界，镜头对准实体牌面，锁住其他场内操作；根据 visualViewport 留出键盘区域，关闭恢复先前镜头。
 - InteractiveVenue 管理拾取／手势和 DOM，Scene 管理几何、镜头、投影和短动画，world 管理固定世界坐标。WebGL 监听随 Canvas 清理，重建不改变 session 或记录。
-- 用户报告原发布版本在 Safari 渲染正常；本次新增触控的真实 iPhone、双指切换、键盘和持续性能仍待设备复测。桌面 Pointer Event 与数学检查不替代实机。
+- 用户报告 iPhone 17 双指缩放流畅、单指旋转交互不连续；本次针对手感，不降画质或模型精度。更新后的单指／多指衔接仍待实机反馈，桌面 Pointer Event 与数学检查不替代实机。
 
 资源见 [public](../../../public/README.md)；详细依据见 [交互](../../../docs/product/interaction-and-state.md)与[性能预算](../../../docs/architecture/overview.md)。
 

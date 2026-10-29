@@ -4,7 +4,9 @@ import { BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, 
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { MatchView, Player, TeamId } from "../competition";
 import type { VenueProps } from "./model";
-import { BOARD_SIZE, boardCenter, cameraView, courtCenter, slotPosition, type Navigation, type Point, type WorldLayout } from "./world";
+import { BOARD_SIZE, boardCenter, cameraView, courtCenter, slotPosition, type Point, type WorldLayout } from "./world";
+import type { CameraMotion } from "./camera-motion";
+import type { CameraHud } from "./camera-hud";
 export type { Point } from "./world";
 
 export type Anchors = Map<string, Group>;
@@ -32,34 +34,28 @@ const courtLines = mergeGeometries([
 const kitchen = mergeGeometries([-0.9, 0.9].map(z => new BoxGeometry(4.85, 0.015, 1.72).translate(0, 0.01, z)));
 const netPosts = mergeGeometries([-2.8, 2.8].map(x => new CylinderGeometry(0.055, 0.065, 0.9, 6).translate(x, 0.45, 0)));
 
-function Rig({ layout, navigation, editor }: { layout: WorldLayout; navigation: Navigation; editor?: { number: number; height: number; viewportHeight: number; viewportTop: number } }) {
+function Rig({ layout, motion, hud, editor }: { layout: WorldLayout; motion: CameraMotion; hud: CameraHud; editor?: { number: number; height: number; viewportHeight: number; viewportTop: number } }) {
   const { size, invalidate } = useThree();
-  const target = useRef({ position: new Vector3(3, 36, 42), center: new Vector3(), zoom: 15 });
-  const lookingAt = useRef(new Vector3());
+  const look = useMemo(() => new Vector3(), []);
   useEffect(() => {
-    const view = cameraView(navigation, layout);
-    const zoom = editor ? layout.baseZoom * 1.8 : view.zoom;
-    const center = new Vector3(...(editor ? boardCenter(editor.number, layout) : navigation.center));
     if (editor) {
-      // Keep the physical scoreboard within Safari's visible area when its keyboard opens.
-      const up = new Vector3(...view.up);
+      const direction = motion.beforeEditor, view = cameraView(direction, layout), zoom = layout.baseZoom * 1.8;
+      const center = boardCenter(editor.number, layout);
       const y = editor.viewportTop + 64 + (editor.viewportHeight - 80) / 2;
-      center.addScaledVector(up, -(size.height / 2 - y) / zoom);
-    }
-    target.current = {
-      position: center.clone().add(new Vector3(...view.offset)), center, zoom,
-    };
+      motion.openEditor({ ...direction, zoom: 1.8, center: center.map((n, i) => n + view.up[i] * (y - size.height / 2) / zoom) as Point });
+    } else motion.closeEditor();
     invalidate();
-  }, [layout, navigation, editor, size.height, invalidate]);
+  }, [layout, motion, editor, size.height, invalidate]);
   useFrame(({ camera }, delta) => {
     const c = camera as OrthographicCamera;
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const factor = reduced ? 1 : Math.min(1, delta * 10);
-    c.position.lerp(target.current.position, factor);
-    lookingAt.current.lerp(target.current.center, factor);
-    c.zoom += (target.current.zoom - c.zoom) * factor;
-    c.lookAt(lookingAt.current); c.updateProjectionMatrix();
-    if (c.position.distanceToSquared(target.current.position) > 0.0001 || lookingAt.current.distanceToSquared(target.current.center) > 0.0001 || Math.abs(c.zoom - target.current.zoom) > 0.001) invalidate();
+    const moving = motion.step(delta, matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const nav = motion.value, view = cameraView(nav, layout);
+    c.position.set(nav.center[0] + view.offset[0], nav.center[1] + view.offset[1], nav.center[2] + view.offset[2]);
+    c.lookAt(look.set(...nav.center));
+    if (c.zoom !== view.zoom) { c.zoom = view.zoom; c.updateProjectionMatrix(); }
+    c.updateMatrixWorld();
+    hud.update(nav, layout, !!editor);
+    if (moving) invalidate();
   });
   return null;
 }
@@ -148,10 +144,10 @@ function DragGhost({ point }: { point: MutableRefObject<Point | null> }) {
   </group>;
 }
 
-export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, navigation, editorSize, viewport }: {
+export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport }: {
   props: VenueProps; anchors: Anchors; begin: (id: string, event: PointerEvent) => void;
   dragging: boolean; dragPoint: MutableRefObject<Point | null>; hovered: string | null;
-  layout: WorldLayout; navigation: Navigation; editorSize: { width: number; height: number }; viewport: { height: number; top: number };
+  layout: WorldLayout; motion: CameraMotion; hud: CameraHud; editorSize: { width: number; height: number }; viewport: { height: number; top: number };
 }) {
   const { state, view } = props;
   const { portrait, width: floorWidth, length: floorLength } = layout;
@@ -161,7 +157,7 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   const walkways = useMemo(() => mergeGeometries((portrait ? [-1, 1].map(s => new BoxGeometry(2.5, 0.03, floorLength - 0.5).translate(s * 5.4, 0, 0)) : [-1, 1].map(s => new BoxGeometry(floorWidth - 0.4, 0.03, 2.6).translate(0, 0, s * 8.4)))), [portrait, floorLength, floorWidth]);
   useEffect(() => () => walkways.dispose(), [walkways]);
   return <>
-    <Rig layout={layout} navigation={navigation} editor={rigEditor} />
+    <Rig layout={layout} motion={motion} hud={hud} editor={rigEditor} />
     <mesh position={[0, -0.58, layout.floorCenterZ]}><boxGeometry args={[floorWidth, 1, floorLength]} /><meshStandardMaterial color="#879b70" /></mesh>
     <mesh position={[0, -0.03, layout.floorCenterZ]}><boxGeometry args={[floorWidth - 0.16, 0.12, floorLength - 0.16]} /><meshStandardMaterial color="#acc38d" /></mesh>
     <mesh geometry={walkways} position={[0, 0.04, 0]}><meshStandardMaterial color="#e0d2ae" roughness={1} /></mesh>
@@ -206,7 +202,13 @@ export function LabelProjection({ anchors, elements, baseZoom }: { anchors: Anch
   return null;
 }
 
-export function SceneMetrics({ target }: { target: { current: HTMLOutputElement | null } }) {
-  useFrame(({ gl }) => { queueMicrotask(() => { if (target.current) { target.current.dataset.drawCalls = String(gl.info.render.calls); target.current.dataset.triangles = String(gl.info.render.triangles); } }); });
+export function SceneMetrics({ target, motion }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion }) {
+  useFrame(({ gl, camera }) => { queueMicrotask(() => { if (target.current) {
+    target.current.dataset.drawCalls = String(gl.info.render.calls); target.current.dataset.triangles = String(gl.info.render.triangles);
+    const navigation = motion.value;
+    target.current.dataset.cameraZoom = navigation.zoom.toFixed(2); target.current.dataset.cameraYaw = navigation.yaw.toFixed(3); target.current.dataset.cameraPitch = navigation.pitch.toFixed(3);
+    target.current.dataset.cameraMoving = String(motion.moving);
+    target.current.dataset.renderZoom = String((camera as OrthographicCamera).zoom);
+  } }); });
   return null;
 }
