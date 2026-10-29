@@ -1,7 +1,7 @@
 "use client";
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { ArrowUpRight, Check, LockKeyhole, Mars, Minus, Plus, Scan, Venus } from "lucide-react";
+import { ArrowUpRight, Check, LockKeyhole, Mars, Minus, Pencil, Plus, Scan, Venus } from "lucide-react";
 import { Plane, Raycaster, Vector2, Vector3, type OrthographicCamera } from "three";
 import { LabelProjection, Scene, SceneMetrics, slotKey, type Anchors, type Elements, type Point } from "./Scene";
 import type { SelectionBasis, VenueProps } from "./model";
@@ -44,10 +44,10 @@ export function Venue(props: VenueProps) {
   const layout = useMemo(() => worldLayout(size.width, size.height), [size]);
   const [viewport, setViewport] = useState({ height: 844, top: 0 });
   const [editorSize, setEditorSize] = useState({ width: 340, height: 390 });
-  const [navigationState, setNavigation] = useState({ key: props.cameraRequest.key, layout, value: overview() });
+  const [navigationState, setNavigation] = useState({ key: props.cameraRequest.key, layout, value: overview(layout) });
   if (navigationState.key !== props.cameraRequest.key || navigationState.layout !== layout) {
     const court = navigationState.key !== props.cameraRequest.key ? props.state.courts.find(c => c.id === props.cameraRequest.courtId) : undefined;
-    setNavigation({ key: props.cameraRequest.key, layout, value: court ? courtNavigation(court.number, layout) : overview() });
+    setNavigation({ key: props.cameraRequest.key, layout, value: court ? courtNavigation(court.number, layout) : overview(layout) });
   }
   const navigation = navigationState.value;
   const pointers = useRef(new Map<number, ScreenPoint>());
@@ -148,10 +148,11 @@ export function Venue(props: VenueProps) {
     const canStart = ready && !props.readOnly;
     const locked = !!props.editor || !!props.editingMatchId || !props.readOnly && !props.canWrite && (canStart || match?.phase === "PLAYING" || match?.phase === "COMPLETED");
     const action = !match ? "休息区" : match.phase === "PLANNING" ? props.readOnly ? "查看球场" : ready ? "确认上场" : "安排阵容" : match.phase === "PLAYING" ? props.readOnly ? "比赛进行中" : "录入赛果" : match.phase === "AWAITING_RESULT" ? props.readOnly ? "等待赛果" : "继续录分" : props.readOnly ? "查看赛果" : "更正比分";
-    return { key: `court:${c.id}`, className: "board-anchor", content: <button data-scene-ui className={`world-scoreboard ${match?.phase.toLowerCase() ?? "rest"} ${canStart ? "ready" : ""}`} aria-label={`${c.number} 号场 · ${action}`} disabled={locked} onClick={() => props.onIntent(!match || match.phase === "PLANNING" && !canStart ? { type: "court", courtId: c.id } : canStart ? { type: "start", matchId: match!.id } : { type: "scoreboard", matchId: match!.id })}>
-      <span className="board-heading"><b>{String(c.number).padStart(2, "0")}</b><span>{match?.label ?? "休息区"}</span>{match?.phase === "PLANNING" && <small>{match.draftSlots.filter(s => s.playerId).length}/{match.draftSlots.length}</small>}</span>
-      {match?.result && <strong className="board-result"><span>{match.result.whiteScore}</span><i>:</i><span>{match.result.blackScore}</span></strong>}
-      <span className="board-action">{action}{canStart ? <Check size={13} /> : match ? <ArrowUpRight size={13} /> : null}</span>
+    return { key: `court:${c.id}`, className: "board-anchor", content: <button data-scene-ui className={`world-scoreboard ${match?.phase.toLowerCase() ?? "rest"} ${canStart ? "ready" : ""}`} aria-label={`${c.number} 号场 · ${action}`} title={`${c.number} 号场 · ${match?.label ?? "休息区"} · ${action}`} disabled={locked} onClick={() => props.onIntent(!match || match.phase === "PLANNING" && !canStart ? { type: "court", courtId: c.id } : canStart ? { type: "start", matchId: match!.id } : { type: "scoreboard", matchId: match!.id })}>
+      <span className="board-face"><b>{String(c.number).padStart(2, "0")}</b>
+        {match?.result ? <strong className="board-result">{match.result.whiteScore}<i>:</i>{match.result.blackScore}</strong> : <span className="board-action">{match?.phase === "PLANNING" && !canStart ? match.label : match?.phase === "PLAYING" && props.readOnly ? "比赛中" : action}</span>}
+        {canStart ? <Check size={14} aria-hidden="true" /> : match?.result && !props.readOnly ? <Pencil size={13} aria-hidden="true" /> : match ? <ArrowUpRight size={13} aria-hidden="true" /> : null}
+      </span>
     </button> };
   });
   for (const player of props.state.players) {
@@ -228,7 +229,7 @@ export function Venue(props: VenueProps) {
         <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} /><SceneMetrics target={metrics} />
       </Canvas>
       <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}</div>
-      {!props.editor && navigation.zoom > 1.01 && <div data-scene-ui className="world-camera-controls" aria-label="球馆缩放"><button aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output>{navigation.zoom.toFixed(1)}×</output><button aria-label="放大球馆" disabled={navigation.zoom >= 3} onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label="恢复三场全景" onClick={() => { cancel(); navigate(overview()); }}><Scan size={16} />全景</button></div>}
+      {!props.editor && navigation.zoom > 1.01 && <div data-scene-ui className="world-camera-controls" aria-label="球馆缩放"><button aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output>{navigation.zoom.toFixed(1)}×</output><button aria-label="放大球馆" disabled={navigation.zoom >= 3} onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label="恢复三场全景" onClick={() => { cancel(); navigate(overview(layout)); }}><Scan size={16} />全景</button></div>}
       <output hidden aria-hidden="true" data-venue-metrics data-world-courts={props.state.courts.length} data-world-layout={JSON.stringify(props.state.courts.map(c => [c.id, courtCenter(c.number, layout)]))} data-record-revision={props.state.revision} data-camera-zoom={navigation.zoom.toFixed(2)} ref={metrics} />
     </SceneBoundary>
   </div>;

@@ -5,7 +5,7 @@
 - competition/：通过 decide／project 验证业务不变量、转换、更正和整轮可行性；包括场景安排到命令的映射。
 - records/：使用真实本地 D1 验证权限、条件写入、并发、幂等、故障与备份恢复。
 - session/：验证乱序响应、超时后回执恢复、重连、草稿绑定与同步反馈。
-- venue/：验证三个视口中的固定场地坐标、镜头放大后世界布局不变，以及缩放／平移边界；真实拾取与显示仍用浏览器操作检查。
+- venue/：验证固定场地坐标、镜头放大后世界布局不变、缩放／平移边界，以及五种视口中牌框不压住比赛区域且本场入口仍可见；真实拾取与显示仍用浏览器操作检查。
 - fixtures/：从原始模板构建隔离的测试活动。
 - [verify-local.mjs](../scripts/verify-local.mjs)：针对开发服务和真实本地 D1 做完整 HTTP 演练；自动创建独立活动。
 - [verify-production.mjs](../scripts/verify-production.mjs)：针对本地生产构建检查只读权限、请求拒绝后 SSR 及产物隔离。使用已经在同一 worktree 初始化的测试 eventId。
