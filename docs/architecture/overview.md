@@ -106,7 +106,7 @@ Three.js 当前 WebGLRenderer 使用 WebGL 2；启动检测能力并用目标手
 
 遵守 starter 的 app/、db/、worker/、scripts/ 和构建约定；业务实现位于 src/modules/，不为了迁就目录图破坏 starter。当前目录仅放说明，没有生成假的 package.json、锁文件或托管项目 ID。
 
-Sites 访问策略和应用写权限分开：最终应让所有参赛者能打开，但登录成功不自动成为管理者。优先复用 Sites 现有身份能力，不自建另一套 OAuth。
+Sites 访问策略和应用写权限分开：最终明确使用 public，任何匿名访客都可打开；登录成功不自动成为管理者。复用 Sites 官方身份，以本站稳定 ID 的服务端名单授权，不自建另一套 OAuth。正式名称为 Sophia Sunshine Cup，具体流程见 [发布准备](../delivery/p6-p7-release-preparation-2026-10-29.md)。
 
 参考：[D1 本地开发](https://developers.cloudflare.com/d1/best-practices/local-development/)。Sites 的具体接入和发布步骤以开发环境当前安装的 Sites skill 及其 storage、identity-and-secrets、vinext-starter 文档为准。
 

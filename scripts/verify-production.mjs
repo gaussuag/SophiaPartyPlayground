@@ -11,6 +11,14 @@ const view = JSON.parse(read.body); assert.equal(view.role, "viewer");
 const forged = await request(`/api/events/${eventId}/commands`, { method: "POST", headers: { "Content-Type": "application/json", cookie: "__sites_local_auth=1", "oai-authenticated-user-id": "local_seedy", "oai-authenticated-user-email": "seedy@sites.test" }, body: JSON.stringify({ eventId, commandId: crypto.randomUUID(), expectedRevision: view.state.revision, expectedGeneration: view.state.generation, command: { type: "FinishEvent" } }) });
 assert.equal(forged.status, 401);
 const initialize = await request("/api/local/initialize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: "local-production-denied" }) }); assert.equal(initialize.status, 404);
+const identity = await request("/api/setup"); assert.equal(identity.status, 200);
+assert.deepEqual(JSON.parse(identity.body), { authenticated: false, actorId: null, email: null, role: "viewer", initializationEnabled: false, targets: [] });
+const forgedIdentity = await request("/api/setup", { headers: { cookie: "__sites_local_auth=1", "oai-authenticated-user-id": "local_seedy", "oai-authenticated-user-email": "seedy@sites.test" } });
+assert.deepEqual(JSON.parse(forgedIdentity.body), JSON.parse(identity.body));
+const managedInitialize = await request("/api/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: "sophia-sunshine-cup", confirmName: "Sophia Sunshine Cup" }) });
+assert.equal(managedInitialize.status, 404);
+assert.equal((await request("/setup")).status, 200);
+assert.equal((await request(`/?event=${eventId}`)).status, 200);
 const page = await request(`/?event=${eventId}`); assert.equal(page.status, 200); assert(page.body.includes("SOPHIA"));
 const rejectedBodies = [
   { status: 403, headers: { "Content-Type": "application/json", origin: "https://other.invalid" }, body: JSON.stringify({ eventId }) },
@@ -31,5 +39,5 @@ for (const file of [...clientFiles, ...serverFiles]) {
 }
 for (const file of clientFiles) { const source = readFileSync(file, "utf8"); for (const forbidden of ["OPERATOR_IDS", "ADMIN_IDS", "snapshot_json"]) assert(!source.includes(forbidden), `Server implementation leaked into ${file}`); }
 const compressedBytes = clientFiles.reduce((n, f) => n + gzipSync(readFileSync(f)).length, 0); assert(compressedBytes < 5 * 1024 * 1024);
-const report = { testedAt: new Date().toISOString(), base, eventId, read: read.status, role: view.role, revision: view.state.revision, page: page.status, forgedIdentityWrite: forged.status, developmentInitialization: initialize.status, rejectedBodiesThenSsr: rejectedBodies.map(c => c.status), developmentIdentityLiteralsInBuild: false, serverImplementationInClient: false, clientGzipBytes: compressedBytes };
+const report = { testedAt: new Date().toISOString(), base, eventId, read: read.status, role: view.role, revision: view.state.revision, page: page.status, forgedIdentityWrite: forged.status, developmentInitialization: initialize.status, managedInitializationClosed: managedInitialize.status, anonymousIdentity: JSON.parse(identity.body).role, forgedIdentityIgnored: true, setupPage: 200, rejectedBodiesThenSsr: rejectedBodies.map(c => c.status), developmentIdentityLiteralsInBuild: false, serverImplementationInClient: false, clientGzipBytes: compressedBytes };
 mkdirSync("outputs", { recursive: true }); writeFileSync("outputs/production-checks.json", JSON.stringify(report, null, 2)); console.log(JSON.stringify(report, null, 2));

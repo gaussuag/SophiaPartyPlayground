@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { SITE_TITLE } from "../src/config/event";
 
 export const metadata: Metadata = {
-  title: "Sophia Party Playground · 球场见",
-  description: "黑白两队，三块球场。一起安排阵容、记录比赛，享受球场上的每一次相聚。",
+  title: SITE_TITLE,
+  description: "Sophia 组织的匹克球活动。黑白两队，三块球场，一起安排阵容、记录比赛与相聚时刻。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

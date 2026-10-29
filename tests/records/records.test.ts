@@ -4,6 +4,8 @@ import { Miniflare } from "miniflare";
 import { execute, exportEvent, initializeEvent, readEvent, readReceipt, restoreEvent, resultsCsv, type RecordsContext } from "../../src/modules/records";
 import type { CompetitionCommand, EventState } from "../../src/modules/competition";
 import { decide } from "../../src/modules/competition";
+import { initializationConfiguration, initializeConfiguredEvent } from "../../src/server/initialization";
+import { SITE_TITLE } from "../../src/config/event";
 
 let mf: Miniflare; let db: D1Database;
 const now = "2026-10-28T05:00:00.000Z";
@@ -25,6 +27,42 @@ beforeAll(async () => {
 });
 afterAll(async () => { await mf?.dispose(); });
 describe("real local D1 authority", () => {
+  it("production initialization is closed by default and requires an authorized admin", async () => {
+    const id = `release-${crypto.randomUUID()}`;
+    const config = initializationConfiguration({ EVENT_ID: id, ACCEPTANCE_EVENT_ID: id + "-qa", INITIALIZATION_ENABLED: "true" });
+    const request = { eventId: id, confirmName: SITE_TITLE };
+    await expect(initializeConfiguredEvent(ctx(), { ...config, enabled: false }, request)).rejects.toMatchObject({ code: "NOT_FOUND", status: 404 });
+    await expect(initializeConfiguredEvent({ ...ctx(), actorId: null, role: "viewer" }, config, request)).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    for (const role of ["viewer", "operator"] as const) await expect(initializeConfiguredEvent(ctx("signed-in", role), config, request)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(readEvent(ctx(), id)).rejects.toMatchObject({ code: "EVENT_NOT_FOUND" });
+  });
+  it("production initialization cannot import a snapshot, self-grant a role or choose arbitrary IDs", async () => {
+    const id = `release-${crypto.randomUUID()}`;
+    const config = initializationConfiguration({ EVENT_ID: id, ACCEPTANCE_EVENT_ID: id + "-qa", INITIALIZATION_ENABLED: "true" });
+    const request = { eventId: id, confirmName: SITE_TITLE };
+    for (const extra of [{ snapshot: {} }, { role: "admin" }, { actorId: "admin-a" }]) await expect(initializeConfiguredEvent(ctx(), config, { ...request, ...extra })).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    await expect(initializeConfiguredEvent(ctx(), config, { ...request, confirmName: "other" })).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    await expect(initializeConfiguredEvent(ctx(), config, { ...request, eventId: "not-configured" })).rejects.toMatchObject({ code: "EVENT_NOT_CONFIGURED" });
+    await expect(readEvent(ctx(), id)).rejects.toMatchObject({ code: "EVENT_NOT_FOUND" });
+  });
+  it("concurrent production setup creates one clean event and keeps acceptance data separate", async () => {
+    const id = `release-${crypto.randomUUID()}`;
+    const config = initializationConfiguration({ EVENT_ID: id, ACCEPTANCE_EVENT_ID: id + "-qa", INITIALIZATION_ENABLED: "true" });
+    const request = { eventId: id, confirmName: SITE_TITLE };
+    const race = await Promise.all([initializeConfiguredEvent(ctx(), config, request), initializeConfiguredEvent(ctx(), config, request)]);
+    expect(race.filter(r => r.created)).toHaveLength(1);
+    const pristine = race[0].state;
+    expect(pristine.name).toBe(SITE_TITLE); expect(pristine.revision).toBe(0); expect(pristine.phase).toBe("PREPARED");
+    expect(pristine.players).toHaveLength(14); expect(pristine.matches).toHaveLength(20);
+    expect(pristine.lineups).toEqual([]); expect(pristine.results).toEqual([]); expect(pristine.audit).toEqual([]);
+    expect(pristine.matches.flatMap(m => m.draftSlots).every(s => s.playerId === null)).toBe(true);
+    const qa = (await initializeConfiguredEvent(ctx(), config, { ...request, eventId: id + "-qa" })).state;
+    const changed = await apply(qa, { type: "OpenFirstRound" });
+    expect((await readEvent(ctx(), id)).state).toEqual(pristine);
+    const repeated = await initializeConfiguredEvent(ctx(), config, { ...request, eventId: qa.id });
+    expect(repeated.created).toBe(false); expect(repeated.state).toEqual(changed);
+    expect((await initializeEvent(ctx(), id, { name: "cannot rename existing records" })).state).toEqual(pristine);
+  });
   it("B13 repeated explicit initialization never resets an existing activity", async () => {
     let state = await initial(); state = await apply(state, { type: "OpenFirstRound" });
     const again = await initializeEvent(ctx(), state.id); expect(again.state.revision).toBe(1); expect(again.state.activeRoundId).toBe("R01");

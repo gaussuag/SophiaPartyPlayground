@@ -4,4 +4,7 @@ ADMIN_IDS=
 # Only set for a deployed Site whose identity headers are injected by dispatch.
 # Local production previews remain read-only and do not simulate sign-in.
 IDENTITY_SOURCE=
-EVENT_ID=sophia-party
+EVENT_ID=sophia-sunshine-cup
+ACCEPTANCE_EVENT_ID=sophia-sunshine-cup-acceptance
+# Explicit maintenance window, default closed. Only configured admins can initialize.
+INITIALIZATION_ENABLED=false

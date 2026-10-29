@@ -46,12 +46,13 @@ export async function readEvent(context: RecordsContext, eventId: string) {
   const aggregate = await load(context, eventId);
   return { state: publicState(aggregate.state), role: context.role };
 }
-export async function initializeEvent(context: RecordsContext, eventId: string) {
+export async function initializeEvent(context: RecordsContext, eventId: string, options: { name?: string } = {}) {
   authorize(context, true); validId(eventId);
   const state = createEvent(eventId, context.now);
-  await context.db.prepare("INSERT INTO events (event_id, schema_version, revision, snapshot_json, updated_at) VALUES (?, 1, 0, ?, ?) ON CONFLICT(event_id) DO NOTHING")
+  if (options.name) state.name = options.name;
+  const inserted = await context.db.prepare("INSERT INTO events (event_id, schema_version, revision, snapshot_json, updated_at) VALUES (?, 1, 0, ?, ?) ON CONFLICT(event_id) DO NOTHING")
     .bind(eventId, JSON.stringify({ state, receipts: {} }), context.now).run();
-  return readEvent(context, eventId);
+  return { ...await readEvent(context, eventId), created: inserted.meta.changes === 1 };
 }
 export async function execute(context: RecordsContext, input: unknown) {
   authorize(context);

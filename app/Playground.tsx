@@ -10,6 +10,7 @@ import { GameDrawer } from "./GameDrawer";
 import { LineupNames, MatchPanel, namesFor, type LineupEdit } from "./MatchPanel";
 import { Schedule, Records } from "./ScheduleAndRecords";
 import { useEventSession } from "./useEventSession";
+import { SITE_TITLE } from "../src/config/event";
 import "./game.css";
 import "./world.css";
 
@@ -179,9 +180,10 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
             const result = await response.json() as { error?: { message?: string } };
             if (!response.ok) setHint(result.error?.message ?? "初始化失败"); else void session?.refresh();
           }}>创建本地演练</button></>}
+          {view?.notFound && !localDevelopment && <a className="button secondary" href={"/setup?event=" + encodeURIComponent(eventId)}>活动管理</a>}
         </main>}
     <header className="game-header">
-      <button className="game-brand" aria-label="Sophia 球馆总览" onClick={() => { setScore(null); setPanel(null); setCourtId(null); setLineupEdit(null); clearSelection(); flyTo(null); }}><span className="brand-mark"><i /><i /><i /><i /></span><strong>SOPHIA</strong></button>
+      <button className="game-brand" aria-label="Sophia 球馆总览" title={SITE_TITLE} onClick={() => { setScore(null); setPanel(null); setCourtId(null); setLineupEdit(null); clearSelection(); flyTo(null); }}><span className="brand-mark"><i /><i /><i /><i /></span><span className="game-brand-name"><strong>SOPHIA</strong><small>SUNSHINE CUP</small></span></button>
       {projection && <button className="game-round-switch" disabled={!!score} aria-label="切换轮次" onClick={() => setPanel("rounds")}><span>第 {projection.round.number} 轮</span><small>{projection.completed}/{projection.total}</small><ChevronDown size={14} /></button>}
       <div className="game-header-actions"><button className={"icon-button sync-icon " + (view?.status ?? "loading")} aria-label={"同步记录：" + (view?.message ?? "连接中")} onClick={() => void session?.refresh()}>{busy || view?.status === "loading" ? <LoaderCircle size={19} className="spin" /> : view?.status === "offline" || view?.status === "unknown-outcome" ? <CloudOff size={20} /> : <CloudCheck size={20} />}</button><button className="icon-button" disabled={!!score} aria-label="更多选项" onClick={() => setPanel("tools")}><Ellipsis size={22} /></button></div>
     </header>
@@ -213,6 +215,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       {panel === "match" && focused && <MatchPanel state={state} view={view} session={session} projection={projection} match={focused} slots={slots}
         onArrange={() => { setPanel(null); clearSelection(); }} edit={edit} setEdit={editLineup} hint={hint} setHint={setHint} ask={ask} openScore={m => void openScore(m)} />}
       {panel === "tools" && <div className="game-tools"><p className="tool-identity">{view.role === "admin" ? "活动管理" : view.role === "operator" ? "操作员" : "观赛"}{localDevelopment && <small>本地演练</small>}</p>{focused && <button onClick={() => setPanel("match")}><Ellipsis size={18} />{state.courts.find(c => c.id === focused.courtId)!.number} 号场详情与纠错</button>}<button onClick={() => { setPanel(null); setShowHelp(true); }}><Info size={18} />操作说明</button><button onClick={() => void session.refresh()}><RefreshCw size={18} />同步记录</button>{!readOnly && state.phase === "PREPARED" && <button disabled={!canWrite} onClick={async () => { if (await session.dispatch({ type: "StartWarmup" })) setPanel(null); }}><Flag size={18} />开始热身</button>}{readOnly ? <a target="_top" href={"/signin-with-chatgpt?return_to=" + returnTo}><LogIn size={18} />管理登录</a> : <a target="_top" href={"/signout-with-chatgpt?return_to=" + returnTo}><LogOut size={18} />退出管理</a>}<small className="tool-sync-time">{view.lastSyncedAt ? "最后同步 " + new Date(view.lastSyncedAt).toLocaleTimeString("zh-CN") : "尚未同步"} · v{state.revision}</small></div>}
+      {!localDevelopment && panel === "tools" && <a className="game-setup-link" href={"/setup?event=" + encodeURIComponent(eventId)}>身份与权限</a>}
     </GameDrawer>}
     {confirm && session && <ConfirmDialog title={confirm.title} actionLabel={confirm.label} busy={busy} onClose={() => setConfirm(null)} onConfirm={async () => { const ok = await session.dispatch(confirm.command, confirm.basis); setConfirm(null); clearSelection(); if (ok && confirm.command.type === "CorrectRecordedLineup") setLineupEdit(null); }}>{confirm.body}</ConfirmDialog>}
     {profile && <ConfirmDialog title={profile.name} actionLabel="返回球馆" cancelLabel={null} busy={false} onClose={() => setProfileId(null)} onConfirm={() => setProfileId(null)}><p>{profile.id} · {profile.teamId === "WHITE" ? "白队" : "黑队"} · {profile.gender === "MALE" ? "男" : "女"}</p><p>{projection?.playerStates[profile.id].label}</p></ConfirmDialog>}

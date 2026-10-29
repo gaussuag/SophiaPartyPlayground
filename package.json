@@ -22,7 +22,8 @@
     "test:storage": "vitest run tests/records",
     "test:session": "vitest run tests/session",
     "verify:local": "node scripts/verify-local.mjs",
-    "verify:production": "node scripts/verify-production.mjs"
+    "verify:production": "node scripts/verify-production.mjs",
+    "verify:public": "node scripts/verify-public.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "9.8.2",
