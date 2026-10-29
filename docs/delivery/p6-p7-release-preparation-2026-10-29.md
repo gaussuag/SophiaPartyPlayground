@@ -11,7 +11,7 @@
 | 访问 | 必须 public，匿名直接读，无 OpenAI 登录、工作区或邀请要求 |
 | 写入 | 官方登录＋服务端稳定身份 ID 名单；登录不自动取得写权限；备份／恢复／初始化仅管理员 |
 | 数据 | 默认正式 `sophia-sunshine-cup`，隔离 `sophia-sunshine-cup-acceptance`；与本机 local-* 分开，不导入演练记录 |
-| 发布闸门 | P6 必需项通过后已经获准执行 P7；未通过时不创建或发布 Site |
+| 发布闸门 | 可执行的 P6 本地检查通过；用户最新授权真实 iPhone 检查后置到发布后，允许执行 P7；实机仍未测 |
 
 2026-10-29 19:04 的原生 `list_sites` 返回四个已有站点，无本项目匹配项，cursor 为空；其中已有 public 站点。这只说明账号列表现状，不替代本项目之后的 public 配置与匿名验证。`.openai/hosting.json` 仍只有 d1=DB、r2=null，没有 project_id；本轮未注册、保存线上版本或部署。
 
@@ -54,11 +54,11 @@
 | OPERATOR_IDS | 核对通过的本站操作员稳定身份 ID，逗号分隔；管理员也具备操作权限 |
 | INITIALIZATION_ENABLED | 默认 false；仅受控补建期间短暂为 true，完成后改回 false 并部署应用配置 |
 
-真实名单尚待用户确认。Site-specific ID 由正式站点的 `/setup` 官方登录结果取得；不能复制 Sites 列表里的 account_user_id、本机开发 ID、邮箱或 playerId 作为授权 ID。实值通过原生运行配置工具保存，不提交到源码、示例文件、文档或 hosting manifest。
+用户已确认仅 gaussuag777@gmail.com 兼任管理员和操作员。Site-specific ID 由正式站点的 `/setup` 官方登录结果取得；不能复制 Sites 列表里的 account_user_id、本机开发 ID、邮箱或 playerId 作为授权 ID。实值通过原生运行配置工具保存，不提交到源码、示例文件、文档或 hosting manifest。
 
 ## P7 可执行顺序
 
-1. 先补齐 P6 必需证据，更新本记录；有失败则修复回归，未测不自动算通过。
+1. 可执行 P6 本地检查已有通过证据；按用户最新授权把真实 iPhone 验收后置，继续记录未测，有失败则修复回归。
 2. 重读当前 Sites skill；复查本项目是否已有真实 Site。存在则 get_site 复用，否则只 create_site 一次，并立即用 set-project-id helper 持久化真实 ID。
 3. 经支持工具设置正式名称与首选标识。明确 update_site_access 为 public 并核对返回配置；若有限制，记录实际返回，不改用登录或邀请模式。
 4. 使用官方 source credential／site-workflow helper，从已核对的源码构建并打包。凭据仅在内存和隐藏 stdin 中传递。保留 helper 返回的 project_id、commit_sha、archive 原样传入 save_site_version，再 deploy_site_version；不使用私有部署接口或独立 wrangler deploy。
@@ -68,4 +68,4 @@
 8. 使用独立未登录 OpenAI／ChatGPT 的浏览器会话访问工具返回的根 URL，不能带管理 Cookie 或 bypass token；记录无登录跳转、完整场景、赛程／阵容／比分／历史、刷新与读取结果。另跑 `npm run verify:public -- <实际HTTPS origin> <验收ID> <正式ID>` 补充匿名 HTTP 与正式初始状态检查，不能替代浏览器。
 9. 等待原生部署结果成功，记录真实 URL、名称、版本号、source commit、部署 ID、public 回执及浏览器／权限证据。若任何必需项失败，保持记录并修复，不报告发布完成。
 
-截至本记录，P6 仍进行中，P7 未执行；没有可交付的正式公开 URL 或线上版本号。
+2026-10-29 最新用户确认：“真实iPhone的验证我授权跳过，等后面site发布后一同验证”；账号确认为“仅我（gaussuag777@gmail.com）兼任管理员和操作员”。本地自动与浏览器检查通过，实机项目后置而未标记通过，P7 现在开始执行。前文未创建站点的说明是授权变更前的历史状态；实际站点与线上证据将在完成后补充。

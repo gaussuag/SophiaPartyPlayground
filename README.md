@@ -13,9 +13,9 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 界面以连续三场地 3D 球馆为主，通过缩放和平移查看单场，直接点人物／拖入场内位置。确认上场、录分和更正均从场内记分牌进入；见 [连续球馆与记分牌验证](docs/delivery/ui-continuous-venue-2026-10-29.md)，前次记录保留在 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
 - 记分牌已缩为场边单行操作牌，桌面移到候场区后方，竖屏留在场间空隙；见 [场边记分牌优化](docs/delivery/ui-courtside-scoreboard-2026-10-29.md)。
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
-- P2 已做桌面窄屏原型验证；P6 的真实 iPhone Safari、现场网络及长时间性能仍待验收。
+- P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- 已确认通过 ChatGPT Sites 以 Sophia Sunshine Cup、首选 sophia-sunshine-cup、public 正式发布；无需重问受众。P6 实机证据与账号核对仍待补齐，尚未创建、注册或发布 Site。
+- 已确认通过 ChatGPT Sites 以 Sophia Sunshine Cup、首选 sophia-sunshine-cup、public 正式发布；无需重问受众。用户已解除实机项的发布前阻塞，仅授权 gaussuag777@gmail.com 兼任管理员与操作员；正在执行 P7，本站稳定身份仍须官方登录核对。
 
 ## 从这里开始
 
