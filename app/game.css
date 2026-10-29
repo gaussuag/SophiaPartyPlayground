@@ -35,7 +35,7 @@
 .game-dock{position:absolute;z-index:15;bottom:calc(16px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:3px;align-items:center;width:238px;height:57px;padding:5px;border-radius:32px}
 .game-dock button{flex:1;min-height:46px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:24px;color:#7b8b6b;font-size:11px}
 .game-dock button.active{background:#e0edc4;color:#28553a;font-weight:650}
-.game-venue .projected-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.game-venue .projected-labels{position:absolute;inset:0;pointer-events:none;overflow:clip}
 .game-venue .projected-label{position:absolute;top:0;left:0;pointer-events:none;will-change:transform}
 .game-venue .projected-label>button{pointer-events:auto}
 .game-venue .assigned-overview{display:none}
