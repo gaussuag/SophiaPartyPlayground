@@ -1,8 +1,8 @@
 # 验证与最后的 Sites 发布
 
-当前状态：以下仍是验收基线。本地应用、自动检查、真实 D1／HTTP 演练及 Chromium 竖屏检查已有证据，见 [2026-10-29 本地验收记录](local-validation-2026-10-29.md)。真实 iPhone Safari、现场网络与长时间运行未测，尚未发布。
+当前状态：以下仍是验收基线。本地应用、自动检查、真实 D1／HTTP 演练及 Chromium 竖屏检查已有证据，见 [2026-10-29 本地验收记录](local-validation-2026-10-29.md)。真实 iPhone Safari、现场网络与长时间运行未测；用户授权后置到 Site 发布后，P7 正在执行。
 
-本次发布准备与最新证据见 [P6–P7 记录](p6-p7-release-preparation-2026-10-29.md)。用户已确认 Sophia Sunshine Cup、首选标识 sophia-sunshine-cup、public 以及 P6 通过后执行 P7；这些授权无需重问，实机证据仍是前置条件。
+本次发布准备与最新证据见 [P6–P7 记录](p6-p7-release-preparation-2026-10-29.md)。用户已确认 Sophia Sunshine Cup、首选标识 sophia-sunshine-cup、public，并授权跳过发布前实机验证、发布后一并检查；这些授权无需重问。未测项不标记通过。
 
 2026-10-28 文档交付核对：14 名选手的姓名、数值、性别及队伍与原始名单一致；7 轮时间、20 场类型数量、身份引用及 72 人次统计正确；18 份 Markdown 文档中的 39 个本地文件链接可解析。这些检查不等于下面的应用验收已经通过。
 
