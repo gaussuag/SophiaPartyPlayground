@@ -1,0 +1,50 @@
+.game-venue .board-anchor{z-index:4}
+.world-scoreboard{width:116px;min-height:62px;padding:6px 8px 7px;border:1px solid #819b6b;border-radius:4px;background:#203e32;color:#f7f8df;box-shadow:0 3px 0 #142e26,0 6px 12px #143a2724;text-align:left;touch-action:manipulation}
+.board-heading{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.board-heading>b{font-size:17px;line-height:1;font-variant-numeric:tabular-nums;color:#e7f7ad}
+.board-heading>span{font-size:11px;font-weight:600;flex:1}
+.board-heading>small{font-size:9px;color:#c2d4ac}
+.board-action{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;font-size:11px;font-weight:600;color:#d3e4bc}
+.world-scoreboard.playing,.world-scoreboard.awaiting_result,.world-scoreboard.ready{border-color:#def19b;background:#294d38}
+.world-scoreboard.playing .board-action,.world-scoreboard.awaiting_result .board-action,.world-scoreboard.ready .board-action{background:#e2f79e;color:#294d32;margin:7px -3px -2px;padding:4px 5px;border-radius:2px}
+.board-result{display:flex;align-items:center;justify-content:space-around;gap:7px;margin-top:4px;font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums}
+.board-result>i{font-size:14px;font-style:normal;color:#91ab7f}
+.world-scoreboard.completed .board-action{margin-top:3px;font-size:10px}
+.world-scoreboard:focus-visible{outline:3px solid #e5fa9f;outline-offset:5px}
+.world-scoreboard:disabled{cursor:default}
+.world-camera-controls{position:absolute;top:calc(70px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:0;z-index:8;padding:2px 4px;border:1px solid #ffffff99;border-radius:25px;background:#f7fae9ed;box-shadow:0 3px 14px #24472b12;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.world-camera-controls button{height:40px;min-width:40px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;border-radius:22px}
+.world-camera-controls button:disabled{opacity:.4}.world-camera-controls output{font-size:10px;font-variant-numeric:tabular-nums;min-width:30px;text-align:center;color:#738266}
+.world-camera-controls button:last-child{padding:0 11px;margin-left:3px;border-left:1px solid #dbe5cc;border-radius:0 22px 22px 0}
+.game-venue .editing-board{z-index:20;pointer-events:auto}
+.game-venue.scoring .projected-label:not(.editing-board){pointer-events:none}
+.game-venue.scoring .projected-label:not(.editing-board)>button{pointer-events:none}
+.game-venue.scoring{touch-action:pan-y}
+.world-scoreboard-editor{width:min(350px,calc(100vw - 32px));max-height:min(550px,calc(var(--visible-height,100dvh) - 100px));border:1px solid #94ac77;border-radius:6px;background:#203d31;color:#f2f5df;box-shadow:0 7px 0 #122b23,0 12px 30px #18372744;outline:none;user-select:text;-webkit-user-select:text;touch-action:pan-y;pointer-events:auto;overflow:hidden}
+.world-scoreboard-editor .score-inner{padding:0;display:flex;flex-direction:column;max-height:inherit;overflow:hidden}
+.world-scoreboard-editor .dialog-heading{padding:14px 15px 10px;flex-shrink:0;align-items:center;border-bottom:1px solid #6f896043}
+.world-scoreboard-editor .dialog-heading h2{font-size:19px;letter-spacing:.2px;line-height:1.35}
+.world-scoreboard-editor .eyebrow{font-size:10px;letter-spacing:0;color:#b3c69c;margin-bottom:3px}
+.world-scoreboard-editor .dialog-heading>.icon-button{margin:-5px -8px -5px 0;width:44px;height:44px;color:#dce9c8}
+.world-scoreboard-editor .scoreboard-body{overflow:auto;overscroll-behavior:contain;padding:12px 14px 0;min-height:0;scrollbar-width:thin;scrollbar-color:#758e65 transparent}
+.world-scoreboard-editor .score-inputs{gap:10px;margin:0}
+.world-scoreboard-editor .score-side{gap:6px;padding:12px 7px 7px;border-radius:4px;background:#eef3db;color:#2b4c33;border-color:#d2dec0}
+.world-scoreboard-editor .score-side.black-side{background:#162f25;color:#f2f5df;border-color:#648252}
+.world-scoreboard-editor .score-names{font-size:11px;min-height:19px;line-height:1.5}
+.world-scoreboard-editor .score-side input,.world-scoreboard-editor .score-readout{width:100%;height:78px;line-height:78px;font-size:48px;font-weight:650;font-variant-numeric:tabular-nums;text-align:center;border-radius:3px}
+.world-scoreboard-editor .score-side input{touch-action:manipulation}
+.world-scoreboard-editor .score-side input:focus{outline:3px solid #ddf396;outline-offset:1px}
+.world-scoreboard-editor .swap{font-size:11px;min-height:44px;margin:0 auto;color:#c4d8a7;gap:7px}
+.world-scoreboard-editor .reason-options{margin:0 0 10px;gap:0 12px}
+.world-scoreboard-editor .reason-options legend{color:#b5c69f;margin:0;font-size:10px}
+.world-scoreboard-editor .reason-options label{font-size:11px;min-height:36px}
+.world-scoreboard-editor .reason-options input{accent-color:#e3f8a2}
+.world-scoreboard-editor .dialog-footer{position:static;flex-shrink:0;padding:0 14px 14px;background:#203d31}
+.world-scoreboard-editor .dialog-footer>.button{background:#e1f59e;color:#2b4b32;min-height:48px;border-radius:4px;font-size:13px}
+.world-scoreboard-editor .dialog-footer>.button:disabled{background:#849b70;color:#e0e8d4}
+.world-scoreboard-editor .form-error{color:#ffdaa4;margin:0 0 12px}
+.world-scoreboard-editor .notice{color:#604524;margin-bottom:12px}
+.world-scoreboard-editor .notice .button{min-height:44px}
+.game-context:empty{display:none}
+@media(min-width:800px){.world-camera-controls{top:82px}.world-scoreboard-editor{width:380px}}
+@media(max-width:359px){.world-scoreboard-editor{width:calc(100vw - 28px)}.world-scoreboard-editor .dialog-heading{padding:10px 12px 8px}.world-scoreboard-editor .scoreboard-body{padding:10px 10px 0}.world-scoreboard-editor .dialog-footer{padding:0 10px 10px}.world-scoreboard-editor .score-side input{height:66px;font-size:42px}.world-scoreboard-editor .score-names{font-size:10px}.world-camera-controls{top:62px}}

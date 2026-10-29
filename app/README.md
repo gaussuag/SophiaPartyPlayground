@@ -1,6 +1,6 @@
 # 应用装配
 
-已采用 Sites Vinext 全栈 starter。page.tsx 是服务端装配入口；Playground.tsx 消费 session；MatchPanel／ScoreDialog／ScheduleAndRecords／AdminTools 组织交互。api/_server.ts 解析受信任身份，api/events/ 装配 records。
+已采用 Sites Vinext 全栈 starter。page.tsx 是服务端装配入口；Playground.tsx 消费 session；MatchPanel／ScoreboardEditor／ScheduleAndRecords／AdminTools 组织交互。api/_server.ts 解析受信任身份，api/events/ 装配 records。
 
 Playground 以全屏 venue 为主，GameDrawer 承载次级面板；MatchPanel 显示阵容摘要、版本和纠错，不承载常规选人表单。useEventSession 通过 useSyncExternalStore 管理连接订阅，服务端渲染不创建浏览器连接。placements 将场景意图映射到既有竞争规则和带版本的命令，不按人物位置推断事实。
 
@@ -11,7 +11,7 @@ Playground 以全屏 venue 为主，GameDrawer 承载次级面板；MatchPanel �
 - 同步、本机草稿与提交结果属于 [session](../src/modules/session/README.md)。
 - 3D 交互属于 [venue](../src/modules/venue/README.md)。
 
-比分浮层只编辑数字；固定显示 matchId 对应的轮次、场地和阵容。当前查看轮次、镜头和选中席位属于本机交互状态。不要为每个球场复制一份业务逻辑，也不要让路由直接拼接比赛数据库修改。
+ScoreboardEditor 作为场内记分牌的内容传入 venue，只编辑数字；固定显示 matchId 对应的轮次、场地和阵容。保留比分草稿、版本核对、保存反馈与更正；使用原生输入，不建立独立遮罩。当前查看轮次、镜头和选中席位属于本机交互状态。不要为每个球场复制一份业务逻辑，也不要让路由直接拼接比赛数据库修改。
 
 保留 Sites starter 自带身份与构建集成；浏览器不可导入服务端身份、db 或 records 的实现。完整契约见 [架构文档](../docs/architecture/overview.md)。
 
