@@ -1,22 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, Vector3, type OrthographicCamera } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import type { MatchView, Player, TeamId } from "../competition";
+import type { MatchView, TeamId } from "../competition";
 import type { VenueProps } from "./model";
 import { BOARD_SIZE, boardCenter, cameraView, courtCenter, slotPosition, type Point, type WorldLayout } from "./world";
 import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
+import { Avatar, useAvatarAmbient } from "./Avatar";
+import { AvatarResults } from "./avatar-results";
 export type { Point } from "./world";
 
 export type Anchors = Map<string, Group>;
 export type Elements = Map<string, HTMLDivElement>;
 export const slotKey = (matchId: string, slotId: string) => `slot:${matchId}:${slotId}`;
 const refFor = (anchors: Anchors, key: string) => (node: Group | null) => { if (node) anchors.set(key, node); else anchors.delete(key); };
-const skin = ["#d99b77", "#f4c7a1", "#b97a56", "#e2ad88", "#eac7a5", "#ca9274", "#f4d2b3"];
-const hair = ["#34302a", "#60422b", "#252b31", "#846045", "#383331", "#5b4436", "#c4955a"];
 const sphere = new SphereGeometry(0.24, 12, 10);
-const hairGeometry = new SphereGeometry(0.249, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
 const body = mergeGeometries([
   new CapsuleGeometry(0.22, 0.32, 3, 8).translate(0, 0.66, 0),
   new CapsuleGeometry(0.075, 0.32, 2, 6).rotateZ(-0.24).translate(-0.3, 0.63, 0),
@@ -81,33 +80,6 @@ function Scoreboard({ courtId, match, anchors, props, editorSize, layout }: { co
   </group>;
 }
 
-function Avatar({ player, index, position, selected, muted, onCourt, anchors, begin }: {
-  player: Player; index: number; position: Point; selected: boolean; muted: boolean; onCourt: boolean; anchors: Anchors;
-  begin: (playerId: string, event: PointerEvent) => void;
-}) {
-  const group = useRef<Group>(null);
-  const [initial] = useState(position);
-  const invalidate = useThree(s => s.invalidate);
-  const [x, y, z] = position;
-  const target = useMemo(() => new Vector3(x, y, z), [x, y, z]);
-  useEffect(() => invalidate(), [target, invalidate]);
-  useFrame((_, delta) => {
-    if (!group.current) return;
-    const remaining = group.current.position.distanceToSquared(target);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) group.current.position.copy(target);
-    else if (remaining > 0.0001) { group.current.position.lerp(target, Math.min(1, delta * 9)); invalidate(); }
-  });
-  return <group ref={group} position={initial} scale={1.55} onPointerDown={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); begin(player.id, e.nativeEvent); }}>
-    {selected && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}><ringGeometry args={[0.35, 0.47, 24]} /><meshBasicMaterial color="#e4fc86" /></mesh>}
-    <mesh geometry={body}><meshStandardMaterial color={player.teamId === "WHITE" ? muted ? "#d8dac6" : "#fff8de" : muted ? "#546751" : "#233d33"} roughness={0.9} /></mesh>
-    <mesh geometry={legs}><meshStandardMaterial color={player.teamId === "WHITE" ? "#8f9b7c" : "#1e302a"} /></mesh>
-    <mesh geometry={sphere} position={[0, 1.16, 0]}><meshStandardMaterial color={skin[index % 7]} /></mesh>
-    <mesh geometry={hairGeometry} position={[0, 1.2, 0]} rotation={[0, index * 0.7, index % 3 === 0 ? 0.18 : 0]}><meshStandardMaterial color={hair[index % 7]} /></mesh>
-    <mesh position={[0, 0.8, 0]} visible={false}><boxGeometry args={[1, 1.8, 0.8]} /><meshBasicMaterial /></mesh>
-    <group position={onCourt ? [0, -0.1, 0] : [0, 1.8, 0]} ref={refFor(anchors, `player:${player.id}`)} />
-  </group>;
-}
-
 function Court({ number, match, position, props, anchors, hovered, editorSize, layout }: { number: number; match?: MatchView; position: Point; props: VenueProps; anchors: Anchors; hovered: string | null; editorSize: { width: number; height: number }; layout: WorldLayout }) {
   const inactive = !match;
   const selected = props.courtId === props.state.courts.find(c => c.number === number)!.id;
@@ -144,12 +116,18 @@ function DragGhost({ point }: { point: MutableRefObject<Point | null> }) {
   </group>;
 }
 
-export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport }: {
+export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport, pressedPlayerId }: {
   props: VenueProps; anchors: Anchors; begin: (id: string, event: PointerEvent) => void;
   dragging: boolean; dragPoint: MutableRefObject<Point | null>; hovered: string | null;
   layout: WorldLayout; motion: CameraMotion; hud: CameraHud; editorSize: { width: number; height: number }; viewport: { height: number; top: number };
+  pressedPlayerId?: string | null;
 }) {
   const { state, view } = props;
+  const [results] = useState(() => new AvatarResults());
+  const invalidate = useThree(s => s.invalidate);
+  const ambient = useAvatarAmbient();
+  const avatarContext = `${state.id}:${state.generation}:${view.round.id}:${layout.portrait}:${layout.courtSpacing}`;
+  useEffect(() => { results.observe(state, view); invalidate(); }, [state, view, results, invalidate]);
   const { portrait, width: floorWidth, length: floorLength } = layout;
   const courtPositions = state.courts.map(c => ({ court: c, position: courtCenter(c.number, layout) }));
   const editorCourt = props.editor && state.courts.find(c => view.matches.find(m => m.id === props.editor!.matchId)?.courtId === c.id);
@@ -164,14 +142,14 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
     {courtPositions.map(({ court, position }) => <Court key={court.id} number={court.number} position={position} match={view.matches.find(m => m.courtId === court.id)} props={props} anchors={anchors} hovered={hovered} editorSize={editorSize} layout={layout} />)}
     {state.players.map((p, index) => {
       const occupied = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants.map(p => ({ playerId: p.playerId }))).some(s => s.playerId === p.id));
-      const present = occupied;
+      const present = occupied && (occupied.phase !== "COMPLETED" || !view.isCurrent) ? occupied : undefined;
       const teamIndex = state.players.filter(x => x.teamId === p.teamId).findIndex(x => x.id === p.id);
       let position: Point;
       if (present) {
-        const slots = occupied.draftSlots;
-        const id = occupied.phase === "PLANNING" ? slots.find(s => s.playerId === p.id)?.id : occupied.participants.find(s => s.playerId === p.id)?.slotId;
+        const slots = present.draftSlots;
+        const id = present.phase === "PLANNING" ? slots.find(s => s.playerId === p.id)?.id : present.participants.find(s => s.playerId === p.id)?.slotId;
         const slot = slots.find(s => s.id === id)!;
-        const center = courtPositions.find(c => c.court.id === occupied.courtId)!.position;
+        const center = courtPositions.find(c => c.court.id === present.courtId)!.position;
         const point = slotPosition(slot, slots);
         position = [center[0] + point[0], center[1] + point[1], center[2] + point[2]];
       } else if (portrait) position = [p.teamId === "WHITE" ? -5.4 : 5.4, 0.07, (teamIndex - 3) * layout.courtSpacing / 3];
@@ -179,7 +157,8 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (p.teamId !== chosenSlot.sideId || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={!!present} selected={props.selection?.playerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} anchors={anchors} begin={begin} />;
+      const facing = present || !portrait ? p.teamId === "WHITE" ? Math.PI : 0 : p.teamId === "WHITE" ? Math.PI / 2 : -Math.PI / 2;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={!!present} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={view.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} />;
     })}
     {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={portrait ? [side === "WHITE" ? -5.4 : 5.4, 0.1, -layout.courtSpacing * 1.45] : [0, 0.1, side === "WHITE" ? 10.3 : -10.3]} ref={refFor(anchors, `bench:${side}`)} />)}
     {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * (portrait ? floorLength / 2 - 1.1 : 9.9)]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
