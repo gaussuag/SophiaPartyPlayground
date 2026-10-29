@@ -1,0 +1,92 @@
+name: Local verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm run install:ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test business, D1 and session behavior
+        run: npm test
+      - name: Build local production artifacts
+        run: npm run build
+      - name: Apply local D1 migrations
+        run: npm run db:migrate
+      - name: Verify HTTP workflow and production permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p outputs/ci
+          dev_pid=""
+          production_pid=""
+          cleanup() {
+            for pid in "$dev_pid" "$production_pid"; do
+              if [[ -n "$pid" ]]; then
+                kill -- "-$pid" 2>/dev/null || true
+                wait "$pid" 2>/dev/null || true
+              fi
+            done
+          }
+          trap cleanup EXIT
+          ready() {
+            local url="$1" pid="$2" log="$3"
+            for attempt in {1..60}; do
+              if curl --silent --fail --max-time 2 "$url" >/dev/null; then
+                return 0
+              fi
+              if ! kill -0 "$pid" 2>/dev/null; then
+                cat "$log"
+                return 1
+              fi
+              sleep 1
+            done
+            cat "$log"
+            return 1
+          }
+          setsid npm run dev -- --hostname 127.0.0.1 >outputs/ci/dev.log 2>&1 &
+          dev_pid=$!
+          ready http://127.0.0.1:5173/ "$dev_pid" outputs/ci/dev.log
+          npm run local:init -- local-ci
+          npm run verify:local
+          kill -- "-$dev_pid" 2>/dev/null || true
+          wait "$dev_pid" 2>/dev/null || true
+          dev_pid=""
+          setsid npm start -- --port 8787 >outputs/ci/production.log 2>&1 &
+          production_pid=$!
+          ready http://127.0.0.1:8787/ "$production_pid" outputs/ci/production.log
+          npm run verify:production -- local-ci
+      - name: Show preview logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          if [[ -d outputs/ci ]]; then
+            find outputs/ci -type f -name '*.log' -exec tail -n 100 {} \;
+          fi

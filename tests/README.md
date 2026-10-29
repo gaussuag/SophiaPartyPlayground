@@ -1,16 +1,14 @@
-# 测试布局
+# 测试入口
 
-已有 33 项自动检查（competition 17、真实本地 D1 records 8、session 8），运行 npm test。完整清单见 [validation-and-release.md](../docs/delivery/validation-and-release.md)，证据见 [本地验收记录](../docs/delivery/local-validation-2026-10-29.md)。
+检查命令见 [package.json](../package.json) scripts，测试选择与超时以 [vitest.config.ts](../vitest.config.ts) 为准，实际数量以当前 runner 输出为准。[CI](../.github/workflows/ci.yml) 自动运行现有检查；完整验收范围见 [validation-and-release.md](../docs/delivery/validation-and-release.md)。
 
-当前布局与后续浏览器验证位置：
-
-- competition/：通过 decide／project 验证业务不变量、转换、更正和整轮可行性。
+- competition/：通过 decide／project 验证业务不变量、转换、更正和整轮可行性；包括场景安排到命令的映射。
 - records/：使用真实本地 D1 验证权限、条件写入、并发、幂等、故障与备份恢复。
 - session/：验证乱序响应、超时后回执恢复、重连、草稿绑定与同步反馈。
-- e2e/：通过两个独立浏览器上下文运行排阵、开赛、录分、推进和历史更正。
-- fixtures/：从 data/event-template.json 构建可重置测试活动，不使用生产活动数据。
+- fixtures/：从原始模板构建隔离的测试活动。
+- [verify-local.mjs](../scripts/verify-local.mjs)：针对开发服务和真实本地 D1 做完整 HTTP 演练；自动创建独立活动。
+- [verify-production.mjs](../scripts/verify-production.mjs)：针对本地生产构建检查只读权限、请求拒绝后 SSR 及产物隔离。使用已经在同一 worktree 初始化的测试 eventId。
 
-先在公开 Interface 验证外部行为，不复制实现写同构测试，不只用 mock 数据库测试生产事务语义。测试夹具明确 eventId，测试启动不得连接远端生产数据库。
+浏览器回归步骤与截图证据见 [首次验收](../docs/delivery/local-validation-2026-10-29.md) 和 [界面验收](../docs/delivery/ui-game-first-2026-10-29.md)。
 
-实际 iPhone 验证单独记录设备、步骤、证据及通过／失败／未测，桌面模拟不当作实机结果。生成日志、报告和截图置于被忽略的 outputs/ 或 test-results/。
-
+测试从公开 Interface 观察外部行为；真实数据库语义用真实本地 D1 验证。测试活动明确 eventId 和本地 URL，与正式活动分开。生成日志与截图置于忽略的输出目录；实际 iPhone 检查单独记录设备、步骤、结果与未测项。
