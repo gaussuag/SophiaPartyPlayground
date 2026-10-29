@@ -1,8 +1,24 @@
 import { describe, expect, it } from "vitest";
+import { OrthographicCamera, Vector3 } from "three";
 import { PLAY_IDS, PlayTap, ScenePlayController, playPose, playPositions } from "../../src/modules/venue/scene-play";
-import { courtCenter, worldLayout } from "../../src/modules/venue/world";
+import { cameraView, courtCenter, overview, worldLayout } from "../../src/modules/venue/world";
 
 describe("local scene activities", () => {
+  it.each([[320, 568], [390, 600], [390, 844]])("leaves all three 48×44 toy buttons clear of each other and the bottom dock at %i×%i", (width, height) => {
+    const layout = worldLayout(width, height), nav = overview(layout), view = cameraView(nav, layout);
+    const camera = new OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, .1, 180);
+    camera.position.copy(new Vector3(...nav.center).add(new Vector3(...view.offset)));
+    camera.lookAt(...nav.center); camera.zoom = view.zoom; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    const centers = Object.values(playPositions(layout)).map(([x, y, z]) => {
+      const p = new Vector3(x, y + .1, z + 1.15).project(camera);
+      return { x: (p.x + 1) * width / 2, y: (1 - p.y) * height / 2 };
+    });
+    for (const [index, point] of centers.entries()) {
+      expect(point.x - 24).toBeGreaterThan(0); expect(point.x + 24).toBeLessThan(width);
+      expect(point.y + 22).toBeLessThan(height - 66);
+      if (index) expect(point.x - centers[index - 1].x).toBeGreaterThanOrEqual(48);
+    }
+  });
   it("plays a ball or greeting once, ignores repeated taps during it, and returns exactly to rest", () => {
     const controller = new ScenePlayController();
     expect(controller.activate("ball", 100)).toBe(true);

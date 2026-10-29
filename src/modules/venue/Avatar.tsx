@@ -85,6 +85,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const selection = a.reduced ? 0 : Math.sin(a.selected / 0.5 * Math.PI);
     const cheer = a.result > 0 ? Math.sin(Math.min(1, a.result / 0.28) * Math.PI / 2) : 0;
     root.current.position.set(...motion.position);
+    root.current.userData.walking = motion.moving;
     body.current.rotation.y = motion.yaw;
     body.current.position.y = walking ? Math.abs(Math.sin(phase)) * 0.035 : breath * 0.012;
     body.current.rotation.z = walking ? Math.sin(phase) * 0.025 : breath * (index % 2 ? 0.014 : -0.014);
@@ -106,7 +107,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
   return <group ref={root} position={initial} scale={1.55} userData={{ playerId: player.id }} onPointerDown={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); begin(player.id, event.nativeEvent); }}>
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}><circleGeometry args={[0.34, 20]} /><meshBasicMaterial color="#435740" transparent opacity={0.13} depthWrite={false} /></mesh>
     {(selected || status !== "available") && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}><ringGeometry args={[selected ? 0.38 : 0.35, selected ? 0.49 : 0.39, 24]} /><meshBasicMaterial color={ringColor} transparent opacity={muted && !selected ? 0.55 : 0.95} /></mesh>}
-    <group ref={body} rotation={[0, facing, 0]} dispose={null}>
+    <group ref={body} rotation={[0, facing, 0]}>
       <mesh geometry={torsoGeometry} position={[0, 0.68, 0]}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
       <group ref={leftArm} position={[-0.28, 0.84, 0]} rotation={[0, 0, -0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
       <group ref={rightArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}>

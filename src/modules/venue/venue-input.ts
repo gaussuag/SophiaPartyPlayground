@@ -49,9 +49,20 @@ export class VenueInput {
   private playerId?: string;
   suppressClick = false;
 
-  constructor(private motion: CameraMotion, private read: () => InputContext, private effects: InputEffects) {}
+  constructor(private motion: CameraMotion,
+    private read: () => InputContext = () => { throw new Error("Venue input is not mounted"); },
+    private effects: InputEffects = { invalidate() {}, capture() {}, release() {}, activity() {}, select() {}, drag() {}, drop() {}, settled() {} }) {}
+  bind(read: () => InputContext, effects: InputEffects) { this.read = read; this.effects = effects; }
   get active() { return this.points.size > 0; }
   owns(id: number) { return this.points.has(id); }
+  ground(point: ScreenPoint): Point | null {
+    return this.context ? groundAt(point, this.motion.snapshot(), this.context.layout, this.context.bounds) : null;
+  }
+  lostCapture(id: number, retainedBySurface: boolean) {
+    // Touch implicitly captures the original button/canvas. Its lost event
+    // bubbles when we intentionally transfer capture to the venue surface.
+    if (this.owns(id) && !retainedBySurface) this.cancel();
+  }
   private activity() { this.effects.activity(this.mode, this.playerId); }
   private change(value: Navigation) {
     this.motion.move(constrainNavigation(value, this.context!.layout), true);
@@ -61,7 +72,8 @@ export class VenueInput {
     const next = this.read();
     if (next.disabled || this.points.has(sample.id)) return;
     if (!this.active) {
-      this.context = { ...next, bounds: { ...next.bounds }, basis: { ...next.basis } };
+      const { left, top, width, height } = next.bounds;
+      this.context = { ...next, bounds: { left, top, width, height }, basis: { ...next.basis } };
       this.motion.stop();
       this.primary = sample.id; this.origin = this.previous = { x: sample.x, y: sample.y };
       this.moved = false; this.suppressClick = false;

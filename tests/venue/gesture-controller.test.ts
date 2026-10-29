@@ -15,11 +15,19 @@ function harness(editable = true) {
     drop(id, x, y) { events.push({ type: "drop", id, x, y }); },
     settled() {},
   });
-  return { input, motion, layout, events, resize: (height: number) => { context = { ...context, layout: worldLayout(390, height), bounds: { ...context.bounds, height } }; } };
+  return { input, motion, layout, events, setBounds: (bounds: InputContext["bounds"]) => { context = { ...context, bounds }; }, resize: (height: number) => { context = { ...context, layout: worldLayout(390, height), bounds: { ...context.bounds, height } }; } };
 }
 const p = (id: number, x: number, y: number) => ({ id, x, y });
 
 describe("venue pointer trajectories (the DOM/R3F gesture owner)", () => {
+  it("copies native DOMRect prototype accessors rather than enumerable keys", () => {
+    const { input, motion, setBounds } = harness();
+    const bounds = Object.create({ get left() { return 0; }, get top() { return 0; }, get width() { return 390; }, get height() { return 844; } });
+    expect(Object.keys(bounds)).toHaveLength(0); setBounds(bounds);
+    input.down(p(1, 20, 400)); input.move(p(1, 40, 410)); input.down(p(2, 200, 400)); input.move(p(2, 220, 420));
+    const pose = motion.snapshot();
+    expect([pose.yaw, pose.pitch, pose.zoom, ...pose.center].every(Number.isFinite)).toBe(true);
+  });
   it.each([1, -1])("reverses immediately after excess travel at pitch boundary %s", direction => {
     const { input, motion } = harness();
     input.down(p(1, 30, 300));
@@ -63,6 +71,15 @@ describe("venue pointer trajectories (the DOM/R3F gesture owner)", () => {
     expect(events.filter(e => e.type === "drop")).toEqual([{ type: "drop", id: "W01", x: 80, y: 450 }]);
     expect(events.filter(e => e.type === "select")).toHaveLength(0);
   });
+  it("keeps the visible drop point fixed while a person gesture spans a viewport resize", () => {
+    const { input, resize } = harness();
+    input.down(p(1, 20, 400), { playerId: "W01" }); input.move(p(1, 180, 450));
+    const target = input.ground({ x: 180, y: 450 });
+    resize(600);
+    expect(input.ground({ x: 180, y: 450 })).toEqual(target);
+    input.up(p(1, 180, 450));
+    expect(input.ground({ x: 180, y: 450 })).toBeNull();
+  });
   it("lets readonly person/body/name slides rotate, and taps still select", () => {
     const { input, motion, events } = harness(false), start = motion.snapshot();
     input.down(p(1, 20, 400), { playerId: "W01" }); input.move(p(1, 60, 400)); input.up(p(1, 60, 400));
@@ -99,6 +116,17 @@ describe("venue pointer trajectories (the DOM/R3F gesture owner)", () => {
     input.down(p(1, 20, 400), { playerId: "W01" }); input.move(p(1, 40, 400)); input.cancel(); input.up(p(1, 90, 450));
     expect(events.filter(e => e.type === "drop" || e.type === "select")).toHaveLength(0);
     expect(input.active).toBe(false); expect(input.suppressClick).toBe(true);
+  });
+  it("keeps orbiting through implicit button-to-surface capture transfer but cancels unexpected loss", () => {
+    const { input, motion, events } = harness();
+    input.down(p(1, 20, 400)); input.move(p(1, 40, 400));
+    input.lostCapture(1, true);
+    const first = motion.snapshot(); input.move(p(1, 60, 400));
+    expect(motion.value.yaw).not.toBe(first.yaw); expect(input.active).toBe(true);
+    input.lostCapture(1, false); const cancelled = motion.snapshot();
+    input.move(p(1, 80, 400)); input.up(p(1, 80, 400));
+    expect(motion.snapshot()).toEqual(cancelled); expect(input.active).toBe(false);
+    expect(events.filter(e => e.type === "drop" || e.type === "select")).toHaveLength(0);
   });
   it("a third finger and alternating lifts never resurrect a cancelled character", () => {
     const { input, events } = harness();

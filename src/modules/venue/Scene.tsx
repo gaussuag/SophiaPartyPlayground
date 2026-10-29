@@ -9,6 +9,7 @@ import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
 import { Avatar, useAvatarAmbient } from "./Avatar";
 import { AvatarResults } from "./avatar-results";
+import type { VenuePerformance } from "./venue-performance";
 export type { Point } from "./world";
 
 export type Anchors = Map<string, Group>;
@@ -33,7 +34,7 @@ const courtLines = mergeGeometries([
 const kitchen = mergeGeometries([-0.9, 0.9].map(z => new BoxGeometry(4.85, 0.015, 1.72).translate(0, 0.01, z)));
 const netPosts = mergeGeometries([-2.8, 2.8].map(x => new CylinderGeometry(0.055, 0.065, 0.9, 6).translate(x, 0.45, 0)));
 
-function Rig({ layout, motion, hud, editor }: { layout: WorldLayout; motion: CameraMotion; hud: CameraHud; editor?: { number: number; height: number; viewportHeight: number; viewportTop: number } }) {
+function Rig({ layout, motion, hud, timing, editor }: { layout: WorldLayout; motion: CameraMotion; hud: CameraHud; timing: VenuePerformance; editor?: { number: number; height: number; viewportHeight: number; viewportTop: number } }) {
   const { size, invalidate } = useThree();
   const look = useMemo(() => new Vector3(), []);
   useEffect(() => {
@@ -46,6 +47,7 @@ function Rig({ layout, motion, hud, editor }: { layout: WorldLayout; motion: Cam
     invalidate();
   }, [layout, motion, editor, size.height, invalidate]);
   useFrame(({ camera }, delta) => {
+    const started = timing.enabled ? performance.now() : 0;
     const c = camera as OrthographicCamera;
     const moving = motion.step(delta, matchMedia("(prefers-reduced-motion: reduce)").matches);
     const nav = motion.value, view = cameraView(nav, layout);
@@ -54,6 +56,7 @@ function Rig({ layout, motion, hud, editor }: { layout: WorldLayout; motion: Cam
     if (c.zoom !== view.zoom) { c.zoom = view.zoom; c.updateProjectionMatrix(); }
     c.updateMatrixWorld();
     hud.update(nav, layout, !!editor);
+    if (timing.enabled) timing.record("camera", performance.now() - started);
     if (moving) invalidate();
   });
   return null;
@@ -67,7 +70,7 @@ function Scoreboard({ courtId, match, anchors, props, editorSize, layout }: { co
     const zoom = (camera as OrthographicCamera).zoom;
     face.current.quaternion.copy(camera.quaternion);
     const scale = Math.min(1.3, Math.max(1, zoom / layout.baseZoom), (size.width - 24) / BOARD_SIZE.frameWidth);
-    const width = zoom / layout.baseZoom < 0.75 ? BOARD_SIZE.compactWidth + 8 : BOARD_SIZE.frameWidth;
+    const width = layout.compact || zoom / layout.baseZoom < 0.75 ? BOARD_SIZE.compactWidth + 8 : BOARD_SIZE.frameWidth;
     face.current.scale.set((active ? editorSize.width + 8 : width * scale) / zoom, (active ? editorSize.height + 8 : BOARD_SIZE.frameHeight * scale) / zoom, 0.12);
   });
   return <group position={layout.boardOffset}>
@@ -116,11 +119,12 @@ function DragGhost({ point }: { point: MutableRefObject<Point | null> }) {
   </group>;
 }
 
-export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport, pressedPlayerId }: {
+export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport, pressedPlayerId, timing }: {
   props: VenueProps; anchors: Anchors; begin: (id: string, event: PointerEvent) => void;
   dragging: boolean; dragPoint: MutableRefObject<Point | null>; hovered: string | null;
   layout: WorldLayout; motion: CameraMotion; hud: CameraHud; editorSize: { width: number; height: number }; viewport: { height: number; top: number };
   pressedPlayerId?: string | null;
+  timing: VenuePerformance;
 }) {
   const { state, view } = props;
   const [results] = useState(() => new AvatarResults());
@@ -135,7 +139,7 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   const walkways = useMemo(() => mergeGeometries((portrait ? [-1, 1].map(s => new BoxGeometry(2.5, 0.03, floorLength - 0.5).translate(s * 5.4, 0, 0)) : [-1, 1].map(s => new BoxGeometry(floorWidth - 0.4, 0.03, 2.6).translate(0, 0, s * 8.4)))), [portrait, floorLength, floorWidth]);
   useEffect(() => () => walkways.dispose(), [walkways]);
   return <>
-    <Rig layout={layout} motion={motion} hud={hud} editor={rigEditor} />
+    <Rig layout={layout} motion={motion} hud={hud} timing={timing} editor={rigEditor} />
     <mesh position={[0, -0.58, layout.floorCenterZ]}><boxGeometry args={[floorWidth, 1, floorLength]} /><meshStandardMaterial color="#879b70" /></mesh>
     <mesh position={[0, -0.03, layout.floorCenterZ]}><boxGeometry args={[floorWidth - 0.16, 0.12, floorLength - 0.16]} /><meshStandardMaterial color="#acc38d" /></mesh>
     <mesh geometry={walkways} position={[0, 0.04, 0]}><meshStandardMaterial color="#e0d2ae" roughness={1} /></mesh>
@@ -166,28 +170,50 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   </>;
 }
 
-export function LabelProjection({ anchors, elements, baseZoom }: { anchors: Anchors; elements: Elements; baseZoom: number }) {
+export function LabelProjection({ anchors, elements, baseZoom, timing }: { anchors: Anchors; elements: Elements; baseZoom: number; timing: VenuePerformance }) {
   const point = useMemo(() => new Vector3(), []);
   useFrame(({ camera, size }) => {
+    const started = timing.enabled ? performance.now() : 0;
     camera.updateMatrixWorld();
     for (const [id, node] of anchors) {
       const element = elements.get(id); if (!element) continue;
-      node.updateWorldMatrix(true, false); node.getWorldPosition(point).project(camera);
+      node.updateWorldMatrix(true, false); node.getWorldPosition(point);
+      if (timing.enabled && id.startsWith("player:")) {
+        element.dataset.walking = String(!!node.parent?.userData.walking);
+        element.dataset.worldPosition = `${point.x.toFixed(3)},${point.y.toFixed(3)},${point.z.toFixed(3)}`;
+      }
+      point.project(camera);
       const scale = id.startsWith("court:") && !element.dataset.editor ? Math.min(1.3, Math.max(1, (camera as OrthographicCamera).zoom / baseZoom), (size.width - 24) / BOARD_SIZE.frameWidth) : 1;
-      element.style.transform = `translate(${point.x * size.width / 2 + size.width / 2}px,${-point.y * size.height / 2 + size.height / 2}px) translate(-50%,-50%) scale(${scale})`;
-      element.style.visibility = Math.abs(point.x) > 1.1 || Math.abs(point.y) > 1.1 || Math.abs(point.z) > 1 ? "hidden" : "visible";
+      const transform = `translate(${(point.x * size.width / 2 + size.width / 2).toFixed(2)}px,${(-point.y * size.height / 2 + size.height / 2).toFixed(2)}px) translate(-50%,-50%) scale(${scale.toFixed(4)})`;
+      if (element.style.transform !== transform) element.style.transform = transform;
+      const visibility = Math.abs(point.x) > 1.1 || Math.abs(point.y) > 1.1 || Math.abs(point.z) > 1 ? "hidden" : "visible";
+      if (element.style.visibility !== visibility) element.style.visibility = visibility;
     }
+    if (timing.enabled) timing.record("labels", performance.now() - started);
   });
   return null;
 }
 
-export function SceneMetrics({ target, motion }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion }) {
+export function SceneMetrics({ target, motion, timing }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion; timing: VenuePerformance }) {
+  const gl = useThree(s => s.gl);
+  useEffect(() => {
+    if (!timing.enabled) return;
+    const render = gl.render;
+    gl.render = function (...args) {
+      const started = performance.now();
+      try { return render.apply(this, args); }
+      finally { timing.record("renderCpu", performance.now() - started); }
+    };
+    return () => { gl.render = render; };
+  }, [gl, timing]);
+  useFrame(() => timing.frame(performance.now()), -100);
   useFrame(({ gl, camera }) => { queueMicrotask(() => { if (target.current) {
     target.current.dataset.drawCalls = String(gl.info.render.calls); target.current.dataset.triangles = String(gl.info.render.triangles);
     const navigation = motion.value;
     target.current.dataset.cameraZoom = navigation.zoom.toFixed(2); target.current.dataset.cameraYaw = navigation.yaw.toFixed(3); target.current.dataset.cameraPitch = navigation.pitch.toFixed(3);
     target.current.dataset.cameraMoving = String(motion.moving);
     target.current.dataset.renderZoom = String((camera as OrthographicCamera).zoom);
+    timing.publish(target.current, performance.now());
   } }); });
   return null;
 }

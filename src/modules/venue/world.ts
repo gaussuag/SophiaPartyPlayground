@@ -53,7 +53,7 @@ export function worldLayout(width: number, height: number) {
   const cameraUp: Point = [-y * x / (distance * horizontal), horizontal / distance, -y * z / (distance * horizontal)];
   const depthProjection = -cameraUp[2];
   // Reserve a visible strip for each compact sign, rather than drawing it over a court.
-  const baseZoom = Math.min(width / (portrait ? 18.8 : 32), portrait ? Math.max(8, (height - 276) / (3 * 10.7 * depthProjection)) : height / 25);
+  const baseZoom = Math.min(width / (portrait ? 18.8 : 32), portrait ? Math.max(8, (height - (compact ? 316 : 276)) / (3 * 10.7 * depthProjection)) : height / 25);
   const courtSpacing = portrait ? Math.max(15, 10.7 + 44 / (baseZoom * depthProjection)) : 7.2;
   const boardHeight = Math.max(0.9, BOARD_SIZE.frameHeight / (2 * baseZoom) * cameraUp[1] + 0.16);
   const boardOffset: Point = portrait ? [0, boardHeight, -courtSpacing / 2 + boardHeight * cameraUp[1] / depthProjection] : [-0.1, boardHeight, -12.7];
@@ -63,7 +63,7 @@ export function worldLayout(width: number, height: number) {
   return {
     portrait, compact, courtSpacing, cameraOffset, cameraUp, boardOffset,
     viewportWidth: width, viewportHeight: height,
-    framingY: portrait ? (top - bottom) / 2 - 8 : Math.max(0, 64 - height / 2 + desktopTop),
+    framingY: portrait ? (top - bottom) / 2 - (compact ? 32 : 8) : Math.max(0, 64 - height / 2 + desktopTop),
     width: portrait ? 14.5 : 28,
     length: portrait ? 2 * courtSpacing + 16 : 25,
     floorCenterZ: portrait ? 0 : -1.5,

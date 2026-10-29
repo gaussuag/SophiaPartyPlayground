@@ -2,13 +2,16 @@
 import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { ArrowUpRight, Check, Compass, LockKeyhole, Mars, Minus, Pencil, Plus, Scan, Venus } from "lucide-react";
-import { Plane, Raycaster, Vector2, Vector3, type OrthographicCamera } from "three";
+import { Vector3 } from "three";
 import { LabelProjection, Scene, SceneMetrics, slotKey, type Anchors, type Elements, type Point } from "./Scene";
 import { CameraMotion } from "./camera-motion";
 import { CameraHud } from "./camera-hud";
-import { VenueInput, groundAt, type InputContext, type InputEffects, type PointerSample } from "./venue-input";
+import { ScenePlay, ScenePlayLabels } from "./ScenePlay";
+import { ScenePlayController } from "./scene-play";
+import { VenuePerformance } from "./venue-performance";
+import { VenueInput, groundAt, type PointerSample } from "./venue-input";
 import type { VenueProps } from "./model";
-import { clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, overview, worldLayout, type Navigation } from "./world";
+import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, overview, worldLayout } from "./world";
 
 type ScreenPoint = { x: number; y: number };
 const sample = (e: { pointerId: number; clientX: number; clientY: number }): PointerSample => ({ id: e.pointerId, x: e.clientX, y: e.clientY });
@@ -32,7 +35,6 @@ function ContextRecovery({ onLost, onRestored }: { onLost: () => void; onRestore
 
 export function Venue(props: VenueProps) {
   const root = useRef<HTMLDivElement>(null);
-  const camera = useRef<OrthographicCamera | null>(null);
   const invalidate = useRef<(() => void) | null>(null);
   const anchors = useMemo<Anchors>(() => new Map(), []);
   const elements = useMemo<Elements>(() => new Map(), []);
@@ -52,40 +54,36 @@ export function Venue(props: VenueProps) {
   const [editorSize, setEditorSize] = useState({ width: 340, height: 390 });
   const [motion] = useState(() => new CameraMotion(overview(layout)));
   const [hud] = useState(() => new CameraHud(root));
-  const live = useRef<{ context: () => InputContext; effects: InputEffects } | null>(null);
-  const [input] = useState(() => new VenueInput(motion, () => live.current!.context(), {
-    invalidate: () => invalidate.current?.(),
-    capture: id => { try { root.current?.setPointerCapture(id); } catch { /* A native cancel can precede React's event. */ } },
-    release: id => { if (root.current?.hasPointerCapture(id)) root.current.releasePointerCapture(id); },
-    activity: (mode, id) => live.current?.effects.activity(mode, id),
-    select: id => live.current?.effects.select(id),
-    drag: (id, x, y) => live.current?.effects.drag(id, x, y),
-    drop: (id, x, y, basis) => live.current?.effects.drop(id, x, y, basis),
-    settled: () => live.current?.effects.settled(),
-  }));
-  const previousView = useRef({ key: props.cameraRequest.key, layout });
+  const [play] = useState(() => new ScenePlayController());
+  const [timing] = useState(() => new VenuePerformance(typeof window !== "undefined" && new URLSearchParams(window.location.search).has("venueMetrics")));
+  const [input] = useState(() => new VenueInput(motion));
+  const previousView = useRef({ key: props.cameraRequest.key, layout, measured: false });
   useEffect(() => {
     const previous = previousView.current;
     if (previous.key === props.cameraRequest.key && previous.layout === layout) return;
-    input.cancel();
+    input.cancel(); play.cancel();
     const changed = previous.key !== props.cameraRequest.key;
     const court = changed ? props.state.courts.find(c => c.id === props.cameraRequest.courtId) : undefined;
     const current = motion.snapshot();
     const sameOrientation = previous.layout.portrait === layout.portrait;
-    const resized = { ...current, zoom: current.zoom * previous.layout.baseZoom / layout.baseZoom };
-    motion.move(court ? courtNavigation(court.number, layout, current) : !changed && sameOrientation ? constrainNavigation(resized, layout) : overview(layout), !changed);
-    previousView.current = { key: props.cameraRequest.key, layout };
+    const view = cameraView(current, previous.layout);
+    const dx = (layout.viewportWidth - previous.layout.viewportWidth) / (2 * view.zoom);
+    const dy = (layout.viewportHeight - previous.layout.viewportHeight) / (2 * view.zoom);
+    const right: Point = [Math.cos(current.yaw), 0, -Math.sin(current.yaw)];
+    const resized = { ...current, zoom: current.zoom * previous.layout.baseZoom / layout.baseZoom,
+      center: current.center.map((n, i) => n + right[i] * dx - view.up[i] * dy) as Point };
+    motion.move(court ? courtNavigation(court.number, layout, current) : !changed && sameOrientation && previous.measured ? constrainNavigation(resized, layout) : overview(layout), !changed);
+    previousView.current = { key: props.cameraRequest.key, layout, measured: true };
     invalidate.current?.();
-  }, [layout, motion, input, props.cameraRequest.key, props.cameraRequest.courtId, props.state.courts]);
-  const ray = useMemo(() => new Raycaster(), []);
-  const ground = useMemo(() => new Plane(new Vector3(0, 1, 0), -0.1), []);
+  }, [layout, motion, input, play, props.cameraRequest.key, props.cameraRequest.courtId, props.state.courts]);
 
   useEffect(() => {
     const node = root.current; if (!node) return;
     const observer = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
       // Keep the same coordinate system and gain until all fingers release.
-      if (input.active) pendingSize.current = { width, height };
+      if (input.active && (width / height < 1.1) !== previousView.current.layout.portrait) { input.cancel(); setSize({ width, height }); }
+      else if (input.active) pendingSize.current = { width, height };
       else setSize({ width, height });
     });
     observer.observe(node);
@@ -106,11 +104,7 @@ export function Venue(props: VenueProps) {
   useEffect(() => { if (props.editor || lost) input.cancel(); }, [props.editor, lost, input]);
 
   function projectPointer(clientX: number, clientY: number): Point | null {
-    const bounds = root.current?.getBoundingClientRect(), from = camera.current;
-    if (!bounds || !from) return null;
-    ray.setFromCamera(new Vector2((clientX - bounds.left) / bounds.width * 2 - 1, -(clientY - bounds.top) / bounds.height * 2 + 1), from);
-    const point = ray.ray.intersectPlane(ground, new Vector3());
-    return point ? [point.x, 0.1, point.z] : null;
+    return input.ground({ x: clientX, y: clientY });
   }
   function zoomBy(factor: number, point?: ScreenPoint) {
     input.cancel();
@@ -146,10 +140,12 @@ export function Venue(props: VenueProps) {
   }
   function cancel() { input.cancel(); }
   useLayoutEffect(() => {
-    live.current = {
-      context: () => ({ layout, bounds: root.current!.getBoundingClientRect(), editable: props.editable, disabled: !!props.editor || lost, basis: { revision: props.state.revision, generation: props.state.generation } }),
-      effects: {
-        invalidate: () => invalidate.current?.(), capture() {}, release() {},
+    input.bind(
+      () => ({ layout, bounds: root.current!.getBoundingClientRect(), editable: props.editable, disabled: !!props.editor || lost, basis: { revision: props.state.revision, generation: props.state.generation } }),
+      {
+        invalidate: () => invalidate.current?.(),
+        capture: id => { try { root.current?.setPointerCapture(id); } catch { /* Native cancellation can precede React's event. */ } },
+        release: id => { if (root.current?.hasPointerCapture(id)) root.current.releasePointerCapture(id); },
         activity(mode, id) {
           setPressedPlayerId(id ?? null); setOrbiting(mode === "orbit" || mode === "pan");
           if (mode !== "player") { dragPoint.current = null; draggingPlayer.current = null; setDragging(false); setHovered(null); }
@@ -168,7 +164,7 @@ export function Venue(props: VenueProps) {
         },
         settled() { if (pendingSize.current) { setSize(pendingSize.current); pendingSize.current = null; } },
       },
-    };
+    );
   });
   const labels: { key: string; className?: string; editor?: boolean; content: ReactNode }[] = props.state.courts.map(c => {
     const match = props.view.matches.find(m => m.courtId === c.id);
@@ -197,7 +193,7 @@ export function Venue(props: VenueProps) {
   }
   for (const target of props.placements) {
     const selected = props.slotSelection?.matchId === target.matchId && props.slotSelection.slotId === target.slotId;
-    if (target.occupantId && !props.selection && !selected) continue;
+    if (target.occupantId && !props.selection && !selected && props.editingMatchId !== target.matchId) continue;
     const court = props.state.courts.find(c => c.id === target.courtId)!;
     const person = props.selection && props.state.players.find(p => p.id === props.selection!.playerId);
     const label = person ? `安排 ${person.name} 到 ${court.number} 号场 ${target.slotId}` : `${court.number} 号场 ${target.sideId === "WHITE" ? "白队" : "黑队"}${target.gender === "MALE" ? "男性" : target.gender === "FEMALE" ? "女性" : "自由"}位置 ${target.slotId}`;
@@ -206,9 +202,9 @@ export function Venue(props: VenueProps) {
   for (const side of ["WHITE", "BLACK"] as const) labels.push({ key: `bench:${side}`, content: <span className={`game-bench-marker ${side.toLowerCase()}`}><i />{side === "WHITE" ? "白队" : "黑队"}</span> });
 
   const fallback = <div className="scene-fallback"><p>球馆暂时无法显示</p><button className="button secondary" onClick={() => { setLost(false); setSceneRevision(n => n + 1); }}>重建场景</button></div>;
-  return <div ref={root} className={`venue game-venue ${dragging ? "dragging" : ""} ${orbiting ? "orbiting" : ""} ${props.editor ? "scoring" : ""}`} aria-label="三维球馆，单指旋转，双指缩放和平移，点选或拖拽球友" onContextMenu={e => e.preventDefault()}
+  return <div ref={root} data-compact={layout.compact} className={`venue game-venue ${dragging ? "dragging" : ""} ${orbiting ? "orbiting" : ""} ${props.editor ? "scoring" : ""}`} aria-label="三维球馆，单指旋转，双指缩放和平移，点选或拖拽球友" onContextMenu={e => e.preventDefault()}
     style={{ "--visible-height": `${viewport.height}px` } as React.CSSProperties}
-    onClickCapture={e => { if (input.suppressClick && e.detail !== 0) { e.stopPropagation(); e.preventDefault(); } }}
+    onClickCapture={e => { if (!props.editor && input.suppressClick && e.detail !== 0) { e.stopPropagation(); e.preventDefault(); } }}
     onPointerDownCapture={e => {
       if (e.button !== 0) return;
       const target = e.target as HTMLElement;
@@ -216,25 +212,33 @@ export function Venue(props: VenueProps) {
       input.down(sample(e), { playerId: player?.dataset.playerId, pan: e.shiftKey, ui: !!target.closest?.("[data-camera-ui]") });
     }}
     onPointerMove={e => {
+      if (!input.owns(e.pointerId)) return;
+      const started = timing.enabled ? performance.now() : 0;
       const samples = e.nativeEvent.getCoalescedEvents?.() ?? [];
       for (const event of samples) input.move(sample(event));
       input.move(sample(e));
+      timing.input(started);
     }}
-    onPointerUp={e => input.up(sample(e))}
+    onPointerUp={e => {
+      if (!input.owns(e.pointerId)) return;
+      const started = timing.enabled ? performance.now() : 0;
+      input.up(sample(e)); timing.input(started);
+    }}
     onPointerCancel={() => input.cancel()}
-    onLostPointerCapture={e => { if (input.owns(e.pointerId)) input.cancel(); }}>
+    onLostPointerCapture={e => input.lostCapture(e.pointerId, e.currentTarget.hasPointerCapture(e.pointerId))}>
     <SceneBoundary key={sceneRevision} fallback={fallback}>
       {lost && <div className="context-notice" role="status"><span>场景恢复中</span><button className="button secondary" onClick={() => { cancel(); setLost(false); setSceneRevision(n => n + 1); }}>重建场景</button></div>}
-      <Canvas orthographic camera={{ position: [3, 36, 42], near: 0.1, far: 180, zoom: 18 }} dpr={[1, 1.5]} frameloop="demand" gl={{ antialias: true, alpha: true, powerPreference: "low-power" }} onCreated={s => {
-        camera.current = s.camera as OrthographicCamera; invalidate.current = s.invalidate;
+      <Canvas style={{ width: size.width, height: size.height }} orthographic camera={{ position: [3, 36, 42], near: 0.1, far: 180, zoom: 18 }} dpr={[1, 1.5]} frameloop="demand" gl={{ antialias: true, alpha: true, powerPreference: "low-power" }} onCreated={s => {
+        invalidate.current = s.invalidate;
         setLost(false);
       }} fallback={<span>三维球馆画布</span>}>
         <ambientLight intensity={1.65} /><directionalLight position={[6, 15, 10]} intensity={2.2} color="#fff1d2" /><directionalLight position={[-10, 5, -7]} intensity={0.5} color="#c7e4da" />
-        <ContextRecovery onLost={() => { cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
-        <Scene props={props} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} />
-        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} /><SceneMetrics target={metrics} motion={motion} />
+        <ContextRecovery onLost={() => { cancel(); play.cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
+        <Scene props={props} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} pressedPlayerId={pressedPlayerId} timing={timing} />
+        <ScenePlay controller={play} layout={layout} anchors={anchors} disabled={!!props.editor || lost} />
+        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} />
       </Canvas>
-      <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}</div>
+      <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}<ScenePlayLabels controller={play} elements={elements} disabled={!!props.editor || lost} /></div>
       {!props.editor && <div hidden ref={node => hud.bind("element", node)} data-scene-ui data-camera-ui className="world-camera-controls" aria-label="球馆视角"><button className="camera-heading" aria-label="视角回正" onClick={() => { const home = overview(layout); motion.move({ ...motion.snapshot(), yaw: home.yaw, pitch: home.pitch }); invalidate.current?.(); }}><Compass ref={node => hud.bind("compass", node)} size={17} /></button><button ref={node => hud.bind("minus", node)} aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output ref={node => hud.bind("scale", node)}>1.0×</output><button ref={node => hud.bind("plus", node)} aria-label="放大球馆" onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label="恢复三场全景" onClick={() => { cancel(); motion.move(frameOverview(layout, motion.snapshot())); invalidate.current?.(); }}><Scan size={16} />全景</button></div>}
       <output hidden aria-hidden="true" data-venue-metrics data-world-courts={props.state.courts.length} data-world-layout={JSON.stringify(props.state.courts.map(c => [c.id, courtCenter(c.number, layout)]))} data-record-revision={props.state.revision} ref={metrics} />
     </SceneBoundary>
