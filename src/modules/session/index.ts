@@ -1,6 +1,7 @@
 import type { CompetitionCommand, EventState } from "../competition";
 import type { Backup, CommandEnvelope, PendingEnvelope, Role } from "../records/protocol";
 import { localCache, type ScoreDraft } from "./cache";
+import { commandId } from "./command-id";
 export type { ScoreDraft } from "./cache";
 export type SyncStatus = "loading" | "synced" | "saving" | "offline" | "conflict" | "unknown-outcome";
 export type SessionView = { state: EventState | null; role: Role; status: SyncStatus; message: string; errorCode: string | null; lastSyncedAt: string | null; pending: PendingEnvelope[]; drafts: Record<string, ScoreDraft>; notFound: boolean; cacheReady: boolean };
@@ -96,7 +97,7 @@ export function connect(eventId: string, options: Options = {}) {
     if (!view.state || view.role === "viewer" || !view.cacheReady || sending || view.pending.length || ["offline", "conflict", "loading"].includes(view.status) || !isOnline()) {
       emit({ message: view.role === "viewer" ? "当前为只读访问" : view.pending.length ? "请先核对上一操作的保存结果" : "请先同步并核对当前记录" }); return false;
     }
-    const envelope: CommandEnvelope = { eventId, commandId: crypto.randomUUID(), expectedRevision: basis?.revision ?? view.state.revision, expectedGeneration: basis?.generation ?? view.state.generation, command };
+    const envelope: CommandEnvelope = { eventId, commandId: commandId(), expectedRevision: basis?.revision ?? view.state.revision, expectedGeneration: basis?.generation ?? view.state.generation, command };
     try { await cache.savePending(envelope); }
     catch { emit({ errorCode: "LOCAL_STORAGE_UNAVAILABLE", message: "无法保留操作编号，本次尚未发送，请恢复本机存储后重试" }); return false; }
     emit({ pending: [...view.pending, envelope] });
@@ -108,7 +109,7 @@ export function connect(eventId: string, options: Options = {}) {
   }
   async function restore(backup: Backup): Promise<boolean> {
     if (!view.state || view.role !== "admin" || view.status !== "synced" || !view.cacheReady || sending || view.pending.length || !isOnline()) return false;
-    const envelope: PendingEnvelope = { eventId, commandId: crypto.randomUUID(), expectedRevision: view.state.revision, expectedGeneration: view.state.generation, restore: { confirmEventId: eventId, maintenance: true, backup } };
+    const envelope: PendingEnvelope = { eventId, commandId: commandId(), expectedRevision: view.state.revision, expectedGeneration: view.state.generation, restore: { confirmEventId: eventId, maintenance: true, backup } };
     try { await cache.savePending(envelope); } catch { emit({ message: "无法保留恢复操作编号，本次未发送", errorCode: "LOCAL_STORAGE_UNAVAILABLE" }); return false; }
     emit({ pending: [...view.pending, envelope] }); return send(envelope);
   }

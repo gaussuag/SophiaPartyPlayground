@@ -9,8 +9,9 @@
 - 已建立代码、数据、测试及资源目录；目录中的 README 是实现职责说明。
 - 已实现 Vinext + React + TypeScript + Three.js／R3F 应用、真实本地 D1 权威存储及四个业务 Module。
 - 三场地、七轮二十场、角色排阵、录分、更正、同步、导出和受控恢复已接通。
-- TypeScript 检查和 38 项自动检查通过；真实 HTTP＋D1 完成二十场演练，浏览器完成一场闭环与双客户端同步。
+- TypeScript 检查和 43 项自动检查通过；真实 HTTP＋D1 完成二十场演练，浏览器完成一场闭环与双客户端同步。
 - 界面已调整为全屏 3D 球馆，直接点人物／拖入场内位置，赛程与赛果收进面板。新增准则和验证见 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
+- 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 的真实 iPhone Safari、现场网络及长时间性能仍待验收。
 - 尚未创建、注册或发布 Sites。先在本地完成开发、测试和验收，再发布。
 
