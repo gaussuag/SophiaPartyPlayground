@@ -30,6 +30,22 @@
 
 ## 发布与下一次试用
 
-复用已有 Site `appgprj_6ae3626384448191b8fb8eecc7af7ced`，原生受众维持 public。正式活动与隔离验收活动均不重置，生产授权名单和关闭的初始化窗口保留。本轮通过官方源码、构建、版本与部署流程更新；实际版本、source commit 和部署回执在成功后补充。
+复用已有 Site `appgprj_6ae3626384448191b8fb8eecc7af7ced`，原生受众维持 public。正式活动与隔离验收活动均不重置，生产授权名单和关闭的初始化窗口保留。
+
+| 发布项 | 实际回执 |
+| --- | --- |
+| 名称与 URL | Sophia Sunshine Cup；https://sophia-sunshine-cup.gaussuag777.chatgpt.site/ |
+| Sites 版本 | 2 |
+| source commit | d9d8ebc89f55ba61ba9543a62ece5fb4a9c4c95e |
+| version_id | appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_45aa8a8afa1c8191b3e81123fa78abc9 |
+| deployment_id | appgdep_6ae373f614e0819198897de6ee7c871f |
+| 状态／运行配置 | succeeded；env_set_revision=3，public 再次由 get_site 确认 |
+| 构建与资源 | 官方 build-site／site-workflow 成功；客户端全部 JS＋CSS gzip 合计 419410 字节，比上一版多 1754 字节；不等于首屏下载或手机帧率 |
+| 静态模块 | 实际 venue-Bh5d357P.js 匿名 GET 200、text/javascript、948157 字节，与构建 SHA256 一致 |
+| 数据不变 | 发布前后完整公开状态摘要相同；正式 revision=0、0 赛果，验收 revision=9、2 个赛果版本 |
+| 匿名 HTTP | verify:public 通过：根页／读取 200、无登录跳转、写入／备份 401、身份伪造被忽略、初始化窗口关闭 |
+| 线上窄屏浏览器 | 390×844 中实际拖动后 yaw 0.071→0.486、pitch 0.707→0.799，正式记录仍为 0；人物卡中心偏差 0px，设置菜单底边 844；管理身份仍为活动管理；无控制台 error |
+
+使用官方 source credential 经隐藏 stdin 同步、构建打包、save_site_version、deploy_site_version，没有另建 Site 或改变存储。新增证据在 `outputs/orbit/published-profile-390.png`、`published-orbit-390.png`、`published-browser-checks.json`、`published-asset.json`、`pre-publish-events.json`、`post-publish-events.json`，匿名边界结果在 `outputs/public-http-checks.json`。独立匿名浏览器的既有未完成项、实际 iPhone 多指与持续性能均未冒充通过。
 
 发布后在 Safari 刷新实际 URL，先在空地单指左右／上下划动，再双指缩放和平移，使用方向图标与全景复位；点人物核对资料卡居中，轮次／设置仍贴底。写入演练使用 `?event=sophia-sunshine-cup-acceptance`，先验证人物拖拽中加第二指、取消手势或场外松手不会误提交，再检查数字键盘、草稿与保存。正式活动不用于试用排阵或成绩。

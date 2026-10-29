@@ -10,11 +10,11 @@
 | 标识 | sophia-sunshine-cup |
 | URL | https://sophia-sunshine-cup.gaussuag777.chatgpt.site |
 | project_id | appgprj_6ae3626384448191b8fb8eecc7af7ced |
-| Sites 版本 | 1 |
+| 首发 Sites 版本 | 1 |
 | source commit | b60f8db489ecfe75595db75b028a3ef8be7e2e62 |
 | version_id | appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_56a6cab4d4dc8191a754cc23aaf61a7b |
 | 初次 deployment_id | appgdep_6ae362e91ee48191934432711ccaad8f |
-| 当前 deployment_id | appgdep_6ae3661ea2588191903d2303d78e397f，运行配置 revision=3 |
+| 首发授权配置完成后的 deployment_id | appgdep_6ae3661ea2588191903d2303d78e397f，运行配置 revision=3 |
 | 部署结果 | succeeded |
 | 原生访问配置 | public；update_site_access 成功，get_site 再次返回 public，策略 revision=2 |
 | 托管存储 | DB 绑定存在，schema-only 迁移已建 events 表 |
@@ -62,4 +62,6 @@ IDENTITY_SOURCE=sites-dispatch，EVENT_ID=sophia-sunshine-cup，ACCEPTANCE_EVENT
 2. 使用正式 HTTPS 的隔离验收活动做真实 iPhone Safari 检查，记录设备、系统、网络、触控、数字键盘、后台／锁屏、弱网及持续观察；操作步骤见 [手机指南](iphone-wifi-preview.md)。正式活动不作演练。
 3. 实际活动开始前再导出正式初始备份并固定版本。管理员恢复的真实 D1 检查已有本地证据，本轮线上没有执行恢复，也没有把本轮两个页面客户端当作两台物理设备。
 
-当前是“版本 1 已公开部署、正式活动准备完成、权限与线上业务检查通过”，独立匿名浏览器内容检查仍待补齐，因此尚不宣告 P7 全部验收通过。真实 iPhone 项按用户授权后置，继续记录未测。
+后续触控与人物资料卡更新已部署为版本 2，source commit=d9d8ebc89f55ba61ba9543a62ece5fb4a9c4c95e，deployment_id=appgdep_6ae373f614e0819198897de6ee7c871f，public 与配置 revision=3 保持。两活动的完整公开状态摘要与发布前一致。详见 [触控优化与版本 2 回执](ui-touch-orbit-2026-10-30.md)。
+
+当前是“版本 2 已公开部署、正式活动准备完成、权限与线上业务检查通过”，独立匿名浏览器内容检查仍待补齐，因此尚不宣告 P7 全部验收通过。真实 iPhone 项按用户授权后置，继续记录未测；用户只报告旧版本 Safari 渲染正常，新手势仍待实机反馈。

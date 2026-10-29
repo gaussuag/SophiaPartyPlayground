@@ -16,7 +16,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 版本 1 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。仅 gaussuag777@gmail.com 兼任管理员与操作员，本站身份已核对；正式活动已初始化且保持空阵容／空赛果。线上双客户端、录分、更正、历史、导出与匿名 HTTP 检查通过；独立 InPrivate 内容读取受工具限制尚待人工补查。实际版本、权限证据及剩余项见 [Sites 发布记录](docs/delivery/sites-public-release-2026-10-29.md)。
+- ChatGPT Sites 版本 2 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。本次触控与人物弹窗更新已在线回归，正式及验收活动数据摘要保持一致。仅 gaussuag777@gmail.com 兼任管理员与操作员，本站身份已核对；正式活动保持空阵容／空赛果。原有业务与权限证据见 [Sites 发布记录](docs/delivery/sites-public-release-2026-10-29.md)，本次真实 iPhone 手势继续等待新版试用反馈。
 
 ## 从这里开始
 
