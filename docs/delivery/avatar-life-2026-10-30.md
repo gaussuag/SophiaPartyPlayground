@@ -48,3 +48,5 @@
 `npx vitest run tests/venue/avatar-authority.test.ts`：6 项通过；`npm run typecheck`、该文件 ESLint 与 `git diff --check` 通过。业务／同步源码没有修改。
 
 集成只读审查另发现两项需由主任务修复：名单更正的“拟姓名”标签需在清除选择后仍显示；人物 body 上的 `dispose={null}` 会阻止内联材质／球拍几何体在卸载时释放，应移除。此补充提交仅含测试与记录，不包含这两项集成文件修改。
+
+集成结论：上述两处已修复。整页单人拖入、回候场、替换、录分后四人返回、拟名单确认及浏览器恢复已检查；证据与明确未测项见 [总交付记录](game-upgrade-2026-10-30.md)。
