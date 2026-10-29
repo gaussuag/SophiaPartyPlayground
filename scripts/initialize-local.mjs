@@ -1,0 +1,10 @@
+const base = process.env.SOPHIA_LOCAL_URL ?? "http://127.0.0.1:5173";
+if (!["127.0.0.1", "localhost"].includes(new URL(base).hostname)) throw new Error("Initialization is loopback-only.");
+const signin = await fetch(`${base}/signin-with-chatgpt?return_to=/`, { redirect: "manual" });
+const cookie = signin.headers.get("set-cookie")?.split(";")[0];
+if (!cookie) throw new Error("Start the development preview first. Production previews do not simulate identity.");
+const eventId = process.argv[2] ?? "local-sophia";
+const response = await fetch(`${base}/api/local/initialize`, { method: "POST", headers: { "Content-Type": "application/json", cookie }, body: JSON.stringify({ eventId }) });
+const result = await response.json();
+if (!response.ok) throw new Error(JSON.stringify(result));
+console.log(JSON.stringify({ eventId, revision: result.state.revision, phase: result.state.phase, url: `${base}/?event=${eventId}` }));

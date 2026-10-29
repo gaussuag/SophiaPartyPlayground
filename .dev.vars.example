@@ -1,0 +1,7 @@
+# Comma-separated stable, Site-specific user IDs. Never put these in client code.
+OPERATOR_IDS=
+ADMIN_IDS=
+# Only set for a deployed Site whose identity headers are injected by dispatch.
+# Local production previews remain read-only and do not simulate sign-in.
+IDENTITY_SOURCE=
+EVENT_ID=sophia-party
