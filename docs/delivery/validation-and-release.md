@@ -1,6 +1,6 @@
 # 验证与最后的 Sites 发布
 
-当前状态：以下仍是验收基线。本地应用、自动检查、真实 D1／HTTP 演练及 Chromium 竖屏检查已有证据，见 [2026-10-29 本地验收记录](local-validation-2026-10-29.md)。真实 iPhone Safari、现场网络与长时间运行未测；用户授权后置到 Site 发布后，P7 正在执行。
+当前状态：以下仍是验收基线。本地应用、自动检查、真实 D1／HTTP 演练及 Chromium 竖屏检查已有证据，见 [2026-10-29 本地验收记录](local-validation-2026-10-29.md)。Sites 版本 1 已公开部署，身份授权、受控初始化、线上双客户端业务与匿名 HTTP 检查通过，独立匿名浏览器内容检查仍待补齐，见 [发布记录](sites-public-release-2026-10-29.md)。真实 iPhone Safari、现场网络与长时间运行按用户授权后置，仍未测。
 
 本次发布准备与最新证据见 [P6–P7 记录](p6-p7-release-preparation-2026-10-29.md)。用户已确认 Sophia Sunshine Cup、首选标识 sophia-sunshine-cup、public，并授权跳过发布前实机验证、发布后一并检查；这些授权无需重问。未测项不标记通过。
 
