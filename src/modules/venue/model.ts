@@ -17,5 +17,6 @@ export type VenueProps = {
   selection: PlayerSelection | null; slotSelection: SlotSelection | null;
   placements: Placement[]; onIntent: (intent: VenueIntent) => void;
   editable: boolean; canWrite: boolean; readOnly: boolean; editingMatchId?: string;
+  pending?: { playerId?: string; matchId?: string; slotId?: string; unknown: boolean };
   editor?: { matchId: string; content: ReactNode };
 };

@@ -51,9 +51,14 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       : focused.participants.find(p => p.slotId === s.id)?.playerId ?? null,
   })) : [];
   const targets = state && projection && !readOnly ? placementTargets(state, projection, selection?.playerId ?? null, edit) : [];
-  const sceneView = projection && edit && state
-    ? { ...projection, matches: projection.matches.map(m => m.id === edit.matchId ? { ...m, participants: namesFor(state, slots) } : m) }
-    : projection;
+  // Formal movement only follows the authoritative projection. Lineup correction
+  // drafts remain in target labels and the existing confirmation until saved.
+  const envelope = view?.pending[0];
+  const pendingCommand = envelope && "command" in envelope ? envelope.command : undefined;
+  const pendingMatch = pendingCommand && "matchId" in pendingCommand ? pendingCommand.matchId : undefined;
+  const pendingSlot = pendingCommand && "slotId" in pendingCommand ? pendingCommand.slotId : undefined;
+  const pendingPlayer = pendingCommand && "playerId" in pendingCommand ? pendingCommand.playerId
+    : pendingMatch && pendingSlot ? projection?.matches.find(m => m.id === pendingMatch)?.draftSlots.find(s => s.id === pendingSlot)?.playerId ?? undefined : undefined;
   const previousActive = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (previousActive.current !== undefined && previousActive.current !== state?.activeRoundId && viewedRoundId === null) {
@@ -156,7 +161,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const reservation = chosenPlayer && projection?.matches.find(m => m.phase === "PLANNING" && m.draftSlots.some(s => s.playerId === chosenPlayer.id));
   const returnTo = encodeURIComponent("/?event=" + eventId);
   const busy = view?.status === "saving";
-  const message = hint || (view && (view.status === "offline" || view.status === "conflict" || view.status === "unknown-outcome" || view.errorCode) ? view.message : "");
+  const message = busy ? view.message : hint || (view && (view.status === "offline" || view.status === "conflict" || view.status === "unknown-outcome" || view.errorCode) ? view.message : "");
   const allClosed = state?.phase === "ACTIVE" && state.rounds.every(r => r.phase === "CLOSED");
   const profile = state?.players.find(p => p.id === profileId);
   function startMatch(match: MatchView) {
@@ -166,10 +171,11 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   }
 
   return <div className="game-shell">
-    {state && projection && sceneView && session && view
+    {state && projection && session && view
       ? <main className="game-stage" aria-label="Sophia 三维球馆">
           <Suspense fallback={<div className="game-loading"><LoaderCircle size={24} /></div>}>
-            <Venue state={state} view={sceneView} courtId={courtId} cameraRequest={cameraRequest} selection={selection} slotSelection={slotFocus} placements={targets}
+            <Venue state={state} view={projection} courtId={courtId} cameraRequest={cameraRequest} selection={selection} slotSelection={slotFocus} placements={targets}
+              pending={envelope ? { playerId: pendingPlayer, matchId: pendingMatch, slotId: pendingSlot, unknown: view.status === "unknown-outcome" } : undefined}
               editable={canArrange && !score} canWrite={canWrite} readOnly={!!readOnly} editingMatchId={edit?.matchId} onIntent={i => void onIntent(i)}
               editor={score ? { matchId: score.matchId, content: <ScoreboardEditor key={score.matchId} target={score} session={session} view={view} onClose={() => setScore(null)} onRebind={setScore} /> } : undefined} />
           </Suspense>
@@ -188,7 +194,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       <div className="game-header-actions"><button className={"icon-button sync-icon " + (view?.status ?? "loading")} aria-label={"同步记录：" + (view?.message ?? "连接中")} onClick={() => void session?.refresh()}>{busy || view?.status === "loading" ? <LoaderCircle size={19} className="spin" /> : view?.status === "offline" || view?.status === "unknown-outcome" ? <CloudOff size={20} /> : <CloudCheck size={20} />}</button><button className="icon-button" disabled={!!score} aria-label="更多选项" onClick={() => setPanel("tools")}><Ellipsis size={22} /></button></div>
     </header>
     <output className="sr-only" aria-live="polite">{view?.message}</output>
-    {message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>}
+    {message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>}
     {state && projection && view && session && <><div className="game-context">
       {viewedRoundId && viewedRoundId !== state.activeRoundId && state.activeRoundId && <button className="game-current-link" disabled={!!score} onClick={() => chooseRound(state.activeRoundId!)}>返回当前轮 <ArrowRight size={13} /></button>}
       {edit && <div className="game-edit-banner"><span>更正参赛者</span><button className="icon-button" aria-label="取消名单更正" onClick={() => editLineup(null)}><X size={16} /></button></div>}

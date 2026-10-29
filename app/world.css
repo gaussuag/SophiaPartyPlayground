@@ -1,4 +1,5 @@
 .game-venue .board-anchor{z-index:4}
+.game-player-label.pending>span{outline:2px dashed #b77826;outline-offset:3px}.game-position.pending{border:2px dashed #b77826;background:#f3dba7aa}.game-position>small{font-size:10px;line-height:1.25;max-width:64px;overflow:hidden;text-overflow:ellipsis}
 .confirm-dialog{position:fixed;inset:auto;margin:0;left:var(--dialog-x,50vw);top:var(--dialog-y,50dvh);transform:translate(-50%,-50%);max-height:calc(var(--dialog-height,100dvh) - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain}
 .game-venue.orbiting,.game-venue.orbiting canvas{cursor:grabbing}
 .world-camera-controls .camera-heading{border-right:1px solid #dbe5cc;border-radius:22px 0 0 22px;margin-right:3px}
