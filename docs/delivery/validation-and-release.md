@@ -1,6 +1,6 @@
 # 验证与最后的 Sites 发布
 
-当前状态：以下仍是验收基线。本地应用、自动检查、真实 D1／HTTP 演练及 Chromium 竖屏检查已有证据，见 [2026-10-29 本地验收记录](local-validation-2026-10-29.md)。Sites 版本 1 已公开部署，身份授权、受控初始化、线上双客户端业务与匿名 HTTP 检查通过，独立匿名浏览器内容检查仍待补齐，见 [发布记录](sites-public-release-2026-10-29.md)。真实 iPhone Safari、现场网络与长时间运行按用户授权后置，仍未测。
+当前状态：以下仍是验收基线。本地应用、自动检查、真实 D1／HTTP 演练及 Chromium 竖屏检查已有证据，见 [2026-10-29 本地验收记录](local-validation-2026-10-29.md)。Sites 版本 3 已公开部署，身份授权、受控初始化、线上双客户端业务与匿名 HTTP 检查已有通过证据，独立匿名浏览器内容检查仍待补齐，见 [发布记录](sites-public-release-2026-10-29.md)。用户报告 iPhone 17 渲染及双指放大正常，版本 3 的单指旋转手感待复测；完整实机清单、现场网络与长时间运行仍未验收。
 
 本次发布准备与最新证据见 [P6–P7 记录](p6-p7-release-preparation-2026-10-29.md)。用户已确认 Sophia Sunshine Cup、首选标识 sophia-sunshine-cup、public，并授权跳过发布前实机验证、发布后一并检查；这些授权无需重问。未测项不标记通过。
 
@@ -100,7 +100,7 @@
 6. 使用 Sites 官方 source／build／package 保存来源、版本和构建产物；通过受支持工具设置显示名 Sophia Sunshine Cup 和首选标识 sophia-sunshine-cup，URL 以实际返回为准。
 7. 使用原生访问配置工具明确设为 public，并读取确认返回状态。若账号／工作区受限，记录实际错误和所需设置，不用 private／登录／邀请模式冒充完成。public 使用 save_site_version 和 deploy_site_version。
 8. 等待工具确认部署成功，记录真实 URL、版本和验证结果。不要只凭构建成功宣称发布成功。
-9. 必须用独立、未登录 OpenAI／ChatGPT 的浏览器会话直接访问最终根 URL，确认无登录跳转、可查看并刷新数据，不使用管理 Cookie 或 bypass token。另用隔离验收活动验证匿名写入拒绝、登录未授权仍只读、授权账号写入、双客户端同步、历史、更正及导出；正式活动仍处于干净初始状态。`verify:public` 补充 HTTP 边界检查，不能代替浏览器。
+9. 必须用独立、未登录 OpenAI／ChatGPT 的浏览器会话直接访问最终根 URL，确认无登录跳转、可查看并刷新数据，不使用管理 Cookie 或 bypass token。另用隔离验收活动验证匿名写入拒绝、登录未授权仍只读、授权账号写入、双客户端同步、历史、更正及导出。首发时正式活动应为干净初始状态；正式活动已有用户操作后的维护发布，须比较部署前后已有记录，不能重置。此时显式运行 `npm run verify:public -- <origin> <acceptanceId> <formalId> --active-event`，报告实际正式版本与初始状态；默认模式仍严格检查空活动。HTTP 检查不能代替独立匿名浏览器。
 10. 活动开始前固定版本并导出初始备份；活动中避免自动替换应用与不必要的 schema 变更。
 
 本地与托管 D1 是不同数据库；本地迁移通过不表示托管迁移已完成。发布失败也可能已应用部分 schema migration，需要读取实际状态后修复，不盲目重写迁移历史。具体机制遵守 Sites 当前文档。

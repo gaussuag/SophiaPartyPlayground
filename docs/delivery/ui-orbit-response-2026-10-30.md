@@ -41,7 +41,25 @@
 
 浏览器完成旋转、更正牌打开／关闭及视角恢复、人物拖入：独立本地 `local-orbit-20261030` 的尼克仅安排一次到 C01 WHITE-1，版本从 8 增至 9。没有修改生产活动。
 
-复用原 public Site，按官方来源／构建／保存版本／部署流程更新；实际版本及线上复查在发布后补充。正式和验收活动在发布前后比较完整公开状态摘要，授权名单及初始化关闭状态不变。
+复用原 public Site，按 Sites skill 1.1.2 的官方来源／构建／保存版本／部署流程更新；生产构建成功。工具返回：
+
+| 项目 | 回执 |
+| --- | --- |
+| Site | Sophia Sunshine Cup；sophia-sunshine-cup |
+| URL | https://sophia-sunshine-cup.gaussuag777.chatgpt.site |
+| project_id | appgprj_6ae3626384448191b8fb8eecc7af7ced |
+| source commit | c0acec33d3946ff13e0443ffdc838b78423923f5 |
+| Sites 版本 | 3 |
+| version_id | appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_bb651bf1b00881918b3520bf30ac12cd |
+| deployment_id | appgdep_6ae37ea6178c8191aae408ceac8ac9d4 |
+| 部署状态 | succeeded；运行配置 revision=3 |
+| 受众复查 | get_site 返回 public、策略 revision=2、latest_version_number=3 |
+
+2026-10-30 01:15 Asia/Shanghai，匿名 HTTP 检查通过：根页和数据读取 200、无登录跳转；匿名写入及备份 401；伪造身份被忽略，初始化窗口仍关闭。没有使用 Cookie 或 bypass token。独立匿名浏览器完整内容检查仍沿用发布记录中的未完成状态，HTTP 不替代它。
+
+线上 IAB 390×844 对隔离验收活动执行真实指针拖动：yaw 从 0.071 变到 -0.219，实际 zoom 始终 20.74468085106383，松手 cameraMoving=false。打开 9:11 更正牌再关闭后，原角度和缩放恢复；没有保存更正。显式全景可适配三场，控制台无错误。截图和数值位于忽略目录 `outputs/smooth/published-orbit-390.png`、`published-orbit.json`。
+
+正式和验收活动的完整公开状态 SHA-256 均与发布前一致：正式 revision=15、0 条赛果；隔离验收 revision=9、2 个赛果版本。本次线上操作未写入任何活动，授权名单、数据库迁移和初始化关闭状态保持。前后摘要在忽略目录 `outputs/smooth/pre-publish.json` 和 `post-publish.json`。
 
 发布前读取到正式活动已由用户操作到 revision=15、0 条赛果，验收活动为 revision=9、2 个赛果版本。不能为通过“初始空活动”检查而重置。verify:public 新增显式 --active-event 模式：保留匿名边界、模板数量与初始化关闭检查，报告实际正式版本及是否仍初始；无参数的首次发布模式继续严格要求空活动。
 

@@ -2,6 +2,8 @@
 
 2026-10-29，Asia/Shanghai。用户明确授权把真实 iPhone Safari 验证后置到 Site 发布后，并确认仅 gaussuag777@gmail.com 兼任管理员与操作员。实机项目仍为未测；此授权解除发布前阻塞，不等于实机通过。
 
+最新状态（2026-10-30）：版本 3 已部署为 public，见 [旋转响应优化与发布回执](ui-orbit-response-2026-10-30.md)。以下首发证据保留当时状态；正式活动随后已有用户操作，最新部署前后均为 revision=15、0 条赛果，未重置。
+
 ## 已部署的真实 Site
 
 | 项目 | 工具实际返回 |
@@ -21,7 +23,7 @@
 
 使用当前 Sites skill 1.1.2 的官方流程：检查现有站点无匹配项目后只注册一次，立即以 set-project-id helper 保存真实 ID；site-workflow helper 构建、提交、同步源码与打包，再 save_site_version、deploy_site_version。没有通过独立 Workers 发布，没有上传本地数据库或演练成绩。后续维护必须复用 `.openai/hosting.json` 中的真实 ID。
 
-## 运行配置和正式数据
+## 首发运行配置和正式数据
 
 IDENTITY_SOURCE=sites-dispatch，EVENT_ID=sophia-sunshine-cup，ACCEPTANCE_EVENT_ID=sophia-sunshine-cup-acceptance。官方登录页面核对了已批准邮箱及用户提供的本站稳定 ID；授权前显示只读，授权后的实际 `/api/setup` 响应为 admin。该 ID 只通过 Sites 原生工具配置到 ADMIN_IDS／OPERATOR_IDS，二者均标为 secret，不写入源码或文档。
 
@@ -29,7 +31,7 @@ IDENTITY_SOURCE=sites-dispatch，EVENT_ID=sophia-sunshine-cup，ACCEPTANCE_EVENT
 
 正式活动已可公开读取，保持 PREPARED、revision=0、14 人／3 场地／7 轮／20 场、所有阵容及赛果为空；没有上传本地演练记录。线上操作只发生在 `sophia-sunshine-cup-acceptance`，当前 revision=9，第一轮 1 号场已完成，其他场次保留待安排。
 
-## 已验证与未完成
+## 首发已验证与未完成
 
 | 项目 | 状态与证据 |
 | --- | --- |
@@ -64,4 +66,6 @@ IDENTITY_SOURCE=sites-dispatch，EVENT_ID=sophia-sunshine-cup，ACCEPTANCE_EVENT
 
 后续触控与人物资料卡更新已部署为版本 2，source commit=d9d8ebc89f55ba61ba9543a62ece5fb4a9c4c95e，deployment_id=appgdep_6ae373f614e0819198897de6ee7c871f，public 与配置 revision=3 保持。两活动的完整公开状态摘要与发布前一致。详见 [触控优化与版本 2 回执](ui-touch-orbit-2026-10-30.md)。
 
-当前是“版本 2 已公开部署、正式活动准备完成、权限与线上业务检查通过”，独立匿名浏览器内容检查仍待补齐，因此尚不宣告 P7 全部验收通过。真实 iPhone 项按用户授权后置，继续记录未测；用户只报告旧版本 Safari 渲染正常，新手势仍待实机反馈。
+旋转响应优化已部署为版本 3，source commit=c0acec33d3946ff13e0443ffdc838b78423923f5，deployment_id=appgdep_6ae37ea6178c8191aae408ceac8ac9d4；工具返回 succeeded，public、策略 revision=2 及运行配置 revision=3 保持。70 项自动检查、构建、线上相机与记分牌恢复回归、匿名 HTTP 检查通过，正式及验收活动完整公开状态摘要与发布前一致。正式活动已由用户操作到 revision=15，后续发布应使用 `verify:public` 的显式 `--active-event` 模式并核对已有记录，不能为了空活动断言重置数据。
+
+当前版本 3 已公开部署，独立匿名浏览器内容检查仍待补齐，因此尚不宣告 P7 全部验收通过。用户已报告 iPhone 17 Safari 渲染正常、双指放大顺畅、旧版单指旋转手感欠佳；版本 3 的手感仍待实机反馈。其余后台／锁屏、现场弱网、多物理设备与持续观察仍按原清单记录未测。
