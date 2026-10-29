@@ -9,9 +9,10 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已建立代码、数据、测试及资源目录；目录中的 README 是实现职责说明。
 - 已实现 Vinext + React + TypeScript + Three.js／R3F 应用、真实本地 D1 权威存储及四个业务 Module。
 - 三场地、七轮二十场、角色排阵、录分、更正、同步、导出和受控恢复已接通。
-- TypeScript 检查和 57 项自动检查通过；真实 HTTP＋D1 完成二十场演练，浏览器完成一场闭环与双客户端同步。
+- TypeScript 检查和 64 项自动检查通过；真实 HTTP＋D1 完成二十场演练，浏览器完成一场闭环与双客户端同步。
 - 界面以连续三场地 3D 球馆为主，通过缩放和平移查看单场，直接点人物／拖入场内位置。确认上场、录分和更正均从场内记分牌进入；见 [连续球馆与记分牌验证](docs/delivery/ui-continuous-venue-2026-10-29.md)，前次记录保留在 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
 - 记分牌已缩为场边单行操作牌，桌面移到候场区后方，竖屏留在场间空隙；见 [场边记分牌优化](docs/delivery/ui-courtside-scoreboard-2026-10-29.md)。
+- 新增单指旋转、俯仰与短惯性；双指缩放平移、视角回正和全景复位。人物资料卡按可见视口居中，轮次／设置仍从底部弹出；见 [Safari 触控与人物弹窗优化](docs/delivery/ui-touch-orbit-2026-10-30.md)。
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。

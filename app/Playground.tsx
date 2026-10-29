@@ -218,8 +218,8 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       {!localDevelopment && panel === "tools" && <a className="game-setup-link" href={"/setup?event=" + encodeURIComponent(eventId)}>身份与权限</a>}
     </GameDrawer>}
     {confirm && session && <ConfirmDialog title={confirm.title} actionLabel={confirm.label} busy={busy} onClose={() => setConfirm(null)} onConfirm={async () => { const ok = await session.dispatch(confirm.command, confirm.basis); setConfirm(null); clearSelection(); if (ok && confirm.command.type === "CorrectRecordedLineup") setLineupEdit(null); }}>{confirm.body}</ConfirmDialog>}
-    {profile && <ConfirmDialog title={profile.name} actionLabel="返回球馆" cancelLabel={null} busy={false} onClose={() => setProfileId(null)} onConfirm={() => setProfileId(null)}><p>{profile.id} · {profile.teamId === "WHITE" ? "白队" : "黑队"} · {profile.gender === "MALE" ? "男" : "女"}</p><p>{projection?.playerStates[profile.id].label}</p></ConfirmDialog>}
-    {showHelp && <ConfirmDialog title="安排一场比赛" actionLabel="回到球馆" cancelLabel={null} busy={false} onClose={() => setShowHelp(false)} onConfirm={() => setShowHelp(false)}><ol className="help-steps"><li>点球场放大；双指缩放，放大后拖动空地。</li><li>点球友，再点亮起的位置；也可直接拖入。</li><li>阵容齐备后，点场内记分牌确认上场。</li><li>真实比赛结束后，点“录入赛果”填写比分。</li><li>全部完成后，进入下一轮。</li></ol></ConfirmDialog>}
+    {profile && <ConfirmDialog title={profile.name} actionLabel="返回球馆" cancelLabel={null} busy={false} onClose={() => setProfileId(null)} onConfirm={() => setProfileId(null)}><p>{profile.teamId === "WHITE" ? "白队" : "黑队"} · {profile.gender === "MALE" ? "男" : "女"}</p><p>{projection?.playerStates[profile.id].label}</p></ConfirmDialog>}
+    {showHelp && <ConfirmDialog title="安排一场比赛" actionLabel="回到球馆" cancelLabel={null} busy={false} onClose={() => setShowHelp(false)} onConfirm={() => setShowHelp(false)}><ol className="help-steps"><li>单指划空地旋转视角；双指缩放、移动；点全景复位。</li><li>点球场放大；点球友再点亮起的位置，也可直接拖入。</li><li>阵容齐备后，点场内记分牌确认上场。</li><li>真实比赛结束后，点“录入赛果”填写比分。</li><li>全部完成后，进入下一轮。</li></ol></ConfirmDialog>}
   </div>;
 }
 

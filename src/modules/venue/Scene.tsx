@@ -4,7 +4,7 @@ import { BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, 
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { MatchView, Player, TeamId } from "../competition";
 import type { VenueProps } from "./model";
-import { BOARD_SIZE, boardCenter, courtCenter, slotPosition, type Navigation, type Point, type WorldLayout } from "./world";
+import { BOARD_SIZE, boardCenter, cameraView, courtCenter, slotPosition, type Navigation, type Point, type WorldLayout } from "./world";
 export type { Point } from "./world";
 
 export type Anchors = Map<string, Group>;
@@ -35,17 +35,19 @@ const netPosts = mergeGeometries([-2.8, 2.8].map(x => new CylinderGeometry(0.055
 function Rig({ layout, navigation, editor }: { layout: WorldLayout; navigation: Navigation; editor?: { number: number; height: number; viewportHeight: number; viewportTop: number } }) {
   const { size, invalidate } = useThree();
   const target = useRef({ position: new Vector3(3, 36, 42), center: new Vector3(), zoom: 15 });
+  const lookingAt = useRef(new Vector3());
   useEffect(() => {
-    const zoom = layout.baseZoom * (editor ? 1.8 : navigation.zoom);
+    const view = cameraView(navigation, layout);
+    const zoom = editor ? layout.baseZoom * 1.8 : view.zoom;
     const center = new Vector3(...(editor ? boardCenter(editor.number, layout) : navigation.center));
     if (editor) {
       // Keep the physical scoreboard within Safari's visible area when its keyboard opens.
-      const up = new Vector3(0, 1, 0).projectOnPlane(new Vector3(...layout.cameraOffset).normalize()).normalize();
+      const up = new Vector3(...view.up);
       const y = editor.viewportTop + 64 + (editor.viewportHeight - 80) / 2;
       center.addScaledVector(up, -(size.height / 2 - y) / zoom);
     }
     target.current = {
-      position: center.clone().add(new Vector3(...layout.cameraOffset)), center, zoom,
+      position: center.clone().add(new Vector3(...view.offset)), center, zoom,
     };
     invalidate();
   }, [layout, navigation, editor, size.height, invalidate]);
@@ -54,9 +56,10 @@ function Rig({ layout, navigation, editor }: { layout: WorldLayout; navigation: 
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const factor = reduced ? 1 : Math.min(1, delta * 10);
     c.position.lerp(target.current.position, factor);
+    lookingAt.current.lerp(target.current.center, factor);
     c.zoom += (target.current.zoom - c.zoom) * factor;
-    c.lookAt(c.position.clone().sub(new Vector3(...layout.cameraOffset))); c.updateProjectionMatrix();
-    if (c.position.distanceToSquared(target.current.position) > 0.0001 || Math.abs(c.zoom - target.current.zoom) > 0.001) invalidate();
+    c.lookAt(lookingAt.current); c.updateProjectionMatrix();
+    if (c.position.distanceToSquared(target.current.position) > 0.0001 || lookingAt.current.distanceToSquared(target.current.center) > 0.0001 || Math.abs(c.zoom - target.current.zoom) > 0.001) invalidate();
   });
   return null;
 }
@@ -68,8 +71,9 @@ function Scoreboard({ courtId, match, anchors, props, editorSize, layout }: { co
     if (!face.current) return;
     const zoom = (camera as OrthographicCamera).zoom;
     face.current.quaternion.copy(camera.quaternion);
-    const scale = Math.min(1.3, zoom / layout.baseZoom, (size.width - 24) / BOARD_SIZE.frameWidth);
-    face.current.scale.set((active ? editorSize.width + 8 : BOARD_SIZE.frameWidth * scale) / zoom, (active ? editorSize.height + 8 : BOARD_SIZE.frameHeight * scale) / zoom, 0.12);
+    const scale = Math.min(1.3, Math.max(1, zoom / layout.baseZoom), (size.width - 24) / BOARD_SIZE.frameWidth);
+    const width = zoom / layout.baseZoom < 0.75 ? BOARD_SIZE.compactWidth + 8 : BOARD_SIZE.frameWidth;
+    face.current.scale.set((active ? editorSize.width + 8 : width * scale) / zoom, (active ? editorSize.height + 8 : BOARD_SIZE.frameHeight * scale) / zoom, 0.12);
   });
   return <group position={layout.boardOffset}>
     <mesh position={[-1.3, -layout.boardOffset[1] / 2, 0]}><boxGeometry args={[0.1, layout.boardOffset[1], 0.1]} /><meshStandardMaterial color="#294736" /></mesh>
@@ -194,7 +198,7 @@ export function LabelProjection({ anchors, elements, baseZoom }: { anchors: Anch
     for (const [id, node] of anchors) {
       const element = elements.get(id); if (!element) continue;
       node.updateWorldMatrix(true, false); node.getWorldPosition(point).project(camera);
-      const scale = id.startsWith("court:") && !element.dataset.editor ? Math.min(1.3, (camera as OrthographicCamera).zoom / baseZoom, (size.width - 24) / BOARD_SIZE.frameWidth) : 1;
+      const scale = id.startsWith("court:") && !element.dataset.editor ? Math.min(1.3, Math.max(1, (camera as OrthographicCamera).zoom / baseZoom), (size.width - 24) / BOARD_SIZE.frameWidth) : 1;
       element.style.transform = `translate(${point.x * size.width / 2 + size.width / 2}px,${-point.y * size.height / 2 + size.height / 2}px) translate(-50%,-50%) scale(${scale})`;
       element.style.visibility = Math.abs(point.x) > 1.1 || Math.abs(point.y) > 1.1 || Math.abs(point.z) > 1 ? "hidden" : "visible";
     }

@@ -2,10 +2,41 @@ import type { Slot } from "../competition";
 
 export type Point = [number, number, number];
 export type WorldLayout = ReturnType<typeof worldLayout>;
-export type Navigation = { center: Point; zoom: number };
-export const BOARD_SIZE = { width: 112, faceHeight: 36, frameWidth: 120, frameHeight: 40 };
-export const overview = (layout?: WorldLayout): Navigation => ({ center: layout ? layout.cameraUp.map(n => n * layout.framingY / layout.baseZoom) as Point : [0, 0, 0], zoom: 1 });
-export const clampZoom = (zoom: number) => Math.max(1, Math.min(3, zoom));
+export type Navigation = { center: Point; zoom: number; yaw: number; pitch: number };
+export const BOARD_SIZE = { width: 112, compactWidth: 84, faceHeight: 36, frameWidth: 120, frameHeight: 40 };
+export const MAX_ZOOM = 5;
+export const MIN_PITCH = Math.PI * 32 / 180;
+export const MAX_PITCH = Math.PI * 72 / 180;
+export const clampZoom = (zoom: number) => Math.max(1, Math.min(MAX_ZOOM, zoom));
+export function overview(layout?: WorldLayout, direction?: Pick<Navigation, "yaw" | "pitch">): Navigation {
+  const [x, y, z] = layout?.cameraOffset ?? [3, 36, 42];
+  return { center: layout ? layout.cameraUp.map(n => n * layout.framingY / layout.baseZoom) as Point : [0, 0, 0], zoom: 1,
+    yaw: direction?.yaw ?? Math.atan2(x, z), pitch: direction?.pitch ?? Math.atan2(y, Math.hypot(x, z)) };
+}
+
+// Keep the whole venue in frame when its long side rotates across a phone.
+// Close-up requests compensate for this fit, so a court remains easy to use.
+export function cameraView(nav: Navigation, layout: WorldLayout) {
+  const extent = (yaw: number, pitch: number) => [
+    Math.abs(Math.cos(yaw)) * layout.width + Math.abs(Math.sin(yaw)) * layout.length,
+    Math.sin(pitch) * (Math.abs(Math.sin(yaw)) * layout.width + Math.abs(Math.cos(yaw)) * layout.length) + 2.8 * Math.cos(pitch),
+  ];
+  const initial = overview(layout);
+  const before = extent(initial.yaw, initial.pitch), after = extent(nav.yaw, nav.pitch);
+  const fit = Math.min(1, before[0] / after[0], before[1] / after[1]);
+  const radius = Math.hypot(...layout.cameraOffset);
+  return {
+    offset: [Math.sin(nav.yaw) * Math.cos(nav.pitch) * radius, Math.sin(nav.pitch) * radius, Math.cos(nav.yaw) * Math.cos(nav.pitch) * radius] as Point,
+    up: [-Math.sin(nav.yaw) * Math.sin(nav.pitch), Math.cos(nav.pitch), -Math.cos(nav.yaw) * Math.sin(nav.pitch)] as Point,
+    zoom: layout.baseZoom * nav.zoom * fit,
+    fit,
+  };
+}
+
+export function orbitNavigation(nav: Navigation, dx: number, dy: number, width: number, height: number): Navigation {
+  return { ...nav, yaw: nav.yaw - dx / Math.max(1, width) * Math.PI * 1.2,
+    pitch: Math.max(MIN_PITCH, Math.min(MAX_PITCH, nav.pitch - dy / Math.max(1, height) * Math.PI * 0.65)) };
+}
 
 // Layout depends on the viewport only. Selecting a court never moves an entity.
 export function worldLayout(width: number, height: number) {
@@ -26,6 +57,7 @@ export function worldLayout(width: number, height: number) {
   const desktopTop = ((boardOffset[0] - 7.2) * cameraUp[0] + (0.12 + boardHeight) * cameraUp[1] + boardOffset[2] * cameraUp[2]) * baseZoom + BOARD_SIZE.frameHeight / 2;
   return {
     portrait, compact, courtSpacing, cameraOffset, cameraUp, boardOffset,
+    viewportWidth: width, viewportHeight: height,
     framingY: portrait ? (top - bottom) / 2 - 8 : Math.max(0, 64 - height / 2 + desktopTop),
     width: portrait ? 14.5 : 28,
     length: portrait ? 2 * courtSpacing + 16 : 25,
@@ -46,12 +78,28 @@ export function slotPosition(slot: Slot, slots: Slot[]): Point {
   const index = side.findIndex(s => s.id === slot.id);
   return [side.length === 1 ? 0 : index === 0 ? -1.5 : 1.5, 0.06, slot.sideId === "WHITE" ? 3.15 : -3.15];
 }
-export function courtNavigation(number: number, layout: WorldLayout): Navigation {
-  const center = courtCenter(number, layout);
-  return layout.portrait ? { center, zoom: 1.7 } : { center: center.map((n, i) => n + layout.cameraUp[i] * 2) as Point, zoom: layout.baseZoom < 28 ? 1.3 : 1.5 };
+export function courtNavigation(number: number, layout: WorldLayout, current = overview(layout)): Navigation {
+  const court = courtCenter(number, layout);
+  const view = cameraView(current, layout);
+  const right: Point = [Math.cos(current.yaw), 0, -Math.sin(current.yaw)];
+  const dot = (a: Point, b: Point) => a.reduce((sum, n, i) => sum + n * b[i], 0);
+  const corners: Point[] = [[-2.9, 0, -5.35], [2.9, 0, -5.35], [2.9, 0, 5.35], [-2.9, 0, 5.35]];
+  const xs = corners.map(p => dot(p, right)), ys = corners.map(p => dot(p, view.up));
+  const boardX = dot(layout.boardOffset, right), boardY = dot(layout.boardOffset, view.up);
+  const spanX = Math.max(...xs, boardX) - Math.min(...xs, boardX), spanY = Math.max(...ys, boardY) - Math.min(...ys, boardY);
+  const top = layout.viewportHeight < 500 ? 60 : 124, bottom = layout.viewportHeight < 500 ? 68 : 112;
+  const width = layout.viewportWidth - 32, height = layout.viewportHeight - top - bottom;
+  const desired = layout.baseZoom * (layout.portrait ? 1.7 : layout.baseZoom < 28 ? 1.3 : 1.5);
+  const halfWidth = BOARD_SIZE.frameWidth * 1.3 / 2, halfHeight = BOARD_SIZE.frameHeight * 1.3 / 2;
+  const scale = Math.min(desired, Math.max(1, width - 2 * halfWidth) / spanX, Math.max(1, height - 2 * halfHeight) / spanY);
+  const zoom = clampZoom(scale / (layout.baseZoom * view.fit)), physicalZoom = layout.baseZoom * zoom * view.fit;
+  const x = (Math.min(...xs, boardX - halfWidth / physicalZoom) + Math.max(...xs, boardX + halfWidth / physicalZoom)) / 2;
+  const y = (Math.min(...ys, boardY - halfHeight / physicalZoom) + Math.max(...ys, boardY + halfHeight / physicalZoom)) / 2 + (top - bottom) / (2 * physicalZoom);
+  return { ...current, center: court.map((n, i) => n + right[i] * x + view.up[i] * y) as Point, zoom };
 }
 export function constrainNavigation(nav: Navigation, layout: WorldLayout): Navigation {
   const zoom = clampZoom(nav.zoom);
-  if (zoom === 1) return overview(layout);
-  return { zoom, center: [Math.max(-layout.width / 2, Math.min(layout.width / 2, nav.center[0])), nav.center[1], Math.max(-layout.length / 2, Math.min(layout.length / 2, nav.center[2]))] };
+  const direction = { yaw: Math.atan2(Math.sin(nav.yaw), Math.cos(nav.yaw)), pitch: Math.max(MIN_PITCH, Math.min(MAX_PITCH, nav.pitch)) };
+  if (nav.zoom < 1) return overview(layout, direction);
+  return { ...direction, zoom, center: [Math.max(-layout.width / 2, Math.min(layout.width / 2, nav.center[0])), nav.center[1], Math.max(-layout.length / 2, Math.min(layout.length / 2, nav.center[2]))] };
 }
