@@ -16,7 +16,7 @@
 ## 验证进度
 
 - 本地浏览器着色器编译与首版渲染正常，没有 Shader/WebGL error；只捕获框架既有 THREE.Clock 弃用提示。
-- 24 个文件 195 项自动检查通过，包含 3 项新增环境检查；TypeScript 和本次文件 ESLint 通过。全量 ESLint 0 errors，保留 records 的 3 项和旧 short-routes-harness 的 1 项未用变量警告。真实页面＋本地 D1 的排阵、飞行、开赛、录分、更正积分、21 场赛程、跨轮和匿名管理隔离回归通过。生产和发布回执在下方补记。
+- 24 个文件 195 项自动检查通过，包含 3 项新增环境检查；TypeScript 和本次文件 ESLint 通过。全量 ESLint 0 errors，保留 records 的 3 项和旧 short-routes-harness 的 1 项未用变量警告。真实页面＋本地 D1 的排阵、飞行、开赛、录分、更正积分、21 场赛程、跨轮和匿名管理隔离回归通过。生产和发布回执如下。
 - 真实 iPhone Safari 的画面、旋转触摸和持续性能仍由用户发布后验证，不把桌面视口结果写作实机通过。
 
 ## 浏览器与开销证据
@@ -26,3 +26,27 @@
 - 相同本地活动 local-short-routes-4 revision 6 的候场基线：版本 15 为 176 draws／20456 triangles，本次 178 draws／24196 triangles。增加 2 次绘制、3740 三角形；320×568 有视锥剔除时为 164／22716。未测移动端 GPU 时间，桌面 CPU 采样不能代替 Safari 性能验收。
 - 业务回归两客户端 revision 19，59 次交互与读取，动画 POST 0；视口和积分卡检查通过。
 - 默认视角、拉远的滨水全景均已观察；没有着色器编译错误或新 console error。截图、原始 JSON 留在忽略目录 outputs/sunshine-park/。手机 iframe 视口回归是桌面补充，不把裁切截图当作实机。
+
+## 生产与公开发布
+
+- 复用原 Site：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site/)。get_site 返回最新版本 16、受众 public。
+- 官方 source workflow 完成构建、提交、推送、打包。源码 commit `c45c56c74f5040c2db8804207a6c54854e95e324`，14 文件，361 行增加、10 行删除；其他任务未跟踪的 avatar 研究文档未提交。
+- 保存版本 16：`appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_22bcc91822a081919b926e4232f9d7df`。
+- 部署 `appgdep_6ae4b6d1275081919135cc0309a09ff9` 原生返回 succeeded，运行时环境 revision 仍为 5，没有修改 D1、授权或初始化设置。
+- 本地生产检查通过：SSR／API 200，伪造管理身份 401，开发和生产初始化 404，非法请求 403／400／413 后 SSR 正常；构建没有开发身份或客户端服务端权限配置泄漏。
+- 客户端 JS/CSS gzip 合计 439214 字节，相比版本 15 的 436498 字节增加 2716 字节。无新模型／贴图／解码器／外部服务；保留既有大 chunk 和插件耗时提示，无构建错误。
+- 线上匿名 HTTP 不带 Cookie、真实身份或绕过令牌：默认页、活动读取、CSV 200，无登录跳转；管理／备份 401，伪造身份忽略，初始化关闭。本次 IAB 为渲染复核，不替代独立未登录浏览器证明。
+- 线上页面刷新后着色器与外围场景正常渲染，原真实阵容恢复，控制台 error 0；完整原生回执、快照与构建报告保存在忽略目录 outputs/sunshine-park/。
+
+## 既有数据保护
+
+本次没有线上排阵、开赛、录分、更正或初始化操作。发布紧邻前后四个完整状态 SHA-256 均一致：
+
+| 活动 | revision／赛果版本数 | SHA-256 |
+| --- | --- | --- |
+| v2 正式 | 17／0 | a1e081fbe4fc78dc3978fda0d5d285fa5a0156f84ff013a43f34153de2d5c1c5 |
+| v2 验收 | 9／2 | d0e6f14cf3a761b88d1adf7ee25c9961148fb4b192a70d3cb318902b600a3e58 |
+| v1 历史 | 99／6 | d1ee85161c7ad1828d23140581d38a8b7da497e6c69fde1932fa8581e06f47e3 |
+| v1 验收 | 22／3 | f130499a76b0838c46cc081e8caae17417842f49a966e55e37a81fbb2a014be8 |
+
+实机待验：iPhone Safari 正常／拉远／近景画面的颜色与辨识度、旋转缩放与选人是否顺畅、后台恢复及长时使用的温度和电量。手机 iframe、CPU 样本和几何预算只能作为补充，不能声称上述已通过。
