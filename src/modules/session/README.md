@@ -10,6 +10,8 @@
 - 冲突不自动换版本重放；断线不宣称正式修改成功。
 - 后台暂停轮询、回来立即刷新；查看历史不改变全员当前轮。
 - 可调用 competition 的纯投影；不重新实现规则，不直接导入 D1 或 server-only records。
+- dispatch 按共享的 canExecute(role, command.type) 预检协作／管理权限；服务端仍独立授权。匿名与普通参与者的合法排阵／录分经过同样的 pending、回执、冲突及恢复路径。
+- 打开录分不 dispatch 结束声明；本机草稿可关闭／刷新恢复，正式确认时直接 SubmitResult。其他人先提交后，旧草稿需重新核对，不能把首次录分隐式变为历史更正。
 
 依据：[数据与同步](../../../docs/architecture/data-and-sync.md)、[验证清单](../../../docs/delivery/validation-and-release.md)。
 

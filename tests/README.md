@@ -3,7 +3,9 @@
 检查命令见 [package.json](../package.json) scripts，测试选择与超时以 [vitest.config.ts](../vitest.config.ts) 为准，实际数量以当前 runner 输出为准。[CI](../.github/workflows/ci.yml) 自动运行现有检查；完整验收范围见 [validation-and-release.md](../docs/delivery/validation-and-release.md)。
 
 - competition/：通过 decide／project 验证业务不变量、转换、更正和整轮可行性；包括场景安排到命令的映射。
+- competition/round-flow.test.ts：原子跨场移动、源／目的开赛锁、直接录分、旧状态兼容、赛后留场／新轮候场／历史恢复与第七轮 2/2；调用 Scene 实际共用的 playerPlacement，不另写一份场景逻辑。
 - records/：使用真实本地 D1 验证权限、条件写入、并发、幂等、故障与备份恢复。
+- records/ 新协作场景：guest／participant 排阵／首次录分与管理操作拒绝；录分并发、移动与开赛并发、原子失败和重试；permissions 检查可信身份分类及不因匿名协作或普通登录取得管理权限。
 - server/：验证生产初始化窗口默认关闭、正式／验收编号有效且分离；对应授权、并发、拒绝自报身份和不覆盖记录由 records 的真实 D1 检查落实。
 - session/：验证乱序响应、超时后回执恢复、重连、草稿绑定与同步反馈。
 - venue/：验证固定场地坐标、镜头放大后世界布局不变、缩放／平移边界，以及五种视口中牌框不压住比赛区域且本场入口仍可见；真实拾取与显示仍用浏览器操作检查。

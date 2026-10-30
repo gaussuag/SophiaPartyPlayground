@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
-import { RecordsError, type RecordsContext, type Role } from "../../src/modules/records";
+import { RecordsError, type RecordsContext } from "../../src/modules/records";
+import { roleForIdentity } from "../../src/modules/records/permissions";
 
 export function contextFor(request: Request): RecordsContext {
   if (!env.DB) throw new RecordsError("DATABASE_UNAVAILABLE", "共享数据库尚未配置", 503);
@@ -7,10 +8,7 @@ export function contextFor(request: Request): RecordsContext {
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   const identityTrusted = import.meta.env.DEV || !loopback && env.IDENTITY_SOURCE === "sites-dispatch";
   const actorId = identityTrusted ? request.headers.get("oai-authenticated-user-id") : null;
-  const ids = (value: string | undefined) => (value ?? "").split(",").map(s => s.trim()).filter(Boolean);
-  let role: Role = "viewer";
-  if (actorId && ids(env.OPERATOR_IDS).includes(actorId)) role = "operator";
-  if (actorId && ids(env.ADMIN_IDS).includes(actorId)) role = "admin";
+  let role = roleForIdentity(actorId, env.OPERATOR_IDS, env.ADMIN_IDS);
   // Vite removes this branch from the production Worker. The starter strips
   // caller-supplied identity headers before injecting its loopback mock identity.
   if (import.meta.env.DEV && loopback && actorId === "local_seedy") role = "admin";

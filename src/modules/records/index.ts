@@ -1,6 +1,7 @@
 // Server-only entrypoint. App routes inject the real D1 binding and trusted identity.
 import { createEvent, decide, verifySnapshot, type EventState } from "../competition";
 import { envelopeSchema, type Backup, type Receipt, type Role } from "./protocol";
+import { canExecute } from "./permissions";
 export type { Receipt, Role, CommandEnvelope, Backup } from "./protocol";
 
 export type RecordsContext = { db: D1Database; actorId: string | null; role: Role; now: string };
@@ -10,8 +11,15 @@ export class RecordsError extends Error {
   constructor(readonly code: string, message: string, readonly status = 400, readonly revision?: number) { super(message); }
 }
 function authorize(context: RecordsContext, admin = false): asserts context is RecordsContext & { actorId: string } {
-  if (!context.actorId) throw new RecordsError("UNAUTHENTICATED", "请先登录获授权的管理账号", 401);
+  if (!context.actorId) throw new RecordsError("UNAUTHENTICATED", "此管理操作需要指定账号登录", 401);
   if (context.role === "viewer" || admin && context.role !== "admin") throw new RecordsError("FORBIDDEN", admin ? "此操作需要活动管理员权限" : "当前账号只有查看权限", 403);
+}
+// Guests are intentionally unidentified collaborators, never a platform user.
+// Their receipts share a namespace; a UUID + identical request is safe to replay
+// by any guest. Public receipt responses omit payloads, hashes and actor IDs.
+function commandActor(context: RecordsContext): string {
+  if (context.role === "guest" && !context.actorId) return "anonymous-visitor";
+  authorize(context); return context.actorId;
 }
 function validId(eventId: string) { if (!/^[a-zA-Z0-9_-]{1,80}$/.test(eventId)) throw new RecordsError("INVALID_EVENT_ID", "活动编号无效"); }
 async function load(context: RecordsContext, eventId: string): Promise<Aggregate> {
@@ -55,33 +63,34 @@ export async function initializeEvent(context: RecordsContext, eventId: string, 
   return { ...await readEvent(context, eventId), created: inserted.meta.changes === 1 };
 }
 export async function execute(context: RecordsContext, input: unknown) {
-  authorize(context);
+  const actorId = commandActor(context);
   const parsed = envelopeSchema.safeParse(input);
   if (!parsed.success) throw new RecordsError("INVALID_REQUEST", "操作格式无效，不能提交身份、角色或整份快照");
   const envelope = parsed.data;
+  if (!canExecute(context.role, envelope.command.type)) throw new RecordsError(context.actorId ? "FORBIDDEN" : "UNAUTHENTICATED", "此操作仅限指定的活动管理者", context.actorId ? 403 : 401);
   const hash = await fingerprint(envelope);
   const aggregate = await load(context, envelope.eventId);
-  const existing = receiptFor(aggregate, envelope.commandId, context.actorId, hash);
+  const existing = receiptFor(aggregate, envelope.commandId, actorId, hash);
   if (existing) return { ...(await readEvent(context, envelope.eventId)), receipt: existing, replayed: true };
   if (aggregate.state.generation !== envelope.expectedGeneration) throw new RecordsError("RESTORE_RELOAD_REQUIRED", "活动已恢复，请重新载入并核对", 409, aggregate.state.revision);
   if (aggregate.state.revision !== envelope.expectedRevision) throw new RecordsError("REVISION_CONFLICT", "其他设备已更新记录，请核对后重新操作", 409, aggregate.state.revision);
-  const decision = decide(aggregate.state, envelope.command, { now: context.now, actorId: context.actorId, commandId: envelope.commandId });
+  const decision = decide(aggregate.state, envelope.command, { now: context.now, actorId, commandId: envelope.commandId });
   if (!decision.ok) throw new RecordsError(decision.error.code, decision.error.message, 422);
-  const receipt: Receipt = { commandId: envelope.commandId, actorId: context.actorId, requestHash: hash, appliedRevision: decision.state.revision, generation: decision.state.generation, resultRefs: decision.changedIds, status: "APPLIED" };
+  const receipt: Receipt = { commandId: envelope.commandId, actorId, requestHash: hash, appliedRevision: decision.state.revision, generation: decision.state.generation, resultRefs: decision.changedIds, status: "APPLIED" };
   const updated: Aggregate = { ...aggregate, state: decision.state, receipts: { ...aggregate.receipts, [envelope.commandId]: receipt } };
   if (!await compareAndSave(context, updated, envelope.expectedRevision)) {
     const latest = await load(context, envelope.eventId);
-    const racedReceipt = receiptFor(latest, envelope.commandId, context.actorId, hash);
+    const racedReceipt = receiptFor(latest, envelope.commandId, actorId, hash);
     if (racedReceipt) return { state: publicState(latest.state), role: context.role, receipt: racedReceipt, replayed: true };
     throw new RecordsError("REVISION_CONFLICT", "另一台设备先保存了修改，请核对后重新操作", 409, latest.state.revision);
   }
   return { state: publicState(updated.state), role: context.role, receipt, replayed: false };
 }
 export async function readReceipt(context: RecordsContext, eventId: string, commandId: string) {
-  authorize(context);
+  const actorId = commandActor(context);
   const aggregate = await load(context, eventId);
   const receipt = Object.hasOwn(aggregate.receipts, commandId) ? aggregate.receipts[commandId] : undefined;
-  if (!receipt || receipt.actorId !== context.actorId && context.role !== "admin") return null;
+  if (!receipt || receipt.actorId !== actorId && context.role !== "admin") return null;
   // Request hashes and other operators' identities are never part of visitor views.
   return { commandId: receipt.commandId, appliedRevision: receipt.appliedRevision, generation: receipt.generation, status: receipt.status };
 }

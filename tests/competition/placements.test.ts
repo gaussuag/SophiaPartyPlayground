@@ -20,11 +20,13 @@ describe("scene placement targets", () => {
     expect(placementCommand(newer, target, "W01", basis)).toBeNull();
     expect(placementCommand(state, target, "W01", { ...basis, generation: basis.generation + 1 })).toBeNull();
   });
-  it("does not move a reservation away from another court", () => {
+  it("offers an atomic move for a reservation on another preparing court", () => {
     let state = readyForRound(1); state = step(state, { type: "AssignPlayer", playerId: "W01", matchId: "M-R01-C01", slotId: "WHITE-1" });
     const targets = placementTargets(state, project(state), "W01");
-    expect(targets.some(t => t.allowed)).toBe(false);
-    expect(targets.find(t => t.matchId === "M-R01-C02" && t.slotId === "WHITE-1")?.reason).toContain("占位");
+    const target = targets.find(t => t.matchId === "M-R01-C02" && t.slotId === "WHITE-1")!;
+    expect(target.allowed).toBe(true);
+    expect(placementCommand(state, target, "W01", state)).toEqual({ type: "MovePlayer", fromMatchId: "M-R01-C01", fromSlotId: "WHITE-1", matchId: "M-R01-C02", slotId: "WHITE-1", playerId: "W01" });
+    expect(targets.find(t => t.matchId === "M-R01-C01" && t.slotId === "WHITE-1")?.allowed).toBe(false);
   });
   it("keeps round-six feasibility in the game interaction", () => {
     let state = readyForRound(6); state = step(state, { type: "AssignPlayer", playerId: "W02", matchId: "M-R06-C03", slotId: "WHITE-1" });

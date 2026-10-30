@@ -36,7 +36,7 @@ Player 与操作账号不是同一对象。选择 Sophia 上场不能意味着�
 
 比赛侧使用稳定 WHITE／BLACK 语义，与镜头左右无关。每场结果必须显式引用阵容版本；更正实际名单时，如果已有赛果，要在同次提交建立对应的新赛果版本，防止比分仍指向旧阵容。
 
-startedAt 和 endDeclaredAt 记录网页确认时刻，不能冒充设备精确测得的真实第一球／最后一球时刻。计划时间不参加状态推进。
+startedAt 和 endDeclaredAt 记录网页确认时刻，不能冒充设备精确测得的真实第一球／最后一球时刻。新流程在确认有效比分时保存 endDeclaredAt，打开本机录分不写结束时刻；旧 AWAITING_RESULT 记录兼容。计划时间不参加状态推进。
 
 ## 派生数据
 
@@ -88,9 +88,9 @@ type CommandEnvelope = {
 };
 ~~~
 
-CompetitionCommand 包括：StartWarmup、OpenFirstRound、AssignPlayer、RemovePlayer、ReplacePlayer、CancelDraft、StartMatch、UndoStart、BeginResultEntry、UndoEndDeclaration、SubmitResult、CorrectResult、WithdrawCurrentResult、CorrectRecordedLineup、AdvanceRound、FinishEvent。
+CompetitionCommand 包括：StartWarmup、OpenFirstRound、AssignPlayer、RemovePlayer、ReplacePlayer、MovePlayer、CancelDraft、StartMatch、UndoStart、BeginResultEntry（旧客户端兼容）、UndoEndDeclaration、SubmitResult、CorrectResult、WithdrawCurrentResult、CorrectRecordedLineup、AdvanceRound、FinishEvent。
 
-这些是设计契约，不代表已经存在 TypeScript 实现。每个命令携带自己的明确 matchId／slotId 等目标；不能在处理阶段临时根据“当前画面”猜测归属。
+实际解析以 records/protocol.ts 为准。每个命令携带明确 matchId／slotId 等目标，不能按“当前画面”猜测。MovePlayer 额外固定 fromMatchId／fromSlotId，校验源仍是该选手且两场仍为准备中，清源和填目的在一次快照条件写入中成功或一起失败。
 
 执行顺序：
 
@@ -121,11 +121,18 @@ CompetitionCommand 包括：StartWarmup、OpenFirstRound、AssignPlayer、Remove
 
 ## 权限与发布访问
 
-已确认的是所有参赛者可访问、记录同步；未确认所有人都能修改。默认实现建议：viewer 可查看当前与历史；operator 可操作；管理操作如恢复备份仅更高权限者可执行。
+2026-10-30 用户明确开放 public 匿名协作，按命令拆分写权限：
 
-所有写入服务端校验权限，登录本身不自动授予编辑权。复用 Sites 的受信任身份入口；本地模拟身份只在开发环境存在，生产构建必须禁用。浏览器自报 headers、role、playerId 都不能直接成为操作授权。
+| 角色 | 权限 |
+| --- | --- |
+| guest（未登录） | 公开查看；当前轮准备中的安排、移出、替换、跨场移动、取消草稿，已开赛场次首次录分 |
+| participant（普通官方登录） | 当前轮准备中的安排、移出、替换、跨场移动、取消草稿；已开赛场次首次录分 |
+| operator／admin（指定管理者） | 上述协作操作，以及确认开赛、误操作撤销、确认本轮结束／推进、历史比分与实际名单纠错 |
+| admin | 另可备份、恢复及受控初始化 |
 
-发布时配置能覆盖参赛者的 Sites 访问方式，并以非创建者设备验证。网页可公开访问时，不开放匿名写入；是否采用公开链接或受控访问属于最后的发布配置。
+匿名与普通登录均无需加入名单即可协作，但不会取得管理权限。ADMIN_IDS／OPERATOR_IDS 继续使用已核对的本站身份，当前仅 gaussuag777@gmail.com；不按邮箱、前端传来的 role 或被选中的 playerId 授权。所有写入由 records.execute 按共享 canExecute 权限表再次校验。
+
+Sites 受信任身份入口、生产禁用开发身份、跨站写拒绝均保留；匿名管理操作及备份仍返回 401。客户端可以显示准备位置／比分草稿和保存反馈，不能用 UI 禁用代替服务端授权。匿名操作由服务端记录为匿名来源，回执按随机 commandId 与相同请求幂等；不会取得平台身份或管理权限，不能读取管理者回执。
 
 ## 备份、恢复与迁移
 

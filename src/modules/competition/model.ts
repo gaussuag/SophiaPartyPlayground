@@ -24,6 +24,7 @@ export type CompetitionCommand =
   | { type: "StartWarmup" }
   | { type: "OpenFirstRound" }
   | { type: "AssignPlayer" | "ReplacePlayer"; matchId: string; slotId: string; playerId: string }
+  | { type: "MovePlayer"; fromMatchId: string; fromSlotId: string; matchId: string; slotId: string; playerId: string }
   | { type: "RemovePlayer"; matchId: string; slotId: string }
   | { type: "CancelDraft" | "StartMatch" | "BeginResultEntry"; matchId: string }
   | { type: "UndoStart"; matchId: string; reason: "ACTUAL_NOT_STARTED" }
@@ -38,4 +39,4 @@ export type DecisionContext = { now: string; actorId: string; commandId: string 
 export type RuleError = { code: string; message: string; matchId?: string };
 export type Decision = { ok: true; state: EventState; changedIds: string[] } | { ok: false; error: RuleError };
 export type MatchView = Match & { participants: Participant[]; result: ResultRevision | null; canStart: boolean; planningLabel: string };
-export type EventProjection = { round: Round; matches: MatchView[]; completed: number; total: number; canAdvance: boolean; isCurrent: boolean; playerStates: Record<string, { status: "available" | "reserved" | "playing" | "played_this_round"; matchId?: string; label: string }> };
+export type EventProjection = { round: Round; roundLabel: string; matches: MatchView[]; completed: number; total: number; canAdvance: boolean; isCurrent: boolean; playerStates: Record<string, { status: "available" | "reserved" | "playing" | "played_this_round"; matchId?: string; label: string }> };

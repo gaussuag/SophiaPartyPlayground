@@ -9,7 +9,7 @@ import { SITE_TITLE } from "../../src/config/event";
 
 let mf: Miniflare; let db: D1Database;
 const now = "2026-10-28T05:00:00.000Z";
-const ctx = (actorId = "admin-a", role: RecordsContext["role"] = "admin"): RecordsContext => ({ db, actorId, role, now });
+const ctx = (actorId: string | null = "admin-a", role: RecordsContext["role"] = "admin"): RecordsContext => ({ db, actorId, role, now });
 const envelope = (state: EventState, command: CompetitionCommand, commandId = crypto.randomUUID()) => ({ eventId: state.id, commandId, expectedRevision: state.revision, expectedGeneration: state.generation, command });
 async function initial() { const id = `test-${crypto.randomUUID()}`; return (await initializeEvent(ctx(), id)).state; }
 async function apply(state: EventState, command: CompetitionCommand) { return (await execute(ctx(), envelope(state, command))).state; }
@@ -109,6 +109,77 @@ describe("real local D1 authority", () => {
     await expect(execute(ctx(), { ...request, command: { ...request.command, whiteScore: "" } })).rejects.toMatchObject({ code: "INVALID_REQUEST" });
     const finished = await execute(ctx(), request); expect(finished.state.results[0].blackScore).toBe(0); expect(finished.state.results[0]).not.toHaveProperty("actorId"); expect(finished.state.audit[0]).not.toHaveProperty("actorId");
     const csv = resultsCsv(finished.state); expect(csv).toContain('"11"'.replace("11", "1")); expect(csv).toContain('"白队"');
+  });
+  it.each([["participant-a", "participant"], [null, "guest"]] as const)("allows %s/%s preparation and scoring while keeping management privileged", async (actorId, role) => {
+    let state = await initial(); state = await apply(state, { type: "OpenFirstRound" });
+    const participant = ctx(actorId, role);
+    const denied = actorId ? "FORBIDDEN" : "UNAUTHENTICATED";
+    const participate = async (command: CompetitionCommand) => { state = (await execute(participant, envelope(state, command))).state; };
+    await participate({ type: "AssignPlayer", matchId: "M-R01-C01", slotId: "WHITE-1", playerId: "W01" });
+    const transfer = envelope(state, { type: "MovePlayer", fromMatchId: "M-R01-C01", fromSlotId: "WHITE-1", matchId: "M-R01-C02", slotId: "WHITE-1", playerId: "W01" });
+    state = (await execute(participant, transfer)).state;
+    const replay = await execute(participant, transfer);
+    expect(replay.replayed).toBe(true); expect(replay.state.revision).toBe(state.revision);
+    expect(await readReceipt(participant, state.id, transfer.commandId)).toMatchObject({ appliedRevision: state.revision });
+    expect(await readReceipt(ctx("participant-b", "participant"), state.id, transfer.commandId)).toBeNull();
+    const invalidMove = envelope(state, { type: "MovePlayer", fromMatchId: "M-R01-C02", fromSlotId: "WHITE-1", matchId: "M-R01-C01", slotId: "WHITE-2", playerId: "W01" });
+    await expect(execute(participant, invalidMove)).rejects.toMatchObject({ code: "WRONG_GENDER" });
+    expect((await readEvent(participant, state.id)).state).toEqual(state);
+    await participate({ type: "RemovePlayer", matchId: "M-R01-C02", slotId: "WHITE-1" });
+    for (const match of state.matches.filter(m => m.roundId === state.activeRoundId)) {
+      state = await fill(state, match.id);
+      await expect(execute(participant, envelope(state, { type: "StartMatch", matchId: match.id }))).rejects.toMatchObject({ code: denied, status: actorId ? 403 : 401 });
+      state = await apply(state, { type: "StartMatch", matchId: match.id });
+      await expect(execute(participant, envelope(state, { type: "RemovePlayer", matchId: match.id, slotId: "WHITE-1" }))).rejects.toMatchObject({ code: "INVALID_PHASE" });
+      const scores: CompetitionCommand = { type: "SubmitResult", matchId: match.id, lineupRevisionId: state.matches.find(m => m.id === match.id)!.activeLineupRevisionId!, whiteScore: 11, blackScore: 7 };
+      const simultaneous = [envelope(state, scores), envelope(state, scores)];
+      const submissions = await Promise.allSettled(simultaneous.map((request, i) => execute(ctx(actorId ? "scorer-" + i : null, role), request)));
+      expect(submissions.filter(r => r.status === "fulfilled")).toHaveLength(1);
+      expect(submissions.find(r => r.status === "rejected")).toMatchObject({ reason: { code: "REVISION_CONFLICT" } });
+      state = (await readEvent(participant, state.id)).state;
+      const current = state.matches.find(m => m.id === match.id)!;
+      expect(current.phase).toBe("COMPLETED");
+      expect(state.results.filter(r => r.matchId === match.id)).toHaveLength(1);
+      await expect(execute(participant, envelope(state, { ...scores, type: "CorrectResult", resultRevisionId: current.activeResultRevisionId!, reason: "SCORE_ENTRY_ERROR" }))).rejects.toMatchObject({ code: denied });
+    }
+    await expect(execute(participant, envelope(state, { type: "AdvanceRound", roundId: "R01" }))).rejects.toMatchObject({ code: denied });
+    expect(state.rounds[0].phase).toBe("OPEN");
+    state = await apply(state, { type: "AdvanceRound", roundId: "R01" });
+    expect(state.activeRoundId).toBe("R02");
+    expect(state.matches.filter(m => m.roundId === "R02").flatMap(m => m.draftSlots).every(s => s.playerId === null)).toBe(true);
+    await expect(exportEvent(participant, state.id)).rejects.toMatchObject({ code: denied });
+    await expect(initializeEvent(participant, "cannot-initialize")).rejects.toMatchObject({ code: denied });
+  });
+  it("does not let a participant upgrade command privileges or forge body identity", async () => {
+    const state = await initial(), participant = ctx("participant", "participant");
+    const commands: CompetitionCommand[] = [
+      { type: "StartWarmup" }, { type: "OpenFirstRound" }, { type: "StartMatch", matchId: "M-R01-C01" },
+      { type: "AdvanceRound", roundId: "R01" }, { type: "FinishEvent" },
+      { type: "UndoStart", matchId: "M-R01-C01", reason: "ACTUAL_NOT_STARTED" },
+      { type: "UndoEndDeclaration", matchId: "M-R01-C01", reason: "ACCIDENTAL_END" },
+      { type: "WithdrawCurrentResult", matchId: "M-R01-C01", reason: "RESULT_ENTERED_TOO_EARLY" },
+      { type: "CorrectRecordedLineup", matchId: "M-R01-C01", lineupRevisionId: "lineup", participants: [{ slotId: "WHITE-1", playerId: "W01" }, { slotId: "BLACK-1", playerId: "B02" }], reason: "RECORDED_LINEUP_ERROR" },
+    ];
+    for (const command of commands) await expect(execute(participant, envelope(state, command))).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+    await expect(execute(participant, { ...envelope(state, commands[0]), role: "admin" })).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    const backup = await exportEvent(ctx(), state.id);
+    await expect(restoreEvent(participant, state.id, { commandId: crypto.randomUUID(), expectedRevision: state.revision, expectedGeneration: state.generation, confirmEventId: state.id, maintenance: true, backup })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect((await readEvent(participant, state.id)).state.revision).toBe(state.revision);
+  });
+  it("races a participant transfer against manager start without a partial move or unlocked lineup", async () => {
+    let state = await initial(); state = await apply(state, { type: "OpenFirstRound" }); state = await fill(state, "M-R01-C01");
+    const commands = [
+      execute(ctx("participant", "participant"), envelope(state, { type: "MovePlayer", fromMatchId: "M-R01-C01", fromSlotId: "WHITE-1", matchId: "M-R01-C02", slotId: "WHITE-1", playerId: "W01" })),
+      execute(ctx(), envelope(state, { type: "StartMatch", matchId: "M-R01-C01" })),
+    ];
+    const results = await Promise.allSettled(commands);
+    expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.find(r => r.status === "rejected")).toMatchObject({ reason: { code: "REVISION_CONFLICT" } });
+    const latest = (await readEvent(ctx(), state.id)).state;
+    expect(latest.revision).toBe(state.revision + 1);
+    const source = latest.matches[0], destination = latest.matches[1];
+    expect(source.phase === "PLAYING" ? [source.draftSlots[0].playerId, destination.draftSlots[0].playerId] : [destination.draftSlots[0].playerId, source.draftSlots[0].playerId]).toEqual(["W01", null]);
+    expect(latest.lineups).toHaveLength(source.phase === "PLAYING" ? 1 : 0);
   });
   it("S14 restore validates identity, increments revision, preserves pre-restore data and retires old commands", async () => {
     const original = await initial(); const backup = await exportEvent(ctx(), original.id);

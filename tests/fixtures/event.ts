@@ -17,7 +17,7 @@ export function arrange(state: EventState, matchId: string): EventState {
   return state;
 }
 export function complete(state: EventState, matchId: string): EventState {
-  state = arrange(state, matchId); state = step(state, { type: "StartMatch", matchId }); state = step(state, { type: "BeginResultEntry", matchId });
+  state = arrange(state, matchId); state = step(state, { type: "StartMatch", matchId });
   return step(state, { type: "SubmitResult", matchId, lineupRevisionId: state.matches.find(m => m.id === matchId)!.activeLineupRevisionId!, whiteScore: 11, blackScore: 0 });
 }
 export function completeRound(state: EventState): EventState {

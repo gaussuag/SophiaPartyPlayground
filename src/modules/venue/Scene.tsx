@@ -4,7 +4,7 @@ import { BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, 
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { MatchView, TeamId } from "../competition";
 import type { VenueProps } from "./model";
-import { BOARD_SIZE, boardCenter, cameraView, courtCenter, slotPosition, type Point, type WorldLayout } from "./world";
+import { BOARD_SIZE, benchMarkerPosition, boardCenter, cameraView, courtCenter, playerPlacement, slotPosition, type Point, type WorldLayout } from "./world";
 import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
 import { Avatar, useAvatarAmbient } from "./Avatar";
@@ -145,26 +145,13 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
     <mesh geometry={walkways} position={[0, 0.04, 0]}><meshStandardMaterial color="#e0d2ae" roughness={1} /></mesh>
     {courtPositions.map(({ court, position }) => <Court key={court.id} number={court.number} position={position} match={view.matches.find(m => m.courtId === court.id)} props={props} anchors={anchors} hovered={hovered} editorSize={editorSize} layout={layout} />)}
     {state.players.map((p, index) => {
-      const occupied = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants.map(p => ({ playerId: p.playerId }))).some(s => s.playerId === p.id));
-      const present = occupied && (occupied.phase !== "COMPLETED" || !view.isCurrent) ? occupied : undefined;
-      const teamIndex = state.players.filter(x => x.teamId === p.teamId).findIndex(x => x.id === p.id);
-      let position: Point;
-      if (present) {
-        const slots = present.draftSlots;
-        const id = present.phase === "PLANNING" ? slots.find(s => s.playerId === p.id)?.id : present.participants.find(s => s.playerId === p.id)?.slotId;
-        const slot = slots.find(s => s.id === id)!;
-        const center = courtPositions.find(c => c.court.id === present.courtId)!.position;
-        const point = slotPosition(slot, slots);
-        position = [center[0] + point[0], center[1] + point[1], center[2] + point[2]];
-      } else if (portrait) position = [p.teamId === "WHITE" ? -5.4 : 5.4, 0.07, (teamIndex - 3) * layout.courtSpacing / 3];
-      else position = [(teamIndex - 3) * 3.6, 0.07, p.teamId === "WHITE" ? 8.4 : -8.4];
+      const { position, facing, onCourt } = playerPlacement(state, view, p.id, layout);
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (p.teamId !== chosenSlot.sideId || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      const facing = present || !portrait ? p.teamId === "WHITE" ? Math.PI : 0 : p.teamId === "WHITE" ? Math.PI / 2 : -Math.PI / 2;
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={!!present} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={view.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} />;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={view.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} />;
     })}
-    {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={portrait ? [side === "WHITE" ? -5.4 : 5.4, 0.1, -layout.courtSpacing * 1.45] : [0, 0.1, side === "WHITE" ? 10.3 : -10.3]} ref={refFor(anchors, `bench:${side}`)} />)}
+    {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={benchMarkerPosition(side, layout)} ref={refFor(anchors, `bench:${side}`)} />)}
     {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * (portrait ? floorLength / 2 - 1.1 : 9.9)]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
     {dragging && <DragGhost point={dragPoint} />}
   </>;

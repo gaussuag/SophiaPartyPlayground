@@ -52,7 +52,7 @@ describe("template and business transitions through the competition interface", 
     let state = arrange(readyForRound(1), m1); state = step(state, { type: "StartMatch", matchId: m1 }); state = step(state, { type: "UndoStart", matchId: m1, reason: "ACTUAL_NOT_STARTED" });
     expect(state.lineups).toHaveLength(1); expect(state.matches[0].activeLineupRevisionId).toBeNull(); expect(project(state).playerStates.W01.status).toBe("reserved");
     state = step(state, { type: "StartMatch", matchId: m1 }); const started = state.matches[0].startedAt; state = step(state, { type: "BeginResultEntry", matchId: m1 });
-    expect(project(state).playerStates.W01.status).toBe("played_this_round"); state = step(state, { type: "UndoEndDeclaration", matchId: m1, reason: "ACCIDENTAL_END" }); expect(state.matches[0].startedAt).toBe(started); expect(state.matches[0].endDeclaredAt).toBeNull(); expect(verifySnapshot(state)).toBeNull();
+    expect(project(state).playerStates.W01.status).toBe("playing"); state = step(state, { type: "UndoEndDeclaration", matchId: m1, reason: "ACCIDENTAL_END" }); expect(state.matches[0].startedAt).toBe(started); expect(state.matches[0].endDeclaredAt).toBeNull(); expect(verifySnapshot(state)).toBeNull();
   });
   it("B10–B11 versions historical score and actual lineup atomically without rewinding rounds", () => {
     let state = readyForRound(2); const match = state.matches[0]; const previous = state.results[0];
@@ -67,7 +67,7 @@ describe("template and business transitions through the competition interface", 
   });
   it("rejects stale lineup bindings and only withdraws the first current result", () => {
     let state = complete(readyForRound(1), m1);
-    state = step(state, { type: "WithdrawCurrentResult", matchId: m1, reason: "RESULT_ENTERED_TOO_EARLY" }); expect(state.results).toHaveLength(1); expect(state.matches[0].phase).toBe("AWAITING_RESULT");
+    state = step(state, { type: "WithdrawCurrentResult", matchId: m1, reason: "RESULT_ENTERED_TOO_EARLY" }); expect(state.results).toHaveLength(1); expect(state.matches[0].phase).toBe("PLAYING");
     refusal(state, { type: "SubmitResult", matchId: m1, lineupRevisionId: "old-lineup", whiteScore: 1, blackScore: 0 }, "LINEUP_CHANGED");
     state = step(state, { type: "SubmitResult", matchId: m1, lineupRevisionId: state.matches[0].activeLineupRevisionId!, whiteScore: 2, blackScore: 0 }); expect(state.results).toHaveLength(2); expect(verifySnapshot(state)).toBeNull();
   });

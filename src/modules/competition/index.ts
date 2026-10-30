@@ -114,6 +114,24 @@ export function decide(snapshot: EventState, command: CompetitionCommand, contex
         requireRule(roundAvailable(state, match!.roundId), "ROUND_INFEASIBLE", "这样安排会使本轮其他比赛缺少符合条件的选手，请保留所需男性或女性选手");
         changedIds.push(command.playerId); break;
       }
+      case "MovePlayer": {
+        requireCurrent(match!);
+        const source = state.matches.find(m => m.id === command.fromMatchId);
+        requireRule(source, "UNKNOWN_MATCH", "原场次不存在，请重新选择球友");
+        requireCurrent(source);
+        requireRule(source.phase === "PLANNING" && match!.phase === "PLANNING", "INVALID_PHASE", "确认上场后锁定阵容，不能移动选手");
+        const from = source.draftSlots.find(s => s.id === command.fromSlotId);
+        const to = match!.draftSlots.find(s => s.id === command.slotId);
+        requireRule(from && to, "UNKNOWN_SLOT", "找不到这个席位");
+        requireRule(from.playerId === command.playerId, "SOURCE_CHANGED", "原位置已改变，请重新选择球友");
+        requireRule(from !== to, "SAME_SLOT", "球友已在这个位置");
+        const displaced = to.playerId;
+        from.playerId = null;
+        checkPlayer(state, match!, to, command.playerId);
+        to.playerId = command.playerId;
+        requireRule(roundAvailable(state, match!.roundId), "ROUND_INFEASIBLE", "这样安排会使本轮其他比赛缺少符合条件的选手");
+        changedIds.push(source.id, command.playerId, ...(displaced ? [displaced] : [])); break;
+      }
       case "RemovePlayer": case "CancelDraft": {
         requireCurrent(match!); requireRule(match!.phase === "PLANNING", "INVALID_PHASE", "只能移出尚未上场的草稿");
         const slots = "slotId" in command ? match!.draftSlots.filter(s => s.id === command.slotId) : match!.draftSlots;
@@ -132,28 +150,31 @@ export function decide(snapshot: EventState, command: CompetitionCommand, contex
         requireRule(command.reason === "ACTUAL_NOT_STARTED", "REASON_REQUIRED", "请确认真实比赛尚未开打");
         match!.draftSlots = occupiedSlots(state, match!); match!.phase = "PLANNING"; match!.activeLineupRevisionId = null; match!.startedAt = null; match!.endDeclaredAt = null; break;
       case "BeginResultEntry":
-        requireCurrent(match!); requireRule(match!.phase === "PLAYING", "INVALID_PHASE", "只有比赛中可以声明结束并录分");
-        match!.phase = "AWAITING_RESULT"; match!.endDeclaredAt = context.now; break;
+        // Compatibility for older clients. Opening an editor is no longer a
+        // declaration that the real match has ended; only a valid score ends it.
+        requireCurrent(match!); requireRule(match!.phase === "PLAYING", "INVALID_PHASE", "只有比赛中可以录入比分"); break;
       case "UndoEndDeclaration": {
-        requireCurrent(match!); requireRule(match!.phase === "AWAITING_RESULT" && !match!.activeResultRevisionId, "INVALID_PHASE", "此场不能撤销结束声明");
+        requireCurrent(match!); requireRule((match!.phase === "AWAITING_RESULT" || match!.phase === "PLAYING") && !match!.activeResultRevisionId, "INVALID_PHASE", "此场不能撤销结束声明");
         const ids = lineup(state, match!).map(p => p.playerId);
         requireRule(!state.matches.some(m => m.id !== match!.id && m.phase === "PLAYING" && (m.courtId === match!.courtId || lineup(state, m).some(p => ids.includes(p.playerId)))), "OCCUPANCY_CONFLICT", "场地或选手已被其他比赛占用");
         match!.phase = "PLAYING"; match!.endDeclaredAt = null; break;
       }
       case "SubmitResult": case "CorrectResult": {
-        if (command.type === "SubmitResult") { requireCurrent(match!); requireRule(match!.phase === "AWAITING_RESULT", "INVALID_PHASE", "请先通过记分牌声明比赛结束"); }
+        if (command.type === "SubmitResult") { requireCurrent(match!); requireRule(match!.phase === "PLAYING" || match!.phase === "AWAITING_RESULT", "INVALID_PHASE", "只有已确认上场的比赛可以录入赛果"); }
         else { requireRule(match!.phase === "COMPLETED", "INVALID_PHASE", "只有已完成的比赛可以更正比分"); requireRule(match!.activeResultRevisionId === command.resultRevisionId, "RESULT_CHANGED", "赛果已更新，请重新核对"); }
         requireRule(match!.activeLineupRevisionId === command.lineupRevisionId, "LINEUP_CHANGED", "确认阵容已改变，请核对参赛者后重新确认比分");
         checkScores(command.whiteScore, command.blackScore);
         const id = `${context.commandId}:result`;
         state.results.push({ id, matchId: match!.id, lineupRevisionId: command.lineupRevisionId, whiteScore: command.whiteScore, blackScore: command.blackScore, winnerTeamId: command.whiteScore > command.blackScore ? "WHITE" : "BLACK", submittedAt: context.now, actorId: context.actorId, supersedes: match!.activeResultRevisionId ?? state.results.filter(r => r.matchId === match!.id).at(-1)?.id ?? null, reason: "reason" in command ? command.reason : null });
-        match!.activeResultRevisionId = id; match!.phase = "COMPLETED"; changedIds.push(id); break;
+        match!.activeResultRevisionId = id;
+        if (command.type === "SubmitResult") match!.endDeclaredAt = context.now;
+        match!.phase = "COMPLETED"; changedIds.push(id); break;
       }
       case "WithdrawCurrentResult": {
         requireCurrent(match!);
         const result = state.results.find(r => r.id === match!.activeResultRevisionId);
         requireRule(match!.phase === "COMPLETED" && result && !result.supersedes, "CANNOT_WITHDRAW", "仅当前轮首次赛果可以撤回；历史或已更正赛果请使用比分更正");
-        match!.activeResultRevisionId = null; match!.phase = "AWAITING_RESULT"; break;
+        match!.activeResultRevisionId = null; match!.phase = "PLAYING"; match!.endDeclaredAt = null; break;
       }
       case "CorrectRecordedLineup": {
         requireRule(match!.phase === "AWAITING_RESULT" || match!.phase === "COMPLETED", "INVALID_PHASE", "比赛结束后才可更正实际名单");
@@ -210,10 +231,11 @@ export function project(state: EventState, viewContext: { roundId?: string } = {
   const completed = matches.filter(m => m.phase === "COMPLETED").length;
   const playerStates: EventProjection["playerStates"] = Object.fromEntries(state.players.map(p => [p.id, { status: "available", label: "可安排" }]));
   for (const match of state.matches.filter(m => m.roundId === round.id)) {
-    const status = match.phase === "PLANNING" ? "reserved" : match.phase === "PLAYING" ? "playing" : "played_this_round";
+    const status = match.phase === "PLANNING" ? "reserved" : match.phase === "COMPLETED" ? "played_this_round" : "playing";
     for (const slot of occupiedSlots(state, match)) if (slot.playerId) playerStates[slot.playerId] = { status, matchId: match.id, label: status === "reserved" ? `${state.courts.find(c => c.id === match.courtId)?.number} 号场占位` : status === "playing" ? "比赛中" : "本轮已参赛" };
   }
-  return { round, matches, completed, total: matches.length, canAdvance: state.phase === "ACTIVE" && round.id === state.activeRoundId && completed === matches.length, isCurrent: round.id === state.activeRoundId, playerStates };
+  const roundLabel = round.phase === "CLOSED" ? "本轮已结束" : completed === matches.length ? "等待本轮确认" : round.phase === "UPCOMING" ? "尚未开始" : matches.some(m => m.phase !== "PLANNING") ? "比赛中" : "准备中";
+  return { round, roundLabel, matches, completed, total: matches.length, canAdvance: state.phase === "ACTIVE" && round.phase === "OPEN" && round.id === state.activeRoundId && completed === matches.length, isCurrent: round.id === state.activeRoundId, playerStates };
 }
 
 /** Validate imported facts through the same invariants as live commands. */

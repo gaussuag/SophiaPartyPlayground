@@ -4,6 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
+- 2026-10-30 协作赛制更新：所有访客含匿名可排阵、跨场移动、下场与首次录分，指定管理者确认开赛和本轮结束。录分后留场、新轮回候场、历史轮恢复原对阵；16 个文件 136 项检查及本地 HTTP／浏览器闭环通过，见 [本次交付记录](docs/delivery/round-flow-collaboration-2026-10-30.md)。
 - 2026-10-30 游戏化升级已按用户后续授权发布为 Sites 版本 4：统一触控序列、俯仰边界即时反向、权威快照驱动人物行走与状态动作，以及练习球／小太阳／风扇三种互动。117 项检查、最终构建及发布后匿名 HTTP 检查通过，正式活动数据保持一致；见 [版本 4 发布记录](docs/delivery/game-upgrade-release-2026-10-30.md)。本地实现、证据、启动和 iPhone 未测脚本见 [交付记录](docs/delivery/game-upgrade-2026-10-30.md)。
 - 2026-10-30 后续清理：三个开发分支及其 D 盘 worktree 已合入 main 并移除，本地测试数据和证据保存在忽略目录 `outputs/worktree-cleanup-2026-10-30/game-scene-upgrade/`。两个 C 盘 Codex 受管 worktree 仍被当前或其他对话占用，暂不能通过归档工具移除。
 - 已完成需求、交互、状态、数据、模块架构及实施计划文档。
@@ -11,7 +12,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已建立代码、数据、测试及资源目录；目录中的 README 是实现职责说明。
 - 已实现 Vinext + React + TypeScript + Three.js／R3F 应用、真实本地 D1 权威存储及四个业务 Module。
 - 三场地、七轮二十场、角色排阵、录分、更正、同步、导出和受控恢复已接通。
-- TypeScript 检查和 70 项自动检查通过；真实 HTTP＋D1 完成二十场演练，浏览器完成一场闭环与双客户端同步。
+- TypeScript 检查和 136 项自动检查通过；真实 HTTP＋D1 完成二十场演练，浏览器完成一轮闭环与双客户端同步。
 - 界面以连续三场地 3D 球馆为主，通过缩放和平移查看单场，直接点人物／拖入场内位置。确认上场、录分和更正均从场内记分牌进入；见 [连续球馆与记分牌验证](docs/delivery/ui-continuous-venue-2026-10-29.md)，前次记录保留在 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
 - 记分牌已缩为场边单行操作牌，桌面移到候场区后方，竖屏留在场间空隙；见 [场边记分牌优化](docs/delivery/ui-courtside-scoreboard-2026-10-29.md)。
 - 单指旋转按固定枢轴直接跟手，双指缩放平移；回正、全景和球场近景使用统一过渡。人物资料卡居中，轮次／设置仍从底部弹出。最新 [旋转响应诊断与优化](docs/delivery/ui-orbit-response-2026-10-30.md) 记录了 iPhone 17 反馈及官方参考；前次记录见 [触控与人物弹窗优化](docs/delivery/ui-touch-orbit-2026-10-30.md)。

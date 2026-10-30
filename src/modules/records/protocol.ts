@@ -9,6 +9,7 @@ const commandSchema: z.ZodType<CompetitionCommand> = z.discriminatedUnion("type"
   z.object({ type: z.literal("OpenFirstRound") }).strict(),
   z.object({ type: z.literal("AssignPlayer"), ...match, slotId: id, playerId: id }).strict(),
   z.object({ type: z.literal("ReplacePlayer"), ...match, slotId: id, playerId: id }).strict(),
+  z.object({ type: z.literal("MovePlayer"), ...match, slotId: id, playerId: id, fromMatchId: id, fromSlotId: id }).strict(),
   z.object({ type: z.literal("RemovePlayer"), ...match, slotId: id }).strict(),
   z.object({ type: z.literal("CancelDraft"), ...match }).strict(),
   z.object({ type: z.literal("StartMatch"), ...match }).strict(),
@@ -25,7 +26,7 @@ const commandSchema: z.ZodType<CompetitionCommand> = z.discriminatedUnion("type"
 export const envelopeSchema = z.object({ eventId: id.max(80), commandId: id, expectedRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER), expectedGeneration: z.number().int().nonnegative(), command: commandSchema }).strict();
 export type CommandEnvelope = z.infer<typeof envelopeSchema>;
 export type Receipt = { commandId: string; actorId: string; requestHash: string; appliedRevision: number; generation: number; resultRefs: string[]; status: "APPLIED" | "SUPERSEDED_BY_RESTORE" };
-export type Role = "viewer" | "operator" | "admin";
+export type Role = "viewer" | "guest" | "participant" | "operator" | "admin";
 export type Backup = { format: "sophia-party-backup-v1"; exportedAt: string; eventId: string; schemaVersion: 1; revision: number; aggregate: { state: EventState; receipts: Record<string, Receipt> } };
 export type RestoreEnvelope = { eventId: string; commandId: string; expectedRevision: number; expectedGeneration: number; restore: { confirmEventId: string; maintenance: true; backup: Backup } };
 export type PendingEnvelope = CommandEnvelope | RestoreEnvelope;

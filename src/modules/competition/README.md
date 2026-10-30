@@ -8,5 +8,7 @@
 
 测试从公开 Interface 观察状态与错误，不依赖内部函数名字。客户端可用同一模块做即时反馈，服务端始终重新执行完整校验。
 
+2026-10-30：MovePlayer 在一条决定中验证并转移未确认草稿；确认开赛后锁定源与目的。打开录分不结束比赛，SubmitResult 从 PLAYING 原子保存赛果和结束时刻；旧 AWAITING_RESULT 可继续提交。project 提供 roundLabel 与等待确认事实，三场齐备不会自动关闭轮次。人物是否留场是场景对该轮阵容的投影，不能释放同轮参赛资格。账号权限在 records 再校验，不由几何或 competition 预览授予。
+
 依据：[规则](../../../docs/product/requirements.md)、[状态机](../../../docs/product/interaction-and-state.md)、[数据契约](../../../docs/architecture/data-and-sync.md)。
 

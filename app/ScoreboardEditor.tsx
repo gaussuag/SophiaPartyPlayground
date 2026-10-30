@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, Check, X } from "lucide-react";
 import type { EventState, Participant } from "../src/modules/competition";
 import type { EventSession, SessionView } from "../src/modules/session";
+import { canExecute } from "../src/modules/records/permissions";
 
 export type ScoreTarget = { matchId: string; lineupRevisionId: string; resultRevisionId: string | null; generation: number; participants: Participant[] };
 export function ScoreboardEditor({ target, session, view, onClose, onRebind }: { target: ScoreTarget; session: EventSession; view: SessionView; onClose: () => void; onRebind: (t: ScoreTarget) => void }) {
@@ -10,7 +11,7 @@ export function ScoreboardEditor({ target, session, view, onClose, onRebind }: {
   const match = state.matches.find(m => m.id === target.matchId)!;
   const round = state.rounds.find(r => r.id === match.roundId)!;
   const result = state.results.find(r => r.id === target.resultRevisionId);
-  const readOnly = view.role === "viewer";
+  const readOnly = !canExecute(view.role, target.resultRevisionId ? "CorrectResult" : "SubmitResult");
   const draft = readOnly ? undefined : view.drafts[match.id];
   const white = draft?.whiteInput ?? String(result?.whiteScore ?? "");
   const black = draft?.blackInput ?? String(result?.blackScore ?? "");
@@ -52,7 +53,7 @@ export function ScoreboardEditor({ target, session, view, onClose, onRebind }: {
       {!readOnly && target.resultRevisionId && <fieldset className="reason-options" disabled={busy}><legend>更正原因</legend>{([ ["SCORE_ENTRY_ERROR", "比分录错"], ["SIDES_SWAPPED", "双方填反"], ["REVERT_CORRECTION", "撤销上次更正"] ] as const).map(([id, label]) => <label key={id}><input type="radio" name="reason" checked={reason === id} onChange={() => setReason(id)} /><span>{label}</span></label>)}</fieldset>}
       {(error || view.errorCode) && <p className="form-error" role="alert">{error || view.message}</p>}
       </div>
-      {!readOnly && <div className="dialog-footer"><button className="button primary" type="submit" disabled={busy || stale || view.status !== "synced" || !view.cacheReady || !!view.pending.length}><Check size={18} />{busy ? "正在保存…" : target.resultRevisionId ? "保存更正" : "确认最终比分"}</button></div>}
+      {!readOnly && <div className="dialog-footer"><button className="button primary" type="submit" disabled={busy || stale || view.status !== "synced" || !view.cacheReady || !!view.pending.length}><Check size={18} />{busy ? "正在保存…" : target.resultRevisionId ? "保存更正" : "确认比分并结束比赛"}</button></div>}
     </form>
   </section>;
 }

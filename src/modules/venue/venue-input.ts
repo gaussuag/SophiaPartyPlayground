@@ -5,7 +5,7 @@ import { cameraView, clampZoom, constrainNavigation, orbitNavigation, type Navig
 export type PointerSample = { id: number; x: number; y: number };
 type ScreenPoint = { x: number; y: number };
 type Bounds = { left: number; top: number; width: number; height: number };
-export type InputContext = { layout: WorldLayout; bounds: Bounds; editable: boolean; disabled: boolean; basis: SelectionBasis };
+export type InputContext = { layout: WorldLayout; bounds: Bounds; editable: boolean; draggablePlayerIds?: readonly string[]; disabled: boolean; basis: SelectionBasis };
 type Hit = { playerId?: string; pan?: boolean; ui?: boolean };
 type Mode = "idle" | "orbit" | "pan" | "player" | "transform" | "await-release" | "ui";
 export type InputEffects = {
@@ -68,6 +68,7 @@ export class VenueInput {
     this.motion.move(constrainNavigation(value, this.context!.layout), true);
     this.effects.invalidate();
   }
+  private canDrag(id: string) { return this.context!.editable && (!this.context!.draggablePlayerIds || this.context!.draggablePlayerIds.includes(id)); }
   down(sample: PointerSample, hit: Hit = {}) {
     const next = this.read();
     if (next.disabled || this.points.has(sample.id)) return;
@@ -78,7 +79,7 @@ export class VenueInput {
       this.primary = sample.id; this.origin = this.previous = { x: sample.x, y: sample.y };
       this.moved = false; this.suppressClick = false;
       this.playerId = hit.playerId;
-      this.mode = hit.ui ? "ui" : hit.playerId && next.editable ? "player" : hit.pan ? "pan" : "orbit";
+      this.mode = hit.ui ? "ui" : hit.playerId && this.canDrag(hit.playerId) ? "player" : hit.pan ? "pan" : "orbit";
     }
     this.points.set(sample.id, { x: sample.x, y: sample.y });
     if (this.points.size > 1) {
@@ -92,7 +93,7 @@ export class VenueInput {
   claimPlayer(sample: PointerSample, id: string) {
     if (!this.active) { this.down(sample, { playerId: id }); return; }
     if (this.points.size !== 1 || this.primary !== sample.id || this.moved) return;
-    this.playerId = id; this.mode = this.context!.editable ? "player" : "orbit";
+    this.playerId = id; this.mode = this.canDrag(id) ? "player" : "orbit";
     this.effects.capture(sample.id); this.activity();
   }
   private pair() {

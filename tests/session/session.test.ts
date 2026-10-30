@@ -2,12 +2,12 @@ import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { connect, type EventSession } from "../../src/modules/session";
 import { createEvent, decide, type EventState } from "../../src/modules/competition";
-import type { CommandEnvelope } from "../../src/modules/records/protocol";
+import type { CommandEnvelope, Role } from "../../src/modules/records/protocol";
 import { localCache } from "../../src/modules/session/cache";
 
 const sessions: EventSession[] = [];
 afterEach(() => { sessions.splice(0).forEach(s => s.dispose()); vi.restoreAllMocks(); });
-function server() {
+function server(role: Role = "operator") {
   let state = createEvent(`session-${crypto.randomUUID()}`, "2026-10-28T05:00:00.000Z");
   const receipts = new Map<string, { appliedRevision: number; status: string }>();
   let mode: "normal" | "commit-then-drop" | "drop-without-commit" | "offline" = "normal";
@@ -16,7 +16,7 @@ function server() {
     const path = String(url);
     if (mode === "offline") throw new TypeError("offline");
     if (path.includes("/receipts/")) return Response.json({ receipt: receipts.get(path.split("/").at(-1)!) ?? null });
-    if (init?.method !== "POST") return Response.json({ state: structuredClone(state), role: "operator" }, { headers: { ETag: `"${state.revision}"` } });
+    if (init?.method !== "POST") return Response.json({ state: structuredClone(state), role }, { headers: { ETag: `"${state.revision}"` } });
     posts++;
     const envelope = JSON.parse(init.body as string) as CommandEnvelope;
     if (mode === "drop-without-commit") throw new TypeError("request never arrived");
@@ -25,13 +25,27 @@ function server() {
     if (!decision.ok) return Response.json({ error: decision.error }, { status: 422 });
     state = decision.state; receipts.set(envelope.commandId, { appliedRevision: state.revision, status: "APPLIED" });
     if (mode === "commit-then-drop") throw new TypeError("successful response lost");
-    return Response.json({ state, role: "operator", receipt: receipts.get(envelope.commandId) });
+    return Response.json({ state, role, receipt: receipts.get(envelope.commandId) });
   });
   return { id: state.id, fetcher: fetcher as typeof fetch, get state() { return state; }, setState: (next: EventState) => { state = next; }, setMode: (m: typeof mode) => { mode = m; }, get posts() { return posts; } };
 }
 async function client(srv: ReturnType<typeof server>, fetcher = srv.fetcher) { const session = connect(srv.id, { fetch: fetcher, intervalMs: 100000, timeoutMs: 100 }); sessions.push(session); await session.ready; return session; }
 
 describe("session uncertainty and local recovery", () => {
+  it.each(["participant", "guest"] as const)("preflights %s commands without blocking arrangement or sending manager-only commands", async role => {
+    const srv = server(role);
+    const opened = decide(srv.state, { type: "OpenFirstRound" }, { now: srv.state.updatedAt, actorId: "manager", commandId: "open" });
+    if (!opened.ok) throw new Error(opened.error.code);
+    srv.setState(opened.state);
+    const session = await client(srv);
+    expect(await session.dispatch({ type: "StartMatch", matchId: "M-R01-C01" })).toBe(false);
+    expect(await session.dispatch({ type: "AdvanceRound", roundId: "R01" })).toBe(false);
+    expect(srv.posts).toBe(0);
+    expect(await session.dispatch({ type: "AssignPlayer", matchId: "M-R01-C01", slotId: "WHITE-1", playerId: "W01" })).toBe(true);
+    expect(session.getView().role).toBe(role);
+    expect(session.getView().state?.matches[0].draftSlots[0].playerId).toBe("W01");
+    expect(srv.posts).toBe(1);
+  });
   it("S05 refresh recovers a committed response through its original receipt without reposting", async () => {
     const srv = server(); const first = await client(srv); srv.setMode("commit-then-drop");
     expect(await first.dispatch({ type: "OpenFirstRound" })).toBe(false); expect(first.getView().status).toBe("unknown-outcome"); const originalId = first.getView().pending[0].commandId;

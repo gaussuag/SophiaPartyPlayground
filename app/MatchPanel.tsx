@@ -3,7 +3,8 @@ import { ArrowRight, Flag } from "lucide-react";
 import type { ReactNode } from "react";
 import type { CompetitionCommand, EventProjection, EventState, MatchView, Participant, Slot } from "../src/modules/competition";
 import type { EventSession, SessionView } from "../src/modules/session";
-export const phases = { PLAYING: "比赛中", AWAITING_RESULT: "待录分", COMPLETED: "已完成", PLANNING: "待安排" };
+import { canExecute } from "../src/modules/records/permissions";
+export const phases = { PLAYING: "比赛中", AWAITING_RESULT: "比赛中", COMPLETED: "比赛结束", PLANNING: "准备中" };
 export const reasonNames: Record<string, string> = { ACTUAL_NOT_STARTED: "实际尚未开打", ACCIDENTAL_END: "误触结束", SCORE_ENTRY_ERROR: "比分录错", SIDES_SWAPPED: "双方填反", REVERT_CORRECTION: "撤销上次更正", RESULT_ENTERED_TOO_EARLY: "提前误录赛果", RECORDED_LINEUP_ERROR: "实际名单录错" };
 export type LineupEdit = { matchId: string; lineupRevisionId: string; participants: { slotId: string; playerId: string }[] };
 export type Ask = (title: string, body: ReactNode, label: string, command: CompetitionCommand) => void;
@@ -27,23 +28,32 @@ export function MatchPanel({ state, view, session, projection, match, slots, onA
 }) {
   const readOnly = view.role === "viewer";
   const canWrite = !readOnly && view.status === "synced" && !view.pending.length;
+  const canManage = canExecute(view.role, "StartMatch");
+  const canCorrect = canExecute(view.role, "CorrectResult");
   const clearEdit = () => { setEdit(null); setHint(""); };
-  const prefix = `第 ${projection.round.number} 轮 · ${state.courts.find(c => c.id === match.courtId)!.number} 号场 · ${match.label}`;
-  return <section className="match-panel" aria-label={`${match.label}比赛操作`}>
-    <div className="match-panel-heading"><div><p className="eyebrow">第 {projection.round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场</p><h2>{match.label}</h2></div><span className={`phase-badge ${match.phase.toLowerCase()}`}>{match.phase === "PLANNING" ? match.planningLabel : phases[match.phase]}</span></div>
+  const prefix = "第 " + projection.round.number + " 轮 · " + state.courts.find(c => c.id === match.courtId)!.number + " 号场 · " + match.label;
+  return <section className="match-panel" aria-label={match.label + "比赛操作"}>
+    <div className="match-panel-heading"><div><p className="eyebrow">第 {projection.round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场</p><h2>{match.label}</h2></div><span className={"phase-badge " + match.phase.toLowerCase()}>{phases[match.phase]}</span></div>
     {match.result && <div className="final-score"><span>白队 <b>{match.result.whiteScore}</b></span><em>:</em><span><b>{match.result.blackScore}</b> 黑队</span><small><Flag size={13} />{match.result.winnerTeamId === "WHITE" ? "白队" : "黑队"}获胜</small></div>}
     <LineupNames participants={namesFor(state, slots.filter(s => s.playerId))} />
-    {!readOnly && (match.phase === "PLANNING" && projection.isCurrent || edit) && <button className="button secondary" onClick={onArrange}>到场内安排 <ArrowRight size={16} /></button>}
+    {!readOnly && (match.phase === "PLANNING" && projection.isCurrent || edit && canCorrect) && <button className="button secondary" onClick={onArrange}>到场内安排 <ArrowRight size={16} /></button>}
     {(hint || edit) && <p className="inline-hint" role="status">{hint || "更正实际参赛者，通过角色选择后确认；此操作用于纠正录错的名单。"}</p>}
-    {!readOnly && <div className="match-actions">{edit ? <>
+    <div className="match-actions">{edit && canCorrect ? <>
       <button className="button primary" disabled={!canWrite} onClick={() => ask("核对实际参赛者", <><p>{prefix}</p><LineupNames participants={namesFor(state, slots)} /></>, "保存名单更正", { type: "CorrectRecordedLineup", ...edit, reason: "RECORDED_LINEUP_ERROR" })}>确认实际名单更正</button><button className="text-button" onClick={clearEdit}>放弃本机更正草稿</button>
     </> : <>
-      {match.phase === "PLANNING" && projection.isCurrent && <><button className="button primary" disabled={!canWrite || !match.canStart} onClick={() => ask(`确认这${slots.length === 2 ? "两" : "四"}位球友上场？`, <><p>{prefix}</p><LineupNames participants={namesFor(state, slots)} /><p>确认后固定本场阵容，同一选手本轮不能再参加其他场次。</p></>, "确认上场并开始", { type: "StartMatch", matchId: match.id })}><Flag size={17} />确认上场并开始</button>{slots.some(s => s.playerId) && <button className="text-button" disabled={!canWrite} onClick={() => void session.dispatch({ type: "CancelDraft", matchId: match.id })}>取消本场阵容草稿</button>}</>}
-      {match.phase === "PLAYING" && <><button className="button primary" disabled={!canWrite} onClick={() => openScore(match)}>录入最终比分 <ArrowRight size={17} /></button><p className="action-hint">真实比赛结束后操作；点击即声明本场结束。</p><button className="text-button" disabled={!canWrite} onClick={() => ask("确认真实比赛尚未开打", <p>{prefix}<br />原因：实际尚未开打。撤销后恢复原阵容草稿，保留此次确认的审计记录。</p>, "尚未开打，撤销误开赛", { type: "UndoStart", matchId: match.id, reason: "ACTUAL_NOT_STARTED" })}>误开赛？撤销上场</button></>}
-      {match.phase === "AWAITING_RESULT" && <><button className="button primary" disabled={!canWrite && view.status !== "offline"} onClick={() => openScore(match)}>继续录入最终比分 <ArrowRight size={17} /></button>{projection.isCurrent && <button className="text-button" disabled={!canWrite} onClick={() => ask("撤销误结束声明", <p>{prefix}<br />原因：误触结束。重新检查场地和人员占用后恢复比赛中，原开赛时间保留。</p>, "恢复比赛中", { type: "UndoEndDeclaration", matchId: match.id, reason: "ACCIDENTAL_END" })}>比赛还没结束？撤销误结束</button>}</>}
-      {match.phase === "COMPLETED" && <><button className="button secondary" disabled={!canWrite} onClick={() => openScore(match)}>更正最终比分</button>{projection.isCurrent && !match.result?.supersedes && <button className="text-button" disabled={!canWrite} onClick={() => ask("撤回首次赛果", <p>{prefix}<br />原因：比赛结果提前误录。撤回后回到待录分，本轮暂不能推进。</p>, "撤回并保留历史", { type: "WithdrawCurrentResult", matchId: match.id, reason: "RESULT_ENTERED_TOO_EARLY" })}>撤回首次误录赛果</button>}</>}
-      {(match.phase === "COMPLETED" || match.phase === "AWAITING_RESULT") && <button className="text-button" disabled={!canWrite} onClick={() => setEdit({ matchId: match.id, lineupRevisionId: match.activeLineupRevisionId!, participants: match.participants.map(p => ({ slotId: p.slotId, playerId: p.playerId })) })}>更正实际参赛者</button>}
-    </>}</div>}
+      {match.phase === "PLANNING" && projection.isCurrent && !readOnly && <>
+        {canManage && <button className="button primary" disabled={!canWrite || !match.canStart} onClick={() => ask("确认上场并开始比赛", <><p>{prefix}</p><LineupNames participants={namesFor(state, slots)} /></>, "确认上场并开始", { type: "StartMatch", matchId: match.id })}><Flag size={17} />确认上场并开始</button>}
+        {slots.some(s => s.playerId) && <button className="text-button" disabled={!canWrite} onClick={() => void session.dispatch({ type: "CancelDraft", matchId: match.id })}>取消本场阵容草稿</button>}
+      </>}
+      {(match.phase === "PLAYING" || match.phase === "AWAITING_RESULT") && !readOnly && <button className="button primary" onClick={() => openScore(match)}>录入最终比分 <ArrowRight size={17} /></button>}
+      {match.phase === "PLAYING" && canManage && <button className="text-button" disabled={!canWrite} onClick={() => ask("确认真实比赛尚未开打", <p>{prefix}<br />撤销后恢复原阵容草稿，保留此次确认记录。</p>, "尚未开打，撤销误开赛", { type: "UndoStart", matchId: match.id, reason: "ACTUAL_NOT_STARTED" })}>误开赛？撤销上场</button>}
+      {match.phase === "AWAITING_RESULT" && projection.isCurrent && canManage && <button className="text-button" disabled={!canWrite} onClick={() => ask("恢复比赛中", <p>{prefix}<br />撤销旧版结束声明，保留原阵容。</p>, "恢复比赛中", { type: "UndoEndDeclaration", matchId: match.id, reason: "ACCIDENTAL_END" })}>撤销旧版结束声明</button>}
+      {match.phase === "COMPLETED" && <>
+        <button className="button secondary" onClick={() => openScore(match)}>{canCorrect ? "更正最终比分" : "查看最终比分"}</button>
+        {canCorrect && projection.isCurrent && !match.result?.supersedes && <button className="text-button" disabled={!canWrite} onClick={() => ask("撤回首次赛果", <p>{prefix}<br />撤回后恢复比赛中，本轮暂不能推进，保留旧比分记录。</p>, "撤回并保留历史", { type: "WithdrawCurrentResult", matchId: match.id, reason: "RESULT_ENTERED_TOO_EARLY" })}>撤回首次误录赛果</button>}
+      </>}
+      {canCorrect && (match.phase === "COMPLETED" || match.phase === "AWAITING_RESULT") && <button className="text-button" disabled={!canWrite} onClick={() => setEdit({ matchId: match.id, lineupRevisionId: match.activeLineupRevisionId!, participants: match.participants.map(p => ({ slotId: p.slotId, playerId: p.playerId })) })}>更正实际参赛者</button>}
+    </>}</div>
     {readOnly && <p className="view-only-hint">你正在查看全员共享的比赛记录</p>}<History state={state} matchId={match.id} />
   </section>;
 }

@@ -18,9 +18,9 @@ const initialized = await request("/api/local/initialize", { eventId }); assert.
 let state = initialized.data.state;
 const root = `/api/events/${eventId}`;
 const envelope = command => ({ eventId, commandId: crypto.randomUUID(), expectedRevision: state.revision, expectedGeneration: state.generation, command });
-async function command(command) { const result = await request(`${root}/commands`, envelope(command)); assert.equal(result.response.status, 200, JSON.stringify(result.data)); state = result.data.state; return result.data; }
+async function command(command, authenticated = true) { const result = await request(`${root}/commands`, envelope(command), authenticated); assert.equal(result.response.status, 200, JSON.stringify(result.data)); state = result.data.state; return result.data; }
 const initialBackup = (await request(`${root}/backup`)).data;
-const viewer = await request(root, undefined, false); assert.equal(viewer.data.role, "viewer"); assert(!("receipts" in viewer.data.state));
+const viewer = await request(root, undefined, false); assert.equal(viewer.data.role, "guest"); assert(!("receipts" in viewer.data.state));
 const conditional = await request(root, undefined, false, { "If-None-Match": viewer.response.headers.get("etag") }); assert.equal(conditional.response.status, 304);
 const forged = await request(`${root}/commands`, envelope({ type: "OpenFirstRound" }), false, { "oai-authenticated-user-id": "local_seedy", "oai-authenticated-user-email": "seedy@sites.test" }); assert.equal(forged.response.status, 401);
 const viewerWrite = await request(`${root}/commands`, envelope({ type: "OpenFirstRound" }), false); assert.equal(viewerWrite.response.status, 401);
@@ -28,6 +28,13 @@ const spoofBody = await request(`${root}/commands`, { ...envelope({ type: "OpenF
 const csrf = await request(`${root}/commands`, envelope({ type: "OpenFirstRound" }), true, { origin: "https://other.invalid" }); assert.equal(csrf.response.status, 403);
 checks.push("anonymous read, ETag 304, forged headers/body rejected, cross-origin write rejected");
 await command({ type: "OpenFirstRound" });
+const guestRequest = envelope({ type: "AssignPlayer", matchId: "M-R01-C01", slotId: "WHITE-1", playerId: "W01" });
+const guestSaved = await request(`${root}/commands`, guestRequest, false); assert.equal(guestSaved.response.status, 200); assert.equal(guestSaved.data.role, "guest"); state = guestSaved.data.state;
+const guestReplay = await request(`${root}/commands`, guestRequest, false); assert.equal(guestReplay.data.replayed, true); assert.equal(guestReplay.data.state.revision, state.revision);
+const guestReceipt = (await request(`${root}/receipts/${guestRequest.commandId}`, undefined, false)).data.receipt; assert.equal(guestReceipt.appliedRevision, state.revision); assert(!("actorId" in guestReceipt) && !("requestHash" in guestReceipt));
+await command({ type: "MovePlayer", fromMatchId: "M-R01-C01", fromSlotId: "WHITE-1", matchId: "M-R01-C02", slotId: "WHITE-1", playerId: "W01" }, false);
+await command({ type: "RemovePlayer", matchId: "M-R01-C02", slotId: "WHITE-1" }, false);
+checks.push("anonymous arrangement, transfer, removal and original-command receipt/replay; no identity or Cookie required");
 const racing = ["C01", "C02"].map(court => envelope({ type: "AssignPlayer", matchId: `M-R01-${court}`, slotId: "WHITE-1", playerId: "W01" }));
 const race = await Promise.all(racing.map(e => request(`${root}/commands`, e))); assert.deepEqual(race.map(r => r.response.status).sort(), [200, 409]);
 const winning = racing[race.findIndex(r => r.response.status === 200)];
@@ -36,24 +43,31 @@ const replay = await request(`${root}/commands`, winning); assert.equal(replay.r
 assert.equal((await request(`${root}/receipts/${winning.commandId}`)).data.receipt.appliedRevision, state.revision);
 const collision = await request(`${root}/commands`, { ...winning, command: { type: "StartWarmup" } }); assert.equal(collision.response.status, 409);
 checks.push("HTTP race commits one reservation, old revision replay returns receipt, ID collision rejected");
-await command({ type: "CancelDraft", matchId: winning.command.matchId });
+const transfer = envelope({ type: "MovePlayer", fromMatchId: winning.command.matchId, fromSlotId: "WHITE-1", matchId: winning.command.matchId === "M-R01-C01" ? "M-R01-C02" : "M-R01-C01", slotId: "WHITE-1", playerId: "W01" });
+const moved = await request(`${root}/commands`, transfer); assert.equal(moved.response.status, 200); state = moved.data.state;
+assert.equal(state.matches.find(m => m.id === transfer.command.fromMatchId).draftSlots[0].playerId, null);
+assert.equal(state.matches.find(m => m.id === transfer.command.matchId).draftSlots[0].playerId, "W01");
+const movedReplay = await request(`${root}/commands`, transfer); assert.equal(movedReplay.data.replayed, true); assert.equal(movedReplay.data.state.revision, state.revision);
+await command({ type: "RemovePlayer", matchId: transfer.command.matchId, slotId: "WHITE-1" });
+checks.push("atomic court transfer, original slot released only on commit, idempotent replay, return to bench");
 for (let n = 1; n <= 7; n++) {
   for (const scheduled of state.matches.filter(m => m.roundId === state.activeRoundId)) {
     for (const slot of scheduled.draftSlots) {
       const used = state.matches.filter(m => m.roundId === scheduled.roundId).flatMap(m => m.phase === "PLANNING" ? m.draftSlots.map(s => s.playerId) : state.lineups.find(l => l.id === m.activeLineupRevisionId).participants.map(p => p.playerId));
       const player = state.players.find(p => p.teamId === slot.sideId && (!slot.gender || slot.gender === p.gender) && !used.includes(p.id));
       assert(player, "The fixture must leave the remaining schedule feasible.");
-      await command({ type: "AssignPlayer", matchId: scheduled.id, slotId: slot.id, playerId: player.id });
+      await command({ type: "AssignPlayer", matchId: scheduled.id, slotId: slot.id, playerId: player.id }, false);
     }
     await command({ type: "StartMatch", matchId: scheduled.id });
-    await command({ type: "BeginResultEntry", matchId: scheduled.id });
     const match = state.matches.find(m => m.id === scheduled.id);
     const scores = { matchId: match.id, lineupRevisionId: match.activeLineupRevisionId, whiteScore: 11, blackScore: 0 };
     if (n === 1 && scheduled.courtId === "C01") {
       const bad = await request(`${root}/commands`, envelope({ type: "SubmitResult", ...scores, whiteScore: "" })); assert.equal(bad.response.status, 400);
       const equal = await request(`${root}/commands`, envelope({ type: "SubmitResult", ...scores, blackScore: 11 })); assert.equal(equal.response.status, 422);
     }
-    await command({ type: "SubmitResult", ...scores });
+    await command({ type: "SubmitResult", ...scores }, false);
+    assert.equal(state.matches.find(m => m.id === scheduled.id).phase, "COMPLETED");
+    assert.equal(state.activeRoundId, `R0${n}`, "Scoring must not advance the round.");
   }
   const roundId = state.activeRoundId;
   const advances = await Promise.all([request(`${root}/commands`, envelope({ type: "AdvanceRound", roundId })), request(`${root}/commands`, envelope({ type: "AdvanceRound", roundId }))]);

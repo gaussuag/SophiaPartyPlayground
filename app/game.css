@@ -13,6 +13,7 @@
 .game-round-switch,.game-header>.icon-button,.game-focus-bar,.game-selection-bar,.game-return,.game-dock{background:#f9fbf0ec;border:1px solid #fff8;box-shadow:0 4px 18px #294d2810;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .game-round-switch{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 13px;border-radius:24px;font-size:12px;font-weight:650}
 .game-round-switch small{font-size:10px;color:#758468;font-weight:500}
+.game-round-switch>span,.game-round-switch small,.game-brand-name{white-space:nowrap}.game-brand,.game-header-actions{flex-shrink:0}
 .game-header-actions{display:flex;gap:4px}
 .game-header-actions>.icon-button{width:44px;height:44px;min-width:44px;color:#496c42;background:#f9fbf0ec;box-shadow:0 4px 18px #294d2810;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .game-header-actions>.icon-button.offline,.game-header-actions>.icon-button.conflict,.game-header-actions>.icon-button.unknown-outcome{color:#a45a25;background:#fff0d8}
@@ -51,6 +52,7 @@
 .game-position.selected{outline:3px solid #f5ffc7;outline-offset:5px}.game-position.not-allowed{opacity:.18}.game-position.occupied{border-style:solid}.game-position:disabled{opacity:.45}
 .game-bench-marker{display:flex;align-items:center;gap:5px;white-space:nowrap;font-size:10px;font-weight:600;color:#45623b;padding:4px 8px;background:#eef3ddba;border-radius:13px}
 .game-bench-marker i{width:7px;height:7px;border:1px solid #859a71;border-radius:50%;background:#fffde9}.game-bench-marker.black i{background:#284536;border-color:#284536}
+.game-bench-marker.return-target{min-height:44px;min-width:76px;justify-content:center;border:2px solid #a6c56b;background:#eff8d7;box-shadow:0 0 0 5px #d9edaf55;color:#244638;font-size:12px;cursor:pointer}.game-bench-marker.return-target.selected{background:#cde790;border-color:#547e39;box-shadow:0 0 0 7px #d9edaf88}
 .game-venue.dragging{cursor:grabbing}.game-venue.dragging .game-player-label{pointer-events:none}.game-venue .scene-fallback{position:absolute;inset:0;background:#e4ead5;font-size:14px}.game-venue .context-notice{z-index:8;flex-direction:column;gap:14px}
 .replacement-names{display:flex;align-items:center;justify-content:center;gap:14px;font-size:19px;color:#315a3c;padding:12px 0}
 .game-drawer{position:fixed;inset:auto 0 0;width:min(520px,100%);max-width:100%;max-height:82dvh;margin:0 auto;border-radius:24px 24px 0 0;border:1px solid #e6eadb;border-bottom:0;box-shadow:0 -10px 50px #18382424;overflow:hidden;background:#fafbf2}

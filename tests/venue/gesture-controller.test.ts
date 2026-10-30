@@ -3,9 +3,9 @@ import { CameraMotion } from "../../src/modules/venue/camera-motion";
 import { VenueInput, type InputContext } from "../../src/modules/venue/venue-input";
 import { cameraView, MAX_PITCH, MIN_PITCH, overview, worldLayout } from "../../src/modules/venue/world";
 
-function harness(editable = true) {
+function harness(editable = true, draggablePlayerIds?: string[]) {
   const layout = worldLayout(390, 844), motion = new CameraMotion(overview(layout));
-  let context: InputContext = { layout, bounds: { left: 0, top: 0, width: 390, height: 844 }, editable, disabled: false, basis: { revision: 3, generation: 1 } };
+  let context: InputContext = { layout, bounds: { left: 0, top: 0, width: 390, height: 844 }, editable, draggablePlayerIds, disabled: false, basis: { revision: 3, generation: 1 } };
   const events: { type: string; id?: string; x?: number; y?: number }[] = [];
   const input = new VenueInput(motion, () => context, {
     invalidate() {}, capture() {}, release() {},
@@ -20,6 +20,17 @@ function harness(editable = true) {
 const p = (id: number, x: number, y: number) => ({ id, x, y });
 
 describe("venue pointer trajectories (the DOM/R3F gesture owner)", () => {
+  it("taps locked people for information but cannot drag or drop them through either hit path", () => {
+    const { input, events } = harness(true, ["W03"]);
+    input.down(p(1, 30, 300), { playerId: "W01" }); input.up(p(1, 30, 300));
+    expect(events.filter(e => e.type === "select").map(e => e.id)).toEqual(["W01"]);
+    events.length = 0;
+    input.down(p(2, 30, 300), { playerId: "W01" }); input.move(p(2, 80, 350)); input.up(p(2, 80, 350));
+    input.down(p(3, 30, 300)); input.claimPlayer(p(3, 30, 300), "W01"); input.up(p(3, 80, 350));
+    expect(events.some(e => e.type === "drag" || e.type === "drop")).toBe(false);
+    input.down(p(4, 30, 300), { playerId: "W03" }); input.up(p(4, 80, 350));
+    expect(events.filter(e => e.type === "drop").map(e => e.id)).toEqual(["W03"]);
+  });
   it("copies native DOMRect prototype accessors rather than enumerable keys", () => {
     const { input, motion, setBounds } = harness();
     const bounds = Object.create({ get left() { return 0; }, get top() { return 0; }, get width() { return 390; }, get height() { return 844; } });

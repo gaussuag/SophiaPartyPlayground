@@ -10,13 +10,14 @@ export type VenueIntent =
   | { type: "player"; playerId: string; dragging?: boolean }
   | { type: "slot"; matchId: string; slotId: string }
   | { type: "place"; playerId: string; matchId: string; slotId: string; basis: SelectionBasis }
+  | { type: "bench"; playerId: string; basis: SelectionBasis }
   | { type: "scoreboard"; matchId: string };
 export type VenueProps = {
   state: EventState; view: EventProjection; courtId: string | null;
   cameraRequest: { courtId: string | null; key: number };
   selection: PlayerSelection | null; slotSelection: SlotSelection | null;
   placements: Placement[]; onIntent: (intent: VenueIntent) => void;
-  editable: boolean; canWrite: boolean; readOnly: boolean; editingMatchId?: string;
+  editable: boolean; canWrite: boolean; readOnly: boolean; canConfirm: boolean; canCorrect: boolean; editingMatchId?: string;
   pending?: { playerId?: string; matchId?: string; slotId?: string; unknown: boolean };
   editor?: { matchId: string; content: ReactNode };
 };

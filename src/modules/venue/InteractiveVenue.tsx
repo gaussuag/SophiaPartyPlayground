@@ -1,7 +1,7 @@
 "use client";
 import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { ArrowUpRight, Check, Compass, LockKeyhole, Mars, Minus, Pencil, Plus, Scan, Venus } from "lucide-react";
+import { ArrowUpRight, Check, Compass, LockKeyhole, Mars, Minus, Pencil, Plus, RotateCcw, Scan, Venus } from "lucide-react";
 import { Vector3 } from "three";
 import { LabelProjection, Scene, SceneMetrics, slotKey, type Anchors, type Elements, type Point } from "./Scene";
 import { CameraMotion } from "./camera-motion";
@@ -11,7 +11,7 @@ import { ScenePlayController } from "./scene-play";
 import { VenuePerformance } from "./venue-performance";
 import { VenueInput, groundAt, type PointerSample } from "./venue-input";
 import type { VenueProps } from "./model";
-import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, overview, worldLayout } from "./world";
+import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, isBenchPoint, overview, worldLayout } from "./world";
 
 type ScreenPoint = { x: number; y: number };
 const sample = (e: { pointerId: number; clientX: number; clientY: number }): PointerSample => ({ id: e.pointerId, x: e.clientX, y: e.clientY });
@@ -138,10 +138,17 @@ export function Venue(props: VenueProps) {
   function begin(playerId: string, event: PointerEvent) {
     if (event.button === 0 && !props.editor) input.claimPlayer(sample(event), playerId);
   }
+  function benchTarget(playerId: string, point: Point) {
+    const player = props.state.players.find(p => p.id === playerId);
+    const reserved = props.view.isCurrent && props.view.playerStates[playerId]?.status === "reserved";
+    return player && reserved && !props.editingMatchId && isBenchPoint(point, player.teamId, layout) ? `bench:${player.teamId}` : null;
+  }
   function cancel() { input.cancel(); }
   useLayoutEffect(() => {
     input.bind(
-      () => ({ layout, bounds: root.current!.getBoundingClientRect(), editable: props.editable, disabled: !!props.editor || lost, basis: { revision: props.state.revision, generation: props.state.generation } }),
+      () => ({ layout, bounds: root.current!.getBoundingClientRect(), editable: props.editable,
+        draggablePlayerIds: props.editingMatchId ? undefined : props.state.players.filter(p => ["available", "reserved"].includes(props.view.playerStates[p.id].status)).map(p => p.id),
+        disabled: !!props.editor || lost, basis: { revision: props.state.revision, generation: props.state.generation } }),
       {
         invalidate: () => invalidate.current?.(),
         capture: id => { try { root.current?.setPointerCapture(id); } catch { /* Native cancellation can precede React's event. */ } },
@@ -155,12 +162,13 @@ export function Venue(props: VenueProps) {
           if (!props.editable) return;
           if (draggingPlayer.current !== playerId) { draggingPlayer.current = playerId; setDragging(true); props.onIntent({ type: "player", playerId, dragging: true }); }
           const point = projectPointer(x, y); if (!point) return;
-          dragPoint.current = point; setHovered(nearest(point)?.key ?? null); invalidate.current?.();
+          dragPoint.current = point; setHovered(nearest(point)?.key ?? benchTarget(playerId, point)); invalidate.current?.();
         },
         drop(playerId, x, y, basis) {
           if (!props.editable) return;
           const point = projectPointer(x, y), target = point && nearest(point);
           if (target) props.onIntent({ type: "place", playerId, matchId: target.matchId, slotId: target.slotId, basis });
+          else if (point && benchTarget(playerId, point)) props.onIntent({ type: "bench", playerId, basis });
         },
         settled() { if (pendingSize.current) { setSize(pendingSize.current); pendingSize.current = null; } },
       },
@@ -170,13 +178,13 @@ export function Venue(props: VenueProps) {
     const match = props.view.matches.find(m => m.courtId === c.id);
     if (match && props.editor?.matchId === match.id) return { key: `court:${c.id}`, className: "board-anchor editing-board", editor: true, content: props.editor.content };
     const ready = match?.phase === "PLANNING" && match.canStart && props.view.isCurrent && props.state.phase === "ACTIVE";
-    const canStart = ready && !props.readOnly;
-    const locked = !!props.editor || !!props.editingMatchId || !props.readOnly && !props.canWrite && (canStart || match?.phase === "PLAYING" || match?.phase === "COMPLETED");
-    const action = !match ? "休息区" : match.phase === "PLANNING" ? props.readOnly ? "查看球场" : ready ? "确认上场" : "安排阵容" : match.phase === "PLAYING" ? props.readOnly ? "比赛进行中" : "录入赛果" : match.phase === "AWAITING_RESULT" ? props.readOnly ? "等待赛果" : "继续录分" : props.readOnly ? "查看赛果" : "更正比分";
+    const canStart = ready && props.canConfirm;
+    const locked = !!props.editor || !!props.editingMatchId || canStart && !props.canWrite;
+    const action = !match ? "休息区" : match.phase === "PLANNING" ? props.readOnly ? "查看球场" : ready ? canStart ? "确认上场" : "等待确认" : "安排阵容" : match.phase === "PLAYING" || match.phase === "AWAITING_RESULT" ? props.readOnly ? "比赛进行中" : "录入赛果" : props.canCorrect ? "更正比分" : "查看赛果";
     return { key: `court:${c.id}`, className: "board-anchor", content: <button data-scene-ui className={`world-scoreboard ${match?.phase.toLowerCase() ?? "rest"} ${canStart ? "ready" : ""}`} aria-label={`${c.number} 号场 · ${action}`} title={`${c.number} 号场 · ${match?.label ?? "休息区"} · ${action}`} disabled={locked} onClick={() => props.onIntent(!match || match.phase === "PLANNING" && !canStart ? { type: "court", courtId: c.id } : canStart ? { type: "start", matchId: match!.id } : { type: "scoreboard", matchId: match!.id })}>
       <span className="board-face"><b>{String(c.number).padStart(2, "0")}</b>
-        {match?.result ? <strong className="board-result">{match.result.whiteScore}<i>:</i>{match.result.blackScore}</strong> : <span className="board-action">{match?.phase === "PLANNING" && !canStart ? match.label : match?.phase === "PLAYING" && props.readOnly ? "比赛中" : action}</span>}
-        {canStart ? <Check size={14} aria-hidden="true" /> : match?.result && !props.readOnly ? <Pencil size={13} aria-hidden="true" /> : match ? <ArrowUpRight size={13} aria-hidden="true" /> : null}
+        {match?.result ? <strong className="board-result">{match.result.whiteScore}<i>:</i>{match.result.blackScore}</strong> : <span className="board-action">{match?.phase === "PLANNING" && !ready ? match.label : match?.phase === "PLAYING" && props.readOnly ? "比赛中" : action}</span>}
+        {canStart ? <Check size={14} aria-hidden="true" /> : match?.result && props.canCorrect ? <Pencil size={13} aria-hidden="true" /> : match ? <ArrowUpRight size={13} aria-hidden="true" /> : null}
       </span>
     </button> };
   });
@@ -199,7 +207,13 @@ export function Venue(props: VenueProps) {
     const label = person ? `安排 ${person.name} 到 ${court.number} 号场 ${target.slotId}` : `${court.number} 号场 ${target.sideId === "WHITE" ? "白队" : "黑队"}${target.gender === "MALE" ? "男性" : target.gender === "FEMALE" ? "女性" : "自由"}位置 ${target.slotId}`;
     labels.push({ key: slotKey(target.matchId, target.slotId), className: "slot-anchor", content: <button className={`game-position ${target.allowed ? "allowed" : ""} ${selected || hovered === slotKey(target.matchId, target.slotId) ? "selected" : ""} ${target.occupantId ? "occupied" : ""} ${props.pending?.matchId === target.matchId && (!props.pending.slotId || props.pending.slotId === target.slotId) ? "pending" : ""} ${props.selection && !target.allowed ? "not-allowed" : ""}`} aria-label={label} disabled={!props.editable} onClick={() => props.onIntent({ type: "slot", matchId: target.matchId, slotId: target.slotId })}>{props.editingMatchId === target.matchId && target.occupantId ? <small>拟 {props.state.players.find(p => p.id === target.occupantId)?.name}</small> : props.selection || !target.gender ? <Plus size={18} /> : target.gender === "MALE" ? <Mars size={17} /> : <Venus size={17} />}</button> });
   }
-  for (const side of ["WHITE", "BLACK"] as const) labels.push({ key: `bench:${side}`, content: <span className={`game-bench-marker ${side.toLowerCase()}`}><i />{side === "WHITE" ? "白队" : "黑队"}</span> });
+  for (const side of ["WHITE", "BLACK"] as const) {
+    const person = props.selection && props.state.players.find(p => p.id === props.selection!.playerId && p.teamId === side);
+    const returning = person && props.editable && !props.editingMatchId && props.view.playerStates[person.id].status === "reserved";
+    labels.push({ key: `bench:${side}`, content: returning
+      ? <button data-scene-ui data-camera-ui className={`game-bench-marker return-target ${side.toLowerCase()} ${hovered === `bench:${side}` ? "selected" : ""}`} aria-label={`让 ${person.name} 回候场`} onClick={() => props.onIntent({ type: "bench", playerId: person.id, basis: props.selection!.basis })}><RotateCcw size={14} />回候场</button>
+      : <span className={`game-bench-marker ${side.toLowerCase()}`}><i />{side === "WHITE" ? "白队" : "黑队"}</span> });
+  }
 
   const fallback = <div className="scene-fallback"><p>球馆暂时无法显示</p><button className="button secondary" onClick={() => { setLost(false); setSceneRevision(n => n + 1); }}>重建场景</button></div>;
   return <div ref={root} data-compact={layout.compact} className={`venue game-venue ${dragging ? "dragging" : ""} ${orbiting ? "orbiting" : ""} ${props.editor ? "scoring" : ""}`} aria-label="三维球馆，单指旋转，双指缩放和平移，点选或拖拽球友" onContextMenu={e => e.preventDefault()}

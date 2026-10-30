@@ -7,12 +7,12 @@ assert(["127.0.0.1", "localhost"].includes(new URL(base).hostname), "Local produ
 const eventId = process.argv[2] ?? "local-sophia";
 async function request(url, init) { const response = await fetch(base + url, { ...init, signal: AbortSignal.timeout(15000) }); const body = await response.text(); return { status: response.status, body }; }
 const read = await request(`/api/events/${eventId}`); assert.equal(read.status, 200);
-const view = JSON.parse(read.body); assert.equal(view.role, "viewer");
+const view = JSON.parse(read.body); assert.equal(view.role, "guest");
 const forged = await request(`/api/events/${eventId}/commands`, { method: "POST", headers: { "Content-Type": "application/json", cookie: "__sites_local_auth=1", "oai-authenticated-user-id": "local_seedy", "oai-authenticated-user-email": "seedy@sites.test" }, body: JSON.stringify({ eventId, commandId: crypto.randomUUID(), expectedRevision: view.state.revision, expectedGeneration: view.state.generation, command: { type: "FinishEvent" } }) });
 assert.equal(forged.status, 401);
 const initialize = await request("/api/local/initialize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: "local-production-denied" }) }); assert.equal(initialize.status, 404);
 const identity = await request("/api/setup"); assert.equal(identity.status, 200);
-assert.deepEqual(JSON.parse(identity.body), { authenticated: false, actorId: null, email: null, role: "viewer", initializationEnabled: false, targets: [] });
+assert.deepEqual(JSON.parse(identity.body), { authenticated: false, actorId: null, email: null, role: "guest", initializationEnabled: false, targets: [] });
 const forgedIdentity = await request("/api/setup", { headers: { cookie: "__sites_local_auth=1", "oai-authenticated-user-id": "local_seedy", "oai-authenticated-user-email": "seedy@sites.test" } });
 assert.deepEqual(JSON.parse(forgedIdentity.body), JSON.parse(identity.body));
 const managedInitialize = await request("/api/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: "sophia-sunshine-cup", confirmName: "Sophia Sunshine Cup" }) });
