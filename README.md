@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-30 横向三场地与头像选人已完成本地实现、152 项检查和真实 D1／HTTP 回归：点空位可选头像＋姓名，候选人物短暂举手与光圈提示，走动／保存／锁定时不自动弹人物详情。研究、浏览器证据与后续发布回执见 [本次交付](docs/delivery/court-layout-and-picker-2026-10-30.md)。
+- 2026-10-30 横向三场地与头像选人已发布为 Sites 版本 8：点空位可选头像＋姓名，候选人物短暂举手与光圈提示，走动／保存／锁定时不自动弹人物详情。152 项检查、真实 D1／HTTP、浏览器及线上头像选人／双客户端同步通过，正式数据未变；见 [本次交付](docs/delivery/court-layout-and-picker-2026-10-30.md)。
 - 2026-10-30 排阵即时动画已发布为 Sites 版本 7：发起页面先行动、后台保存；确定拒绝／冲突平滑纠正，未知结果查原回执，确认成功不重走。143 项检查、浏览器四项网络故障轨迹、生产检查与线上双客户端／匿名协作通过，正式数据保持一致，见 [本次交付](docs/delivery/optimistic-arrangement-2026-10-30.md)。
 - 2026-10-30 协作赛制更新已发布为 Sites 版本 6：所有访客含匿名可排阵、跨场移动、下场与首次录分，指定管理者确认开赛和本轮结束。录分后留场、新轮回候场、历史轮恢复原对阵；16 个文件 136 项检查及本地 HTTP／浏览器闭环通过，见 [本次交付记录](docs/delivery/round-flow-collaboration-2026-10-30.md)。
 - 2026-10-30 游戏化升级已按用户后续授权发布为 Sites 版本 4：统一触控序列、俯仰边界即时反向、权威快照驱动人物行走与状态动作，以及练习球／小太阳／风扇三种互动。117 项检查、最终构建及发布后匿名 HTTP 检查通过，正式活动数据保持一致；见 [版本 4 发布记录](docs/delivery/game-upgrade-release-2026-10-30.md)。本地实现、证据、启动和 iPhone 未测脚本见 [交付记录](docs/delivery/game-upgrade-2026-10-30.md)。
@@ -21,7 +21,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 版本 7 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。所有访客含匿名可排阵／首次录分，仅 gaussuag777@gmail.com 管理开赛、轮次及纠错。此前版本 6 的协作比赛闭环见 [记录](docs/delivery/round-flow-collaboration-2026-10-30.md)；本次发布与验收期间正式活动 revision=28、0 条赛果及完整公开状态摘要不变，详见 [即时动画交付](docs/delivery/optimistic-arrangement-2026-10-30.md)。Safari 新版手感由用户继续验收。
+- ChatGPT Sites 版本 8 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。所有访客含匿名可排阵／首次录分，仅 gaussuag777@gmail.com 管理开赛、轮次及纠错。本次发布与验收期间正式活动 revision=54、3 条赛果版本及完整摘要不变，见 [横向球馆与头像选人](docs/delivery/court-layout-and-picker-2026-10-30.md)；前次 [即时动画交付](docs/delivery/optimistic-arrangement-2026-10-30.md) 保留历史证据。Safari 新版手感由用户继续验收；独立 Edge 匿名复测因电脑控制无法确认网址而中止，未标记通过。
 
 ## 从这里开始
 
