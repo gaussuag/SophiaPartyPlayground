@@ -59,9 +59,8 @@ describe("paddle-centred contact and end-row waiting", () => {
       last=r.ball.position;
     }
     expect(crossings).toBeGreaterThan(8);
-    expect(rally.sample(.78*.7).ball.position[1]).toBeCloseTo(.265);
-    expect(rally.sample(.78*.7-.005).ball.position[1]).toBeGreaterThan(.265);
-    expect(rally.sample(.78*.7+.005).ball.position[1]).toBeGreaterThan(.265);
+    const low = Array.from({length:1001},(_,i)=>rally.sample(.78*i/1000).ball.position[1]);
+    expect(Math.min(...low)).toBeGreaterThanOrEqual(.265); expect(Math.min(...low)).toBeLessThan(.27);
     expect(distance(rally.sample(.06).ball.position,rally.sample(0).ball.position)).toBeGreaterThan(.3);
   });
   it("finds the exact nearest exclusion boundary and a clear gap in crowded rows", () => {
