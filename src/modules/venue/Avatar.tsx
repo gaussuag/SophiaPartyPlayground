@@ -33,7 +33,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
   const leftArm = useRef<Group>(null), rightArm = useRef<Group>(null), leftLeg = useRef<Group>(null), rightLeg = useRef<Group>(null);
   const invitationRing = useRef<Group>(null);
   const angel = player.teamId === "FREE";
-  const flight = useRef({ clock: 0, wing: .18, lift: .19 });
+  const flight = useRef({ clock: 0, wing: .18, lift: .19, arriving: false });
   const invalidate = useThree(s => s.invalidate);
   const [initial] = useState(position);
   const [motion] = useState(() => new AvatarMotion(position, facing, context, angel ? "fly" : "walk"));
@@ -64,7 +64,12 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const walking = motion.walking && motion.travelled > oldDistance;
     const phase = motion.travelled * 7.2;
     const sameBase = !!local && local.base.every((n, i) => Math.abs(n - [x, y, z][i]) < .001);
-    const settled = !motion.moving && sameBase;
+    if (angel) {
+      if (reduced || !choreography.active) flight.current.arriving = false;
+      else if (moving) flight.current.arriving = true;
+    }
+    const landing = angel && flight.current.arriving && !moving;
+    const settled = !motion.moving && sameBase && !landing;
     choreography.arrived(player.id, settled);
     const target = settled && local ? local.offset : [0, 0, 0];
     const stroke = settled && !reduced ? local?.stroke : undefined;
@@ -76,7 +81,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const selection = reduced ? 0 : Math.sin(a.selected / 0.5 * Math.PI);
     const cheer = a.result > 0 ? Math.sin(Math.min(1, a.result / 0.28) * Math.PI / 2) : 0;
     root.current.position.set(...motion.position.map((n, i) => n + decoration.current[i]) as Point);
-    root.current.userData.walking = motion.moving;
+    root.current.userData.walking = motion.moving || landing;
     root.current.userData.destination = motion.destination;
     root.current.userData.travelled = motion.travelled;
     root.current.userData.inviting = invitation.animating;
@@ -86,11 +91,13 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     if (invitationRing.current) invitationRing.current.scale.setScalar(invitation.ringScale);
     body.current.rotation.y = settled && local ? local.yaw : motion.yaw;
     if (enabled && (!local?.held || moving)) flight.current.clock += dt;
-    const airborne = angelPose(flight.current.clock, walking || !!local?.walking, reduced);
+    const airborne = angelPose(flight.current.clock, walking || landing || !!local?.walking, reduced);
     flight.current.wing = airborne.wing;
-    if (reduced || !choreography.active) flight.current.lift = airborne.lift;
-    else if (!local?.held || moving) flight.current.lift += (airborne.lift - flight.current.lift) * Math.min(1, dt * 10);
-    root.current.userData.flying = angel && motion.moving;
+    const targetLift = landing ? .19 : airborne.lift;
+    if (reduced || !choreography.active) flight.current.lift = targetLift;
+    else if (!local?.held || moving || landing) flight.current.lift += (targetLift - flight.current.lift) * Math.min(1, dt * 10);
+    if (landing && Math.abs(flight.current.lift - .19) < .01) flight.current.arriving = false;
+    root.current.userData.flying = angel && (motion.moving || landing);
     body.current.position.y = stroke ? stroke.lift : angel ? flight.current.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
     body.current.rotation.z = stroke ? 0 : angel ? airborne.bank : walking ? Math.sin(phase) * 0.025 : gait * .04;
     head.current.rotation.x = -selection * 0.12 + (a.resultKind === "acknowledge" ? cheer * 0.18 : 0);
