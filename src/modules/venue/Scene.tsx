@@ -8,6 +8,8 @@ import { BOARD_SIZE, benchMarkerPosition, boardCenter, cameraView, courtCenter, 
 import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
 import { Avatar } from "./Avatar";
+import { ParkEnvironment } from "./ParkEnvironment";
+import { COURT_PALETTE, sunlitMaterial } from "./sunlight";
 import { AvatarPlacements } from "./avatar-placements";
 import { RallyBalls } from "./RallyBalls";
 import type { LocalChoreography } from "./local-choreography";
@@ -34,6 +36,7 @@ const courtLines = mergeGeometries([
   ...[-4.85, -1.75, 1.75, 4.85].map(z => new BoxGeometry(4.9, 0.018, 0.05).translate(0, 0.03, z)),
   ...[-3.3, 3.3].map(z => new BoxGeometry(0.05, 0.018, 3.1).translate(0, 0.03, z)),
 ]);
+const playingEnds = mergeGeometries([-3.3, 3.3].map(z => new BoxGeometry(4.85, 0.012, 3.08).translate(0, 0.001, z)));
 const kitchen = mergeGeometries([-0.9, 0.9].map(z => new BoxGeometry(4.85, 0.015, 1.72).translate(0, 0.01, z)));
 const netPosts = mergeGeometries([-2.8, 2.8].map(x => new CylinderGeometry(0.055, 0.065, 0.9, 6).translate(x, 0.45, 0)));
 
@@ -90,11 +93,12 @@ function Court({ number, match, position, props, anchors, hovered, editorSize, l
   const inactive = !match;
   const selected = props.courtId === props.state.courts.find(c => c.number === number)!.id;
   return <group position={position} onClick={e => { e.stopPropagation(); props.onIntent({ type: "court", courtId: props.state.courts.find(c => c.number === number)!.id }); }}>
-    <mesh position={[0, -0.12, 0]}><boxGeometry args={[5.8, 0.22, 10.7]} /><meshStandardMaterial color={inactive ? "#a9bc91" : selected ? "#3b866b" : "#36765e"} roughness={1} /></mesh>
-    <mesh geometry={kitchen}><meshStandardMaterial color={inactive ? "#c7d0a4" : "#afc780"} /></mesh>
-    <mesh geometry={courtLines}><meshBasicMaterial color="#f3f4d9" /></mesh>
-    <mesh geometry={netPosts}><meshStandardMaterial color="#294b37" /></mesh>
-    <mesh position={[0, 0.49, 0]}><boxGeometry args={[5.55, 0.7, 0.035]} /><meshStandardMaterial color="#263e31" transparent opacity={0.6} /></mesh>
+    <mesh position={[0, -0.12, 0]} material={sunlitMaterial(inactive ? COURT_PALETTE.inactive : selected ? COURT_PALETTE.selected : COURT_PALETTE.surround)} dispose={null}><boxGeometry args={[5.8, 0.22, 10.7]} /></mesh>
+    <mesh geometry={playingEnds} material={sunlitMaterial(inactive ? "#bdc1cc" : COURT_PALETTE.play)} dispose={null} />
+    <mesh geometry={kitchen} material={sunlitMaterial(inactive ? "#bdcbd1" : COURT_PALETTE.kitchen)} dispose={null} />
+    <mesh geometry={courtLines}><meshBasicMaterial color={COURT_PALETTE.line} /></mesh>
+    <mesh geometry={netPosts}><meshStandardMaterial color="#496375" /></mesh>
+    <mesh position={[0, 0.49, 0]}><boxGeometry args={[5.55, 0.7, 0.035]} /><meshStandardMaterial color="#334c61" transparent opacity={0.6} /></mesh>
     <mesh position={[0, 0.86, 0]}><boxGeometry args={[5.65, 0.04, 0.065]} /><meshBasicMaterial color="#fffbe5" /></mesh>
     <Scoreboard courtId={props.state.courts.find(c => c.number === number)!.id} match={match} anchors={anchors} props={props} editorSize={editorSize} layout={layout} />
     {match?.draftSlots.map(slot => {
@@ -164,9 +168,9 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   useEffect(() => () => walkways.dispose(), [walkways]);
   return <>
     <Rig layout={layout} motion={motion} hud={hud} timing={timing} editor={rigEditor} />
-    <mesh position={[0, -0.58, layout.floorCenterZ]}><boxGeometry args={[floorWidth, 1, floorLength]} /><meshStandardMaterial color="#879b70" /></mesh>
-    <mesh position={[0, -0.03, layout.floorCenterZ]}><boxGeometry args={[floorWidth - 0.16, 0.12, floorLength - 0.16]} /><meshStandardMaterial color="#acc38d" /></mesh>
-    <mesh geometry={walkways} position={[0, 0.04, 0]}><meshStandardMaterial color="#e0d2ae" roughness={1} /></mesh>
+    <ParkEnvironment />
+    <mesh position={[0, -0.03, layout.floorCenterZ]} material={sunlitMaterial("#b7cbd1")} dispose={null}><boxGeometry args={[floorWidth - 0.16, 0.12, floorLength - 0.16]} /></mesh>
+    <mesh geometry={walkways} position={[0, 0.04, 0]} material={sunlitMaterial("#e7dfc9", { tiles: true })} dispose={null} />
     {courtPositions.map(({ court, position }) => <Court key={court.id} number={court.number} position={position} match={view.matches.find(m => m.courtId === court.id)} props={props} anchors={anchors} hovered={hovered} editorSize={editorSize} layout={layout} />)}
     {state.players.map((p, index) => {
       const { position, facing, onCourt } = playerPlacement(state, avatarView, p.id, layout);
@@ -176,7 +180,6 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
       return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} choreography={choreography} positions={positions} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
     })}
     {(["WHITE", "BLACK", "FREE"] as RosterTeamId[]).map(side => <group key={side} position={benchMarkerPosition(side)} ref={refFor(anchors, `bench:${side}`)} />)}
-    {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * 9.9]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
     {dragging && <DragGhost point={dragPoint} />}
     <RallyBalls choreography={choreography} />
   </>;

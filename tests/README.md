@@ -43,3 +43,6 @@
 
 - venue/paddle.test.ts：当前全员固定且不同的球拍配色、历史备用色、实体轮廓／厚度／握把、竖起且前倾的挂载方向、单次绘制与几何预算、缓存复用和实例颜色隔离。
 - [球拍评审页](browser/paddle-studio.html)：开发服务 /tests/browser/paddle-studio.html，使用真实 Avatar 和同一球拍网格对照正／侧／背面、13 种配色与挥拍。只提供本地视觉探针，不读写活动、不进入生产路由；该页手动演示挥拍参数，正式热身／比赛仍由真实场次驱动。
+
+- venue/environment.test.ts：装饰顶点与设施不进入球场／候场／记分牌保留区、几何合并预算、静态材质变体隔离与资源复用。
+- [阳光运动场回归](browser/park-harness.html)：开发服务打开 /tests/browser/park-harness.html?event=local-新的编号，先执行原有 v2 业务回归，再执行环境检查。覆盖六种视口、固定场地坐标、全员与姓名触区、绘制预算、合成单指旋转／双指缩放、暂停后无额外持续循环、恢复及无业务写入。不能替代 iPhone Safari 实机；只创建新的独立本地活动，不重置既有演练。
