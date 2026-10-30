@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-30 两排候场与拍面触球细化已完成本地实现：下场只选择球场前后两排最近空位，不停在场间；球、球拍和挥拍共用接触时间轴，增加引拍／随挥和短触球反馈。保留阳光公园、比赛流程和权威记录，见 [本次交付](docs/delivery/paddle-contact-and-bench-rows-2026-10-30.md)。
+- 2026-10-30 两排候场与拍面触球细化已发布为原 public Site **版本 17**：下场只选择球场前后两排最近空位，不停在场间；球、球拍和挥拍共用接触时间轴，增加引拍／随挥和短触球反馈。保留阳光公园、比赛流程和权威记录，见 [本次交付](docs/delivery/paddle-contact-and-bench-rows-2026-10-30.md)。
 
 - 2026-10-30 户外阳光运动场视觉改造已发布为原 public Site **版本 16**：保留连续三场地和全部业务流程，蓝色外场／淡紫比赛区、连续步道、绿化、座椅、遮阳亭、围栏、运动照明造型及滨水城市远景；自写静态阳光着色器，不增加动画时钟或外部资产请求。实现与验证见 [阳光运动场交付](docs/delivery/sunshine-park-2026-10-30.md)。
 
@@ -35,7 +35,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 最新版本 16 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。连续三场地、全部赛事与现有记录保持，新增柔和蓝紫球场、阳光着色与滨水运动公园。195 项检查、六视口／手势／业务回归及生产验证通过，回执见 [阳光运动场交付](docs/delivery/sunshine-park-2026-10-30.md)。实际 iPhone 画面与持续性能仍待用户体验。
+- ChatGPT Sites 最新版本 17 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。下场只进入前后两排最近空位，挥拍与球共用拍面接触时间轴，Sophia 平滑落位后参与拉球。205 项检查、实际渲染误差采样、路径／业务界面及生产验证通过；现有记录摘要一致，回执见 [本次交付](docs/delivery/paddle-contact-and-bench-rows-2026-10-30.md)。真实 iPhone 观感与持续性能仍待用户体验。
 
 ## 从这里开始
 
