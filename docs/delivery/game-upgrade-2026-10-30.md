@@ -2,6 +2,8 @@
 
 日期：2026-10-30，Asia/Shanghai。基线 `06177a6`；最初范围为本地实现和可发布构建，完整目标来自用户提供的 goal-objective.md。交付后用户明确授权发布，已更新原 Site 为版本 4，见 [后续发布记录](game-upgrade-release-2026-10-30.md)。
 
+后续清理：已将代码合并 main，并按用户要求移除三个 D 盘开发 worktree 和对应分支；5180 开发服务已停止。下方原 worktree 路径、活动和服务状态是交付时的历史记录，不是当前运行入口。本地数据库及截图日志已核对备份至主工作区 `outputs/worktree-cleanup-2026-10-30/game-scene-upgrade/`。当前启动方式以 [主工作区 README](../../README.md#本地运行) 为准，备份数据库不会自动载入。
+
 ## 接手与隔离
 
 - 原工作区暂存区为空，只有两份 iPhone 研究文档未跟踪；保留原文件，并选择性复制到本工作区，不复制凭据或数据库。
@@ -10,7 +12,7 @@
 - 现有 5173（开发）与 5174（Wi-Fi 代理）归此前预览，本任务不停止或写入其活动。本任务使用开发端口 5180、生产预览 8788；数据库位于本 worktree。
 - 文件范围：venue、必要 app 装配、venue 测试和本次文档。不改 competition/records/session 语义、持久化协议、模板与托管配置。
 
-## 交付入口
+## 当时的交付入口（历史）
 
 集成目录：`D:\git_repository\freedom_world\SophiaPartyPlayground\work\game-scene-upgrade`，分支 `codex/game-scene-upgrade`。
 

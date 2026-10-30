@@ -2,6 +2,8 @@
 
 2026-10-30，Asia/Shanghai。用户在本地交付后明确要求“将这个新的版本进行发布，我到手机上去体验”，本次据此更新已有 public Site，替代最初仅本地交付的范围限制。
 
+后续工作区清理时，以下原 `outputs/` 证据已备份到主工作区 `outputs/worktree-cleanup-2026-10-30/game-scene-upgrade/outputs/`；原独立 worktree 与 5180 预览已移除。
+
 ## 体验入口
 
 - [正式活动](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)：保留已有活动状态。
