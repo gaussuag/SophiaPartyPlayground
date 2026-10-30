@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-30 协作赛制更新：所有访客含匿名可排阵、跨场移动、下场与首次录分，指定管理者确认开赛和本轮结束。录分后留场、新轮回候场、历史轮恢复原对阵；16 个文件 136 项检查及本地 HTTP／浏览器闭环通过，见 [本次交付记录](docs/delivery/round-flow-collaboration-2026-10-30.md)。
+- 2026-10-30 协作赛制更新已发布为 Sites 版本 6：所有访客含匿名可排阵、跨场移动、下场与首次录分，指定管理者确认开赛和本轮结束。录分后留场、新轮回候场、历史轮恢复原对阵；16 个文件 136 项检查及本地 HTTP／浏览器闭环通过，见 [本次交付记录](docs/delivery/round-flow-collaboration-2026-10-30.md)。
 - 2026-10-30 游戏化升级已按用户后续授权发布为 Sites 版本 4：统一触控序列、俯仰边界即时反向、权威快照驱动人物行走与状态动作，以及练习球／小太阳／风扇三种互动。117 项检查、最终构建及发布后匿名 HTTP 检查通过，正式活动数据保持一致；见 [版本 4 发布记录](docs/delivery/game-upgrade-release-2026-10-30.md)。本地实现、证据、启动和 iPhone 未测脚本见 [交付记录](docs/delivery/game-upgrade-2026-10-30.md)。
 - 2026-10-30 后续清理：三个开发分支及其 D 盘 worktree 已合入 main 并移除，本地测试数据和证据保存在忽略目录 `outputs/worktree-cleanup-2026-10-30/game-scene-upgrade/`。两个 C 盘 Codex 受管 worktree 仍被当前或其他对话占用，暂不能通过归档工具移除。
 - 已完成需求、交互、状态、数据、模块架构及实施计划文档。
@@ -19,7 +19,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 版本 4 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。正式活动已有用户操作记录，本次部署前后 revision=15、0 条赛果，完整公开状态摘要一致，未重置。仅 gaussuag777@gmail.com 兼任管理员与操作员，授权及初始化关闭状态保持。此前业务与权限证据见 [Sites 首发记录](docs/delivery/sites-public-release-2026-10-29.md)，新版手感仍待 iPhone 17 Safari 试用反馈。
+- ChatGPT Sites 版本 6 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。所有访客含匿名可排阵／首次录分，仅 gaussuag777@gmail.com 管理开赛、轮次及纠错。线上隔离活动已验证匿名排阵 → 管理者开赛 → 匿名录分，正式活动 revision=15、0 条赛果及完整公开状态摘要不变。发布回执与验证范围见 [本次交付](docs/delivery/round-flow-collaboration-2026-10-30.md)，Safari 实机验收由用户继续。
 
 ## 从这里开始
 

@@ -14,8 +14,8 @@
 - venue/scene-play.test.ts：三种有限互动的复位、取消、点击／滑动仲裁及 320×568 起的触区与底部 dock 留白。
 - fixtures/：从原始模板构建隔离的测试活动。
 - [verify-local.mjs](../scripts/verify-local.mjs)：针对开发服务和真实本地 D1 做完整 HTTP 演练；自动创建独立活动。
-- [verify-production.mjs](../scripts/verify-production.mjs)：针对本地生产构建检查只读权限、请求拒绝后 SSR 及产物隔离。使用已经在同一 worktree 初始化的测试 eventId。
-- [verify-public.mjs](../scripts/verify-public.mjs)：仅在 Sites 实际返回公开 URL 后执行，无管理 Cookie、真实身份或 bypass token；检查匿名读写边界和正式数据初始状态，另有伪造身份负例。不能代替独立未登录浏览器的实际页面验证。
+- [verify-production.mjs](../scripts/verify-production.mjs)：针对本地生产构建检查 guest 协作角色和管理隔离、请求拒绝后 SSR 及产物隔离。使用已经在同一 worktree 初始化的测试 eventId。
+- [verify-public.mjs](../scripts/verify-public.mjs)：仅在 Sites 实际返回公开 URL 后执行，无管理 Cookie、真实身份或 bypass token；检查公开 guest 身份、匿名管理拒绝和正式数据初始／活动中状态；匿名排阵／录分的正向验收另记录在隔离活动，另有伪造身份负例。不能代替独立未登录浏览器的实际页面验证。
 
 浏览器回归步骤与截图证据见 [首次验收](../docs/delivery/local-validation-2026-10-29.md) 和 [界面验收](../docs/delivery/ui-game-first-2026-10-29.md)。
 

@@ -24,7 +24,7 @@
 | 检查 | 结果 |
 | --- | --- |
 | 自动检查 | 16 个文件、136 项全部通过；含业务、真实 D1、session、原触控／动画及新流程 |
-| 类型 | 已通过；发布打包时再检查最终源码 |
+| 类型／生产构建 | 最终源码检查和官方 build-site 构建通过；保留 Three.js 大 chunk 体积提示 |
 | 相关 ESLint | 0 错误；records 既有三个未使用解构参数警告保留 |
 | 真实 HTTP＋本地 D1 | 独立活动 `local-http-f2b38088-ed0f-4897-b9e3-726ef09f6517` 跑完 7 轮20场、72 人次；移动／幂等、每轮并发推进、直接录分、历史更正、导出及恢复通过 |
 | 角色与并发 | guest／participant 可排阵／录分；开赛、轮次、纠错、初始化及备份恢复被拒绝；两个录分请求只成功一个；移动与开赛争抢同 revision 只成功一项 |
@@ -38,8 +38,35 @@
 
 真实 iPhone Safari、系统键盘、多物理设备及弱网／后台长时间验收仍由用户在发布后执行。匿名浏览器及不带 Cookie 的真实本地 HTTP 已验证协作权限；普通非管理登录账号仍用真实 D1 的可信上下文、身份分类和 session 接口验证，不冒充在线第二个真实账号已测。
 
+本地生产 Worker（8790）另验证 guest 身份、匿名安排／移出 200、匿名开赛 401、伪造身份不能管理、开发初始化及关闭的生产初始化 404、异常请求后 SSR、开发身份和服务端实现不进客户端。无 Cookie 的安排／移出后演练活动到 revision=32；生产预览已停止。
+
+本次验证服务 5190／8790 均已停止，临时本地浏览器页已关闭；隔离本地数据与证据保留在忽略目录，正式 Site 入口保留供手机验收。
+
 ## 发布
 
-复用 `.openai/hosting.json` 的原 public Site，保持 D1 绑定、管理名单及关闭的初始化窗口。生产构建、本地生产 HTTP 检查、正式／验收活动摘要比对和实际版本回执在发布后补齐。
+复用 `.openai/hosting.json` 的原 public Site，保持 D1 绑定、管理名单及关闭的初始化窗口；没有注册新 Site、重置活动或更改 schema。
+
+| 项目 | 官方回执 |
+| --- | --- |
+| 名称／链接标识 | Sophia Sunshine Cup／sophia-sunshine-cup |
+| URL | https://sophia-sunshine-cup.gaussuag777.chatgpt.site |
+| project_id | appgprj_6ae3626384448191b8fb8eecc7af7ced |
+| 功能提交 | 9b0e3488c26490a18fab2713c456210f667d1f4e |
+| 最终源码提交 | 19b7bdd681d8a209c82cc8d01ed4ddb0badf4ad7 |
+| 最终 Sites 版本 | 6 |
+| version_id | appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_7d792a7f5a208191bb36ad050ee4176f |
+| deployment_id | appgdep_6ae404ddd0f481918c3e971fa52eb9e9 |
+| 部署状态 | succeeded；运行配置 revision=3 |
+| 受众 | get_site 返回 public，策略 revision=2，latest_version_number=6 |
+
+首次 helper 启动 npm 子命令失败，未部署；改为 Node 直接执行 TypeScript 检查与官方 build-site 后成功。先以功能版 5 做线上隔离闭环，最终版 6 仅补齐移动操作的中文记录与访客详情文案，业务与权限不变；最终构建和公开 HTTP 再检查通过。
+
+线上隔离活动 `sophia-sunshine-cup-acceptance`：四次无 Cookie／令牌的匿名排阵从 revision=10 到 14；匿名开赛 401，真实授权管理者在 IAB 核对阵容并开赛到 15；随后无 Cookie 匿名提交 3 号场 11:6 到 16。重复原请求返回同一回执，不增加版本；匿名更正、轮次推进及备份均 401。原 1 号场 9:11 及两个历史版本保留；当前共有两个有效赛果、三个赛果版本。
+
+同一线上页面无需手动刷新收到匿名赛果，3 号场四人仍在场内；最终刷新无运行错误。截图为 `outputs/round-flow/site-result-tableau-390.png`，HTTP 证据为 `online-guest-flow.json`、`production-collaboration.json`。原始数据及导出均在忽略目录，不进入提交。
+
+最终版本发布前后，正式活动均 revision=15、0 条赛果；隔离活动均 revision=16、3 个赛果版本。两个完整公开状态 SHA-256 均一致，见 `pre-publish-final.json`／`post-publish-final.json`。正式活动从未用于本轮演练。2026-10-30 10:47 Asia/Shanghai 的最终 verify:public 通过：根页／数据 200，无登录跳转，guest 未被视为已登录；伪造身份忽略、匿名管理／备份 401、初始化关闭。
+
+独立未登录浏览器完整内容验收仍沿用此前发布记录中的未完成项；本轮不把无 Cookie HTTP 或已登录 IAB 当作独立匿名浏览器。真实 iPhone Safari 的本次功能验收由用户执行。
 
 手机复测：直接匿名安排／移出／跨场移动 → 指定账号确认开赛 → 任一访客提交比分 → 核对四人留场 → 三场齐备后由指定账号确认本轮结束 → 核对新轮候场与历史轮原对阵。第七轮以两场为完成条件。
