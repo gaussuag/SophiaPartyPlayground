@@ -3,7 +3,7 @@
 - venue/local-choreography.test.ts：通过实际 project／playerPlacement 与本机驱动 Interface 验证 0～4 人、1v2、双球热身／单球比赛、单打、换人／跨场／移除、录分后留场、历史恢复、个人候场边界、点击冻结、独立节奏及暂停／减少动态效果。动画不写业务记录。
 - competition/presentation.test.ts：核对“准备完成”不算已开赛、录分进度含义、第七轮 2/2 和协作／管理角色的下一步提示。
 
-[本机演出 harness](browser/rally-harness.html) 在开发服务用 `/tests/browser/rally-harness.html?event=local-...` 打开，先创建独立的空活动，按 1 → 5 执行。覆盖两客户端 0～4 人配对、单双球切换、候场点击稳定、暂停／恢复与请求计数、第二轮赛程定位、合成后台／减少动态效果信号、320×568 席位／头像热区，以及实际界面录分留场、自身回执不误报冲突、他端更正仍保留输入并要求核对。第四项是受控合成信号，不能替代系统偏好或 Safari 实机行为；该 harness 不进入生产构建。只对它自己的 local 活动写入，不重置已有记录。
+[本机演出 harness](browser/rally-harness.html) 在开发服务用 `/tests/browser/rally-harness.html?event=local-...` 打开，先创建独立的空活动，按 1 → 6 执行。覆盖两客户端 0～4 人配对、单双球切换、候场点击稳定、暂停／恢复与请求计数、第二轮赛程定位、合成后台／减少动态效果信号、320×568 席位／头像热区，实际界面录分留场、自身回执不误报冲突、他端更正仍保留输入并要求核对，以及四种视口的步骤提示／记分牌避让。第四项是受控合成信号，不能替代系统偏好或 Safari 实机行为；该 harness 不进入生产构建。只对它自己的 local 活动写入，不重置已有记录。
 
 检查命令见 [package.json](../package.json) scripts，测试选择与超时以 [vitest.config.ts](../vitest.config.ts) 为准，实际数量以当前 runner 输出为准。[CI](../.github/workflows/ci.yml) 自动运行现有检查；完整验收范围见 [validation-and-release.md](../docs/delivery/validation-and-release.md)。
 

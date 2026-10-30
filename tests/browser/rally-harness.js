@@ -187,3 +187,17 @@ document.querySelector('#scores').onclick = () => run(async () => {
   doc().querySelector('[aria-label="关闭记分牌并保留草稿"]').click();
   checks.push({case:'真实界面录分后留场、无假冲突；他端更正仍提示且保留输入',matchId:match.id,falseWarnings,participants,revision:state.revision});
 });
+
+document.querySelector('#clearance').onclick = () => run(async () => {
+  const sizes = [];
+  for (const [width,height] of [[320,568],[390,844],[800,600],[1280,720]]) {
+    frame.style.width=`${width}px`; frame.style.height=`${height}px`; await sleep(150);
+    doc().querySelector('[aria-label="Sophia 球馆总览"]').click(); await until(() => metric().dataset.cameraMoving === 'false', '全景未稳定'); await sleep(100);
+    const step = doc().querySelector('.game-step').getBoundingClientRect();
+    const boards = [...doc().querySelectorAll('.world-scoreboard')].map(b => b.getBoundingClientRect());
+    assert(boards.every(b => step.right <= b.left || step.left >= b.right || step.bottom <= b.top || step.top >= b.bottom), `${width}×${height} 步骤提示挡住记分牌`);
+    sizes.push({width,height,step:{x:step.x,y:step.y,width:step.width,height:step.height}});
+  }
+  frame.style.width='390px'; frame.style.height='844px';
+  checks.push({case:'手机与桌面全景步骤提示不挡记分牌',sizes});
+});
