@@ -48,7 +48,7 @@ async function run(task) {
   catch (error) { output.textContent = 'FAIL '+error.stack; }
   finally { for (const b of document.querySelectorAll('button')) b.disabled = false; }
 }
-output.textContent = '就绪。依次执行 1 → 3。';
+output.textContent = '就绪。依次执行 1 → 5。';
 document.querySelector('#rosters').onclick = () => run(async () => {
   for (const [white,black,count] of [[0,0,0],[1,0,0],[0,1,0],[1,1,1],[1,2,1],[2,1,1],[2,2,2]]) {
     await seats(white,black); assert(programmes()[0].ballCount === count, '计划球数错误');
@@ -147,4 +147,43 @@ document.querySelector('#preferences').onclick = () => run(async () => {
   doc().querySelector('[aria-label="关闭选人面板"]').click(); frame.style.width='390px'; frame.style.height='844px';
   assert(Number(metric().dataset.recordRevision) === revision, '本机偏好改变业务记录');
   checks.push({case:'合成后台/前台、减少动态效果信号、小屏空位/头像热区',revision,performance:JSON.parse(metric().dataset.performance),drawCalls:Number(metric().dataset.drawCalls)});
+});
+
+document.querySelector('#scores').onclick = () => run(async () => {
+  await read(); const match = state.matches.find(m => m.roundId === state.activeRoundId && m.phase === 'PLAYING') ?? state.matches.find(m => m.roundId === state.activeRoundId && m.phase === 'PLANNING');
+  assert(match, '需要同一独立活动中的待安排场次');
+  for (const slot of match.draftSlots) {
+    if (slot.playerId) continue;
+    const used = state.matches.filter(m => m.roundId === state.activeRoundId).flatMap(m => m.phase === 'PLANNING' ? m.draftSlots.map(s => s.playerId) : state.lineups.find(l => l.id === m.activeLineupRevisionId).participants.map(p => p.playerId));
+    const player = state.players.find(p => p.teamId === slot.sideId && (!slot.gender || p.gender === slot.gender) && !used.includes(p.id));
+    await command({type:'AssignPlayer',matchId:match.id,slotId:slot.id,playerId:player.id});
+  }
+  if (match.phase === 'PLANNING') await command({type:'StartMatch',matchId:match.id});
+  const number = state.courts.find(c => c.id === match.courtId).number;
+  doc().querySelector(`[aria-label="${number} 号场 · 录入赛果"]`).click();
+  await until(() => doc().querySelector('.world-scoreboard-editor'), '记分牌编辑未打开');
+  await until(() => metric().dataset.localAnimationActive === 'false', '录分期间未暂停本机演出');
+  async function enter(side, value) {
+    const input = doc().querySelector(`[aria-label="${side}队最终比分"]`);
+    Object.getOwnPropertyDescriptor(win().HTMLInputElement.prototype, 'value').set.call(input, value);
+    input.dispatchEvent(new (win().Event)('input', {bubbles:true})); await sleep(100);
+  }
+  await enter('白','11'); await enter('黑','6');
+  const falseWarnings = [], editor = doc().querySelector('.world-scoreboard-editor');
+  const observer = new (win().MutationObserver)(() => { const notice = editor.querySelector('.notice.warning'); if (notice) falseWarnings.push(notice.textContent); });
+  observer.observe(editor, {childList:true,subtree:true}); editor.querySelector('button[type="submit"]').click();
+  await until(() => !doc().querySelector('.world-scoreboard-editor'), '自己的录分成功后未关闭'); observer.disconnect();
+  await read(); const saved = state.matches.find(m => m.id === match.id);
+  assert(saved.phase === 'COMPLETED' && !falseWarnings.length, '自己的保存被误报为他端冲突');
+  assert(programmes().find(p => p.matchId === match.id).mode === 'rest', '录分后仍拉球');
+  const participants = state.lineups.find(l => l.id === saved.activeLineupRevisionId).participants.map(p => p.playerId);
+  assert(participants.every(id => doc().querySelector(`[data-player-id="${id}"]`).getAttribute('aria-label').includes('本轮已参赛')), '赛后阵容未保留');
+  doc().querySelector(`[aria-label="${number} 号场 · 更正比分"]`).click();
+  await until(() => doc().querySelector('.world-scoreboard-editor'), '更正入口未打开');
+  await enter('白','9'); await enter('黑','11');
+  await command({type:'CorrectResult',matchId:match.id,lineupRevisionId:saved.activeLineupRevisionId,resultRevisionId:saved.activeResultRevisionId,whiteScore:13,blackScore:11,reason:'SCORE_ENTRY_ERROR'});
+  await until(() => doc().querySelector('.notice.warning'), '真实他端更正未提示核对');
+  assert(doc().querySelector('[aria-label="白队最终比分"]').value === '9' && doc().querySelector('[aria-label="黑队最终比分"]').value === '11', '他端更正丢弃本机输入');
+  doc().querySelector('[aria-label="关闭记分牌并保留草稿"]').click();
+  checks.push({case:'真实界面录分后留场、无假冲突；他端更正仍提示且保留输入',matchId:match.id,falseWarnings,participants,revision:state.revision});
 });

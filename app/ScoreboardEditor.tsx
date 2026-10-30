@@ -17,6 +17,7 @@ export function ScoreboardEditor({ target, session, view, onClose, onRebind }: {
   const black = draft?.blackInput ?? String(result?.blackScore ?? "");
   const [reason, setReason] = useState<"SCORE_ENTRY_ERROR" | "SIDES_SWAPPED" | "REVERT_CORRECTION">("SCORE_ENTRY_ERROR");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -32,20 +33,24 @@ export function ScoreboardEditor({ target, session, view, onClose, onRebind }: {
     onRebind({ matchId: match.id, lineupRevisionId: match.activeLineupRevisionId!, resultRevisionId: match.activeResultRevisionId, generation: state.generation, participants });
     void session.saveDraft({ eventId: state.id, matchId: match.id, lineupRevisionId: match.activeLineupRevisionId!, resultRevisionId: match.activeResultRevisionId, generation: state.generation, whiteInput: white, blackInput: black, updatedAt: new Date().toISOString() });
   };
-  const busy = view.status === "saving";
+  const busy = view.status === "saving" || submitting;
   return <section ref={panel} tabIndex={-1} data-scene-ui className="world-scoreboard-editor" role="dialog" aria-modal="false" aria-labelledby="score-title" onKeyDown={e => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }}>
     <form className="score-inner" noValidate onSubmit={async e => {
       e.preventDefault(); setError("");
       if (!/^\d+$/.test(white) || !/^\d+$/.test(black) || !Number.isSafeInteger(Number(white)) || !Number.isSafeInteger(Number(black))) { setError("请填写双方非负整数比分，空白不等于 0"); return; }
       if (Number(white) === Number(black)) { setError("请输入有胜负的最终比分"); return; }
       if (stale) { setError("请先核对已变化的阵容和记录"); return; }
+      if (submitting) return;
+      setSubmitting(true);
       const scores = { matchId: target.matchId, lineupRevisionId: target.lineupRevisionId, whiteScore: Number(white), blackScore: Number(black) };
-      const ok = await session.dispatch(target.resultRevisionId ? { type: "CorrectResult", ...scores, resultRevisionId: target.resultRevisionId, reason } : { type: "SubmitResult", ...scores });
-      if (ok) { await session.clearDraft(match.id); onClose(); }
+      try {
+        const ok = await session.dispatch(target.resultRevisionId ? { type: "CorrectResult", ...scores, resultRevisionId: target.resultRevisionId, reason } : { type: "SubmitResult", ...scores });
+        if (ok) { await session.clearDraft(match.id); onClose(); }
+      } finally { setSubmitting(false); }
     }}>
       <header className="dialog-heading"><div><p className="eyebrow">第 {round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场 · {match.label}</p><h2 id="score-title">{readOnly ? "记分牌" : target.resultRevisionId ? "更正比分" : "最终比分"}</h2></div><button type="button" className="icon-button" aria-label="关闭记分牌并保留草稿" onClick={onClose}><X size={21} /></button></header>
       <div className="scoreboard-body">
-      {stale && <div className="notice warning" role="alert"><strong>阵容或赛果已在其他设备改变</strong><p>{readOnly ? "请关闭后重新打开记分牌，查看最新记录。" : "输入已保留。请查看最新名单与比分，再确认是否沿用输入。"}</p><p>{state.lineups.find(l => l.id === match.activeLineupRevisionId)?.participants.map(p => p.name).join(" / ")}</p><p>{match.activeResultRevisionId ? (() => { const r = state.results.find(r => r.id === match.activeResultRevisionId)!; return `当前有效比分：白队 ${r.whiteScore} : ${r.blackScore} 黑队`; })() : "当前尚无有效赛果"}</p>{!readOnly && <button type="button" className="button secondary" disabled={!match.activeLineupRevisionId} onClick={rebind}>已核对当前记录，沿用输入</button>}</div>}
+      {stale && !submitting && <div className="notice warning" role="alert"><strong>阵容或赛果已在其他设备改变</strong><p>{readOnly ? "请关闭后重新打开记分牌，查看最新记录。" : "输入已保留。请查看最新名单与比分，再确认是否沿用输入。"}</p><p>{state.lineups.find(l => l.id === match.activeLineupRevisionId)?.participants.map(p => p.name).join(" / ")}</p><p>{match.activeResultRevisionId ? (() => { const r = state.results.find(r => r.id === match.activeResultRevisionId)!; return `当前有效比分：白队 ${r.whiteScore} : ${r.blackScore} 黑队`; })() : "当前尚无有效赛果"}</p>{!readOnly && <button type="button" className="button secondary" disabled={!match.activeLineupRevisionId} onClick={rebind}>已核对当前记录，沿用输入</button>}</div>}
       <div className="score-inputs">
         {(["WHITE", "BLACK"] as const).map(side => <label key={side} className={`score-side ${side === "BLACK" ? "black-side" : ""}`}><span className="team-heading"><i className={`team-dot ${side.toLowerCase()}`} />{side === "WHITE" ? "白队" : "黑队"}</span><span className="score-names">{target.participants.filter(p => p.sideId === side).map(p => p.name).join(" / ")}</span>{readOnly ? <strong className="score-readout">{side === "WHITE" ? white || "—" : black || "—"}</strong> : <input autoComplete="off" inputMode="numeric" pattern="[0-9]*" type="text" maxLength={16} disabled={busy} aria-label={side === "WHITE" ? "白队最终比分" : "黑队最终比分"} placeholder="—" value={side === "WHITE" ? white : black} onChange={e => { setError(""); void save(side === "WHITE" ? e.target.value : white, side === "BLACK" ? e.target.value : black); }} />}</label>)}
       </div>
