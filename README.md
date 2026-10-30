@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-31 随机回球与场外走停已完成本地实现：比赛接球顺序、落点和弧线变化；未上场角色在场外步道自由走停，点选冻结。正在执行最终验证与发布，见 [本次交付](docs/delivery/varied-rally-and-spectators-2026-10-31.md)。
+- 2026-10-31 已发布原 public Site **版本 19**：比赛接球顺序、落点、弧线和落地时间增加变化；未上场角色在两侧步道自由走停，点选冻结。29 文件 229 项检查、真实双页面、触球及生产验证通过；线上数据摘要不变，见 [本次交付](docs/delivery/varied-rally-and-spectators-2026-10-31.md)。
 
 - 2026-10-31 已发布原 public Site **版本 18**：全员改为人物自身右手握拍、拍头更向右外倾；两位数比分完整；管理员「更多 → 重置比赛数据」带明确确认、原子前态备份、幂等与版本保护。220 项检查、双客户端、触球及生产验证通过；线上既有数据不变。见 [本次交付](docs/delivery/right-hand-reset-scoreboard-2026-10-31.md)。
 
@@ -32,14 +32,14 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已建立代码、数据、测试及资源目录；目录中的 README 是实现职责说明。
 - 已实现 Vinext + React + TypeScript + Three.js／R3F 应用、真实本地 D1 权威存储及四个业务 Module。
 - 三场地、新赛制七轮二十一场、角色排阵、录分、更正、同步、积分、导出和受控恢复已接通；旧二十场仍可读取恢复。
-- TypeScript 检查和当前 220 项自动检查通过；已移除三个场边互动的 14 项专属测试，新增 v2 名单／积分／恢复／天使检查。真实 HTTP＋D1 二十场、双客户端、排阵恢复及本机演出的历史证据保留；最新追加六种视口的状态区／工具条避让与选人回归。
+- TypeScript 检查和当前 229 项自动检查通过；已移除三个场边互动的 14 项专属测试，新增 v2 名单／积分／恢复／天使检查。真实 HTTP＋D1 二十场、双客户端、排阵恢复及本机演出的历史证据保留；最新追加六种视口的状态区／工具条避让与选人回归。
 - 界面以连续三场地 3D 球馆为主，通过缩放和平移查看单场，直接点人物／拖入场内位置。确认上场、录分和更正均从场内记分牌进入；见 [连续球馆与记分牌验证](docs/delivery/ui-continuous-venue-2026-10-29.md)，前次记录保留在 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
 - 记分牌已缩为场边单行操作牌，桌面移到候场区后方，竖屏留在场间空隙；见 [场边记分牌优化](docs/delivery/ui-courtside-scoreboard-2026-10-29.md)。
 - 单指旋转按固定枢轴直接跟手，双指缩放平移；回正、全景和球场近景使用统一过渡。人物资料卡居中，轮次／设置仍从底部弹出。最新 [旋转响应诊断与优化](docs/delivery/ui-orbit-response-2026-10-30.md) 记录了 iPhone 17 反馈及官方参考；前次记录见 [触控与人物弹窗优化](docs/delivery/ui-touch-orbit-2026-10-30.md)。
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 最新版本 18 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。右手握拍、外倾角度、完整两位数比分及管理员受控重置已生效；220 项检查、双客户端／恢复和生产验证通过，四个线上活动前后摘要一致。见 [本次交付](docs/delivery/right-hand-reset-scoreboard-2026-10-31.md)。真实 iPhone 观感与持续性能仍待用户体验。
+- ChatGPT Sites 最新版本 19 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。比赛随机回球、场外自由走停已生效，保留右手握拍、完整比分牌与管理员重置。229 项检查、双页面与生产验证通过，四个线上活动摘要一致。见 [本次交付](docs/delivery/varied-rally-and-spectators-2026-10-31.md)。真实 iPhone 观感与持续性能仍待用户体验。
 
 ## 从这里开始
 
