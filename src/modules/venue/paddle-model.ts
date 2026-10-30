@@ -18,10 +18,7 @@ export function paddleAppearance(playerId: string) {
   const index = known < 0 ? [...playerId].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 0) % palettes.length : known;
   return { key: index, ...palettes[index] };
 }
-/** Grip-centred, face towards +Z, blade towards +Y. A slight outward/forward
- * wrist angle keeps the blade upright and clear of the torso, like the reference. */
-export const PADDLE_MOUNT = { position: [0.015, -0.315, 0.065] as [number, number, number], rotation: [0.52, 0.12, -0.32] as [number, number, number] };
-export const PADDLE_TIP = [0, 0.51, 0] as const;
+export { PADDLE_MOUNT, PADDLE_TIP } from "./paddle-pose";
 
 function outline() {
   const s = new Shape();

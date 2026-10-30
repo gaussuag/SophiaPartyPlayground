@@ -83,12 +83,15 @@ export function slotPosition(slot: Slot, slots: Slot[]): Point {
   return [side.length === 1 ? 0 : index === 0 ? -1.5 : 1.5, 0.06, slot.sideId === "WHITE" ? 3.15 : -3.15];
 }
 export function benchMarkerPosition(side: RosterTeamId): Point {
-  return side === "FREE" ? [13.7, 0.1, 0] : [0, 0.1, side === "WHITE" ? 12.6 : -10.3];
+  return side === "FREE" ? [12.7, 0.1, 8.4] : [0, 0.1, side === "WHITE" ? 12.6 : -10.3];
+}
+export const BENCH_ROW_Z = 8.4;
+export function benchRows(layout: WorldLayout): [number, number, number][] {
+  const edge = layout.width / 2 - 1.3;
+  return [[-edge, edge, BENCH_ROW_Z], [-edge, edge, -BENCH_ROW_Z]];
 }
 export function benchAreas(layout: WorldLayout): [number, number, number, number][] {
-  const edge = layout.width / 2 - 1.3;
-  return [[-edge, edge, 6.8, 9.3], [-edge, edge, -9.3, -6.8],
-    ...[-13.15, -4.3, 4.3, 13.15].map(x => [x - .55, x + .55, -5.4, 5.4] as [number, number, number, number])];
+  return benchRows(layout).map(([left, right, z]) => [left, right, z - 1.4, z + 1.4]);
 }
 export function isBenchPoint(point: Point, side: RosterTeamId, layout: WorldLayout): boolean {
   const marker = benchMarkerPosition(side);
@@ -112,9 +115,9 @@ export function playerPlacement(state: EventState, view: EventProjection, player
   } else {
     const team = state.players.filter(p => p.teamId === player.teamId);
     const teamIndex = team.findIndex(p => p.id === playerId);
-    position = player.teamId === "FREE" ? [13.7, 0.07, 0] : [(teamIndex - (team.length - 1) / 2) * 3.6, 0.07, player.teamId === "WHITE" ? 8.4 : -8.4];
+    position = player.teamId === "FREE" ? [12.7, 0.07, BENCH_ROW_Z] : [(teamIndex - (team.length - 1) / 2) * 3.6, 0.07, player.teamId === "WHITE" ? 8.4 : -8.4];
   }
-  const facing = sideId === "WHITE" || !sideId && player.teamId === "WHITE" ? Math.PI : !sideId && player.teamId === "FREE" ? -Math.PI / 2 : 0;
+  const facing = sideId === "WHITE" || !sideId && player.teamId === "WHITE" ? Math.PI : !sideId && player.teamId === "FREE" ? Math.PI : 0;
   return { position, facing, onCourt: !!match, sideId };
 }
 export function courtNavigation(number: number, layout: WorldLayout, current = overview(layout)): Navigation {

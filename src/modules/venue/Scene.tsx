@@ -8,6 +8,7 @@ import { BOARD_SIZE, benchMarkerPosition, boardCenter, cameraView, courtCenter, 
 import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
 import { Avatar } from "./Avatar";
+import { PADDLE_FACE } from "./paddle-pose";
 import { ParkEnvironment } from "./ParkEnvironment";
 import { COURT_PALETTE, sunlitMaterial } from "./sunlight";
 import { AvatarPlacements } from "./avatar-placements";
@@ -186,7 +187,7 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
 }
 
 export function LabelProjection({ anchors, elements, baseZoom, timing }: { anchors: Anchors; elements: Elements; baseZoom: number; timing: VenuePerformance }) {
-  const point = useMemo(() => new Vector3(), []);
+  const point = useMemo(() => new Vector3(), []), paddlePoint = useMemo(() => new Vector3(), []);
   useFrame(({ camera, size }) => {
     const started = timing.enabled ? performance.now() : 0;
     camera.updateMatrixWorld();
@@ -203,6 +204,11 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
         element.dataset.localAction = String(node.parent?.userData.localAction ?? "rest");
         element.dataset.localHeld = String(!!node.parent?.userData.localHeld);
         element.dataset.worldPosition = `${point.x.toFixed(3)},${point.y.toFixed(3)},${point.z.toFixed(3)}`;
+        const grip = node.parent?.getObjectByName("paddle-grip");
+        if (grip) {
+          grip.updateWorldMatrix(true, false); paddlePoint.set(...PADDLE_FACE).applyMatrix4(grip.matrixWorld);
+          element.dataset.paddleCenter = paddlePoint.toArray().map(n => n.toFixed(4)).join(",");
+        }
       }
       point.project(camera);
       const scale = id.startsWith("court:") && !element.dataset.editor ? Math.min(1.3, Math.max(1, (camera as OrthographicCamera).zoom / baseZoom), (size.width - 24) / BOARD_SIZE.frameWidth) : 1;

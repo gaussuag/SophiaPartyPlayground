@@ -28,9 +28,9 @@ describe("shortest local routes and nearby exits", () => {
     const next: Point = [1.5,.18,3.15]; motion.retarget(next, Math.PI, layout, "live"); expect(motion.position).toEqual(visible);
     motion.step(0); expect(motion.position).toEqual(visible); motion.step(1/60,true); expect(motion.position).toEqual(next);
   });
-  it("chooses a continuous closest edge and avoids an occupied waiting position", () => {
+  it("chooses the closest spot in an end row and avoids an occupied waiting position", () => {
     const from: Point = [10.1,.18,3.15], near = nearestBenchPoint(from,layout);
-    expect(near[0]).toBeCloseTo(12.6); expect(near[2]).toBeCloseTo(from[2]); expect(distance(from,near)).toBeCloseTo(2.5);
+    expect(near[0]).toBeCloseTo(from[0]); expect(near[2]).toBeCloseTo(8.4); expect(distance(from,near)).toBeCloseTo(5.25);
     const other = nearestBenchPoint(from,layout,[near]); expect(distance(near,other)).toBeGreaterThanOrEqual(2.8-.00001);
     expect(isBenchPoint(other,"WHITE",layout)).toBe(true); expect(isBenchPoint(other,"BLACK",layout)).toBe(true);
   });
@@ -50,15 +50,15 @@ describe("shortest local routes and nearby exits", () => {
     let state=assign(open()); const poses=new AvatarPlacements(); poses.sync(state,project(state),layout);
     const visible: Point=[-12.5,.18,5.9]; state=step(state,{type:"RemovePlayer",matchId:"M-R01-C01",slotId:"WHITE-1"});
     poses.sync(state,project(state),layout,id=>id==="W02"?visible:undefined); const exit=poses.get("W02")!;
-    expect(distance(visible,exit.position)).toBeLessThan(2);
+    expect(distance(visible,exit.position)).toBeLessThan(3); expect(Math.abs(exit.position[2])).toBeCloseTo(8.4);
     poses.sync({...state,revision:state.revision+1},project(state),layout); expect(poses.get("W02")).toBe(exit);
   });
   it("moves everyone to distinct nearby edges on round advance and snaps only for history or restore", () => {
     let state=completeRound(open()); const poses=new AvatarPlacements(); poses.sync(state,project(state),layout); const context=poses.context;
-    const people=state.lineups.flatMap(l=>l.participants.map(p=>p.playerId)), onCourt=new Map(people.map(id=>[id,poses.get(id)!.position]));
+    const people=state.lineups.flatMap(l=>l.participants.map(p=>p.playerId));
     state=step(state,{type:"AdvanceRound",roundId:"R01"}); poses.sync(state,project(state),layout);
     expect(poses.context).toBe(context); const positions=people.map(id=>poses.get(id)!.position); expect(new Set(positions.map(p=>p.join())).size).toBe(people.length);
-    for(const [index,id] of people.entries()) { expect(isBenchPoint(positions[index],"WHITE",layout)).toBe(true); expect(poses.get(id)!.onCourt).toBe(false); expect(distance(onCourt.get(id)!,positions[index])).toBeLessThan(8); }
+    for(const [index,id] of people.entries()) { expect(isBenchPoint(positions[index],"WHITE",layout)).toBe(true); expect(poses.get(id)!.onCourt).toBe(false); expect(Math.abs(positions[index][2])).toBeCloseTo(8.4); }
     poses.sync(state,project(state,{roundId:"R01"}),layout); expect(poses.context).not.toBe(context); expect(poses.get(people[0])!.onCourt).toBe(true);
     const restored={...state,generation:1}; poses.sync(restored,project(restored),layout); expect(poses.get("W02")!.position).toEqual(playerPlacement(restored,project(restored),"W02",layout).position);
   });

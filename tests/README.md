@@ -46,3 +46,7 @@
 
 - venue/environment.test.ts：装饰顶点与设施不进入球场／候场／记分牌保留区、几何合并预算、静态材质变体隔离与资源复用。
 - [阳光运动场回归](browser/park-harness.html)：开发服务打开 /tests/browser/park-harness.html?event=local-新的编号，先执行原有 v2 业务回归，再执行环境检查。覆盖六种视口、固定场地坐标、全员与姓名触区、绘制预算、合成单指旋转／双指缩放、暂停后无额外持续循环、恢复及无业务写入。不能替代 iPhone Safari 实机；只创建新的独立本地活动，不重置既有演练。
+
+- venue/paddle-contact.test.ts：以真实 Three Group 层级独立核对接触点；1v1／1v2／2v1／双打／Sophia 的球面贴拍、连续边界、错峰热身、过网与落地；全员初始和跨轮候场只在两排。
+- [拍面触球回归](browser/paddle-contact-harness.html)：开发服务 /tests/browser/paddle-contact-harness.html?event=local-新的编号。实际场景与 D1、两个客户端，读取真实 paddleCenter 矩阵，采样接触帧误差、四人双球／三人单球／Sophia／比赛单球及录分清理。检查下场目标、可见到位和无动画写入。该量化补充不代替 Safari 实机观感。
+- short-routes.test.ts 与 short-routes-harness 已更新为前后排停留；原侧边最近点距离门槛不再代表新的范围约束。

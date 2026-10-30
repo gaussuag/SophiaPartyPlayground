@@ -1,26 +1,36 @@
 import type { EventProjection, EventState } from "../competition";
 import { avatarRoute, type TravelMode } from "./avatar-motion";
-import { benchAreas, courtCenter, playerPlacement, type Point, type WorldLayout } from "./world";
+import { benchRows, courtCenter, playerPlacement, type Point, type WorldLayout } from "./world";
 type Placement = ReturnType<typeof playerPlacement>;
 const separation = 2.8;
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const same = (a: Point, b: Point) => a.every((n, i) => Math.abs(n - b[i]) < .001);
-/** Closest available court-side waiting point, generated continuously from the
+/** Closest available point in the two end waiting rows, generated continuously from the
  * visible origin and nearby people. No roster index or fixed exit is involved. */
 export function nearestBenchPoint(from: Point, layout: WorldLayout, occupied: readonly Point[] = [], mode: TravelMode = "walk"): Point {
-  const areas = benchAreas(layout), candidates: Point[] = [];
-  const add = (x: number, z: number) => {
-    for (const [left, right, back, front] of areas) candidates.push([Math.max(left, Math.min(right, x)), .07, Math.max(back, Math.min(front, z))]);
-  };
-  add(from[0], from[2]);
-  for (const person of occupied) {
-    const angle = Math.atan2(from[2] - person[2], from[0] - person[0]);
-    for (let i = 0; i < 16; i++) add(person[0] + Math.cos(angle + i * Math.PI / 8) * separation, person[2] + Math.sin(angle + i * Math.PI / 8) * separation);
+  const rows = benchRows(layout), candidates: Point[] = [];
+  for (const [left, right, z] of rows) {
+    const add = (x: number) => candidates.push([Math.max(left, Math.min(right, x)), .07, z]);
+    add(from[0]); add(left); add(right);
+    // Exact exclusion boundaries on each line, rather than projecting an
+    // angular sample back to the row and accidentally losing feasible gaps.
+    for (const person of occupied) {
+      const dz = person[2] - z;
+      if (Math.abs(dz) < separation) {
+        const dx = Math.sqrt(separation * separation - dz * dz); add(person[0] - dx); add(person[0] + dx);
+      }
+    }
+    for (const n of [1, 2, 3]) { const c = courtCenter(n, layout)[0]; add(c - 3.25); add(c + 3.25); }
+    const pins = occupied.filter(p => Math.abs(p[2] - z) < separation).map(p => p[0]).sort((a,b) => a-b);
+    for (let i = 1; i < pins.length; i++) add((pins[i-1] + pins[i]) / 2);
   }
-  const clear = (point: Point) => occupied.every(other => distance(point, other) >= separation - 1e-6);
-  let available = candidates.filter(clear);
+  const clearance = (point: Point) => Math.min(...occupied.map(other => distance(point, other)), Infinity);
+  let available = candidates.filter(point => clearance(point) >= separation - 1e-6);
   if (!available.length) {
-    for (const [left, right, back, front] of areas) for (let x = left; x <= right; x += .45) for (let z = back; z <= front; z += .45) { const p: Point = [x, .07, z]; if (clear(p)) available.push(p); }
+    // An unusually spread-out crowd can cover both lines at the preferred
+    // spacing. Use the widest remaining gap, never an overlapping old seat.
+    const widest = Math.max(...candidates.map(clearance));
+    available = candidates.filter(point => clearance(point) >= widest - 1e-6);
   }
   available = available.sort((a, b) => distance(from, a) - distance(from, b));
   let best = available[0] ?? candidates[0], cost = Infinity;

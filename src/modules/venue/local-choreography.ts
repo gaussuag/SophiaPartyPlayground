@@ -2,15 +2,16 @@ import type { EventProjection, EventState, MatchView, TeamId } from "../competit
 import { playerPlacement, type Point, type WorldLayout } from "./world";
 
 import type { AvatarPlacements } from "./avatar-placements";
+import { RallyTimeline, type RallyBall, type StrokePose } from "./rally-motion";
 
 type Mode = "ready" | "warmup" | "playing" | "rest";
-type Actor = { id: string; side: TeamId; base: Point; facing: number; onCourt: boolean; matchId?: string };
+type Actor = { id: string; side: TeamId; base: Point; facing: number; onCourt: boolean; free: boolean; matchId?: string };
 export type CourtProgramme = { key: string; matchId: string; mode: Mode; white: string[]; black: string[]; sequences: string[][]; ballCount: number };
-export type ActorPose = { base: Point; offset: Point; yaw: number; swing: number; stretch: number; look: number; gait: number; walking: boolean; held: boolean; action: string };
-export type BallPose = { id: string; matchId: string; position: Point; bounce: number };
+export type ActorPose = { base: Point; offset: Point; yaw: number; swing: number; stretch: number; look: number; gait: number; walking: boolean; held: boolean; action: string; stroke?: StrokePose };
+export type BallPose = RallyBall & { id: string; matchId: string };
 type Routine = { clock: number; duration: number; action: "rest" | "walk" | "stretch" | "paddle" | "watch"; from: Point; to: Point; random: () => number };
 type Runtime = { actor: Actor; pose: ActorPose; routine: Routine; grace: number };
-type Court = { plan: CourtProgramme; clock: number; duration: number };
+type Court = { plan: CourtProgramme; clock: number; duration: number; rallies: RallyTimeline[] };
 const zero = (): Point => [0, 0, 0];
 const copy = (p: Point): Point => [...p];
 const mix = (a: Point, b: Point, t: number): Point => a.map((n, i) => n + (b[i] - n) * t) as Point;
@@ -59,7 +60,7 @@ export class LocalChoreography {
     if (!this.enabled) this.ballsValue = [];
     if (reduced) for (const runtime of this.actors.values()) {
       runtime.pose.offset = zero(); runtime.pose.yaw = runtime.actor.facing;
-      runtime.pose.swing = runtime.pose.stretch = runtime.pose.look = runtime.pose.gait = 0; runtime.pose.walking = false;
+      runtime.pose.stroke = undefined; runtime.pose.swing = runtime.pose.stretch = runtime.pose.look = runtime.pose.gait = 0; runtime.pose.walking = false;
     }
   }
   interact(change: { pressed?: string | null; locked?: string[] }) {
@@ -78,7 +79,7 @@ export class LocalChoreography {
       const canonical = playerPlacement(state, view, player.id, layout), local = positions?.get(player.id);
       const placement = !canonical.onCourt && local && !local.onCourt ? local : canonical;
       const match = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants).some(p => p.playerId === player.id));
-      const actor: Actor = { id: player.id, side: placement.sideId ?? (player.teamId === "BLACK" ? "BLACK" : "WHITE"), base: placement.position, facing: placement.facing, onCourt: placement.onCourt, matchId: match?.id };
+      const actor: Actor = { id: player.id, side: placement.sideId ?? (player.teamId === "BLACK" ? "BLACK" : "WHITE"), base: placement.position, facing: placement.facing, onCourt: placement.onCourt, free: player.teamId === "FREE", matchId: match?.id };
       const old = !reset && previous.get(player.id);
       if (old && old.actor.onCourt === actor.onCourt && old.actor.matchId === actor.matchId && distance(old.actor.base, actor.base) < .001) { old.actor = actor; old.pose.base = actor.base; return [player.id, old]; }
       const rng = random(this.seed ^ hash(player.id + context));
@@ -88,7 +89,10 @@ export class LocalChoreography {
     const previousCourts = this.courts;
     this.courts = plans.map(plan => {
       const variation = (hash(plan.key) ^ this.seed) >>> 0;
-      return previousCourts.find(c => c.plan.key === plan.key) ?? { plan, clock: 0, duration: plan.mode === "playing" ? .72 + (variation % 9) / 100 : 1.28 + (variation % 13) / 100 };
+      const duration = plan.mode === "playing" ? .72 + (variation % 9) / 100 : 1.28 + (variation % 13) / 100;
+      const actors = [...this.actors.values()].map(({ actor }) => ({ id: actor.id, base: actor.base, free: actor.free }));
+      return previousCourts.find(c => c.plan.key === plan.key) ?? { plan, clock: 0, duration,
+        rallies: plan.sequences.map((sequence, lane) => new RallyTimeline(sequence, actors, duration, lane * .43, plan.mode === "playing")) };
     });
     const validBalls = new Set(plans.flatMap(plan => plan.sequences.map((_, lane) => `${plan.key}:${lane}`)));
     this.ballsValue = this.ballsValue.filter(ball => validBalls.has(ball.id));
@@ -114,37 +118,18 @@ export class LocalChoreography {
       const live = court.plan.mode === "playing", ready = court.plan.mode === "ready";
       for (const id of ids) {
         const runtime = this.actors.get(id)!; const p = runtime.pose, phase = court.clock + (hash(id) % 31) / 7;
-        p.action = court.plan.mode; p.held = false; p.walking = false;
+        p.stroke = undefined; p.action = court.plan.mode; p.held = false; p.walking = false;
         p.offset = [Math.sin(phase * (live ? 1.9 : .9)) * (live ? .38 : ready ? .065 : .13), 0, Math.sin(phase * 1.3) * (live ? .24 : ready ? .045 : .08)];
         p.yaw = runtime.actor.facing; p.swing = ready ? Math.sin(phase * 2) * .16 : 0;
         p.stretch = 0; p.look = Math.sin(phase * .9) * .15; p.gait = live ? Math.sin(phase * 8) * .24 : Math.sin(phase * 2) * .035;
       }
-      for (let lane = 0; lane < court.plan.sequences.length; lane++) {
-        const sequence = court.plan.sequences[lane];
-        const phase = court.clock / court.duration + lane * .43;
-        const index = Math.floor(phase), u = phase - index;
-        const from = this.actors.get(sequence[index % sequence.length])!, to = this.actors.get(sequence[(index + 1) % sequence.length])!;
-        const start = this.contact(from), end = this.contact(to);
-        const bounce: Point = [end[0], .21, end[2] + (to.actor.side === "WHITE" ? -.9 : .9)];
-        const t = u < .72 ? u / .72 : (u - .72) / .28;
-        const position = u < .72 ? mix(start, bounce, t) : mix(bounce, end, t);
-        position[1] += Math.sin(Math.PI * t) * (u < .72 ? live ? 1.05 : 1.4 : .23);
-        this.ballsValue.push({ id: `${court.plan.key}:${lane}`, matchId: court.plan.matchId, position, bounce: Math.max(0, 1 - Math.abs(u - .72) / .08) });
-        from.pose.swing = Math.max(from.pose.swing, Math.exp(-((u / .13) ** 2)));
-        to.pose.swing = Math.max(to.pose.swing, Math.exp(-(((1 - u) / .18) ** 2)));
-        for (const id of ids) {
-          const runtime = this.actors.get(id)!;
-          const toward = Math.atan2(position[0] - runtime.actor.base[0], position[2] - runtime.actor.base[2]);
-          const angle = Math.atan2(Math.sin(toward - runtime.actor.facing), Math.cos(toward - runtime.actor.facing));
-          runtime.pose.yaw = runtime.actor.facing + Math.max(-.5, Math.min(.5, angle));
-        }
+      for (let lane = 0; lane < court.rallies.length; lane++) {
+        const sample = court.rallies[lane].sample(court.clock);
+        for (const [id, pose] of sample.poses) Object.assign(this.actors.get(id)!.pose, pose);
+        this.ballsValue.push({ id: `${court.plan.key}:${lane}`, matchId: court.plan.matchId, ...sample.ball });
       }
     }
     return this.actors.size > 0;
-  }
-  private contact(runtime: Runtime): Point {
-    const p = runtime.pose, a = runtime.actor;
-    return [a.base[0] + p.offset[0] + (a.side === "WHITE" ? -.3 : .3), a.base[1] + .98, a.base[2] + p.offset[2] + (a.side === "WHITE" ? -.28 : .28)];
   }
   private bench(runtime: Runtime, dt: number) {
     const r = runtime.routine, p = runtime.pose; r.clock += dt;

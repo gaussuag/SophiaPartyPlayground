@@ -9,6 +9,7 @@ import { AvatarMotion } from "./avatar-motion";
 import { AvatarAttention } from "./avatar-attention";
 import { AngelWings } from "./AngelWings";
 import { Paddle } from "./Paddle";
+import { AVATAR_SCALE, RIGHT_SHOULDER } from "./paddle-pose";
 import { angelPose } from "./angel-pose";
 import { avatarAppearance } from "./avatar-appearance";
 import type { LocalChoreography } from "./local-choreography";
@@ -66,8 +67,9 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const settled = !motion.moving && sameBase;
     choreography.arrived(player.id, settled);
     const target = settled && local ? local.offset : [0, 0, 0];
+    const stroke = settled && !reduced ? local?.stroke : undefined;
     if (reduced || moving) decoration.current = [0, 0, 0];
-    else if (enabled && !local?.held) decoration.current = decoration.current.map((n, i) => n + (target[i] - n) * Math.min(1, dt * 12)) as Point;
+    else if (enabled && !local?.held) decoration.current = stroke ? [...target] as Point : decoration.current.map((n, i) => n + (target[i] - n) * Math.min(1, dt * 12)) as Point;
     const swing = settled && local ? local.swing : 0, stretch = settled && local ? local.stretch : 0;
     const look = settled && local ? local.look : 0, gait = settled && local ? local.gait : 0;
     a.selected = Math.max(0, a.selected - dt); a.result = Math.max(0, a.result - dt);
@@ -89,8 +91,8 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     if (reduced || !choreography.active) flight.current.lift = airborne.lift;
     else if (!local?.held || moving) flight.current.lift += (airborne.lift - flight.current.lift) * Math.min(1, dt * 10);
     root.current.userData.flying = angel && motion.moving;
-    body.current.position.y = angel ? flight.current.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
-    body.current.rotation.z = angel ? airborne.bank : walking ? Math.sin(phase) * 0.025 : gait * .04;
+    body.current.position.y = stroke ? stroke.lift : angel ? flight.current.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
+    body.current.rotation.z = stroke ? 0 : angel ? airborne.bank : walking ? Math.sin(phase) * 0.025 : gait * .04;
     head.current.rotation.x = -selection * 0.12 + (a.resultKind === "acknowledge" ? cheer * 0.18 : 0);
     head.current.rotation.y = look;
     const stride = angel ? 0 : walking ? Math.sin(phase) * 0.5 : gait;
@@ -99,13 +101,15 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     rightArm.current.rotation.x = -0.22 + stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.35 : 0) - swing * 1.35;
     leftArm.current.rotation.z = -0.12 - stretch * 1.8 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
     rightArm.current.rotation.z = 0.12 + selection * 0.4 + stretch * 1.8 + swing * .35 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0) + invitation.wave;
+    rightArm.current.rotation.y = 0;
+    if (stroke) rightArm.current.rotation.set(...stroke.arm);
     leftLeg.current.position.x = status === "playing" ? -0.16 : -0.12;
     rightLeg.current.position.x = status === "playing" ? 0.16 : 0.12;
     if (enabled && (moving || invitation.animating || a.selected > 0 || a.result > 0)) invalidate();
   });
   const { skin, hair, shirt, trousers } = avatarAppearance(index, player.teamId, muted);
   const ringColor = selected ? "#e4fc86" : status === "playing" ? "#84ded0" : status === "played_this_round" ? "#c8a86a" : "#e6cb85";
-  return <group ref={root} position={initial} scale={1.55} userData={{ playerId: player.id }} onPointerDown={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); begin(player.id, event.nativeEvent); }}>
+  return <group ref={root} position={initial} scale={AVATAR_SCALE} userData={{ playerId: player.id }} onPointerDown={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); begin(player.id, event.nativeEvent); }}>
     {candidateKey && <group ref={invitationRing} position={[0, 0.028, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.5, 0.62, 32]} /><meshBasicMaterial color="#e8ff89" transparent opacity={0.95} depthWrite={false} /></mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.5, 24]} /><meshBasicMaterial color="#e2fa91" transparent opacity={0.24} depthWrite={false} /></mesh>
@@ -116,7 +120,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
       {angel && <AngelWings pose={flight} />}
       <mesh geometry={torsoGeometry} position={[0, 0.68, 0]}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
       <group ref={leftArm} position={[-0.28, 0.84, 0]} rotation={[0, 0, -0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
-      <group ref={rightArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}>
+      <group ref={rightArm} position={RIGHT_SHOULDER} rotation={[0, 0, 0.12]}>
         <mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
         <Paddle playerId={player.id} skin={skin} />
       </group>

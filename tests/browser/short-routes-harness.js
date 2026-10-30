@@ -61,6 +61,7 @@ document.querySelector('#run').onclick=async()=>{
   assert(flights[1].start[2]*flights[1].target[2]<0,'没有跨网飞行');
   const oldHome=flights[0].start, exit=await leave('B01'); await read(); await synced();
   assert(distance(exit.start,exit.target)<distance(exit.start,oldHome)-1,'Sophia 仍回原候场位置');
+  assert(Math.abs(Math.abs(exit.target[2])-8.4)<.001,'Sophia 未返回前后候场排');
   const walk=await choose('W02'); await read(); await synced(); const walkExit=await leave('W02'); await read(); await synced();
   assert(distance(walkExit.start,walkExit.target)<distance(walkExit.start,walk.start)-.5,'普通选手未就近下场');
   assert(distance(exit.target,walkExit.target)>2.79,'两名下场人物重叠');
