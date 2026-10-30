@@ -61,7 +61,8 @@ export function worldLayout(width: number, height: number) {
   return {
     portrait, compact, courtSpacing, cameraOffset, cameraUp, boardOffset,
     viewportWidth: width, viewportHeight: height,
-    framingY: Math.max(0, 68 - height / 2 + signTop) - (portrait && height < 680 ? 40 : 0),
+    // Reserve the header/camera strip; status lives in the bottom action stack.
+    framingY: Math.max(0, 128 - height / 2 + signTop),
     width: 30,
     length: 31.4,
     floorCenterZ: -0.8,
@@ -116,7 +117,8 @@ export function courtNavigation(number: number, layout: WorldLayout, current = o
   const xs = corners.map(p => dot(p, right)), ys = corners.map(p => dot(p, view.up));
   const boardX = dot(layout.boardOffset, right), boardY = dot(layout.boardOffset, view.up);
   const spanX = Math.max(...xs, boardX) - Math.min(...xs, boardX), spanY = Math.max(...ys, boardY) - Math.min(...ys, boardY);
-  const top = layout.viewportHeight < 500 ? 60 : 104, bottom = layout.portrait ? Math.min(300, layout.viewportHeight * 0.4) : 112;
+  const top = layout.viewportHeight < 500 ? 60 : 144;
+  const bottom = layout.portrait ? Math.max(200, Math.min(300, layout.viewportHeight * 0.4) - 40) : 112;
   const width = layout.viewportWidth - 32, height = layout.viewportHeight - top - bottom;
   const desired = layout.baseZoom * (layout.portrait ? 2.8 : 1.5);
   const halfWidth = BOARD_SIZE.frameWidth * 1.3 / 2, halfHeight = BOARD_SIZE.frameHeight * 1.3 / 2;

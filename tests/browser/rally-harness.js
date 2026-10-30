@@ -189,15 +189,38 @@ document.querySelector('#scores').onclick = () => run(async () => {
 });
 
 document.querySelector('#clearance').onclick = () => run(async () => {
-  const sizes = [];
-  for (const [width,height] of [[320,568],[390,844],[800,600],[1280,720]]) {
+  const sizes = [], revision = Number(metric().dataset.recordRevision);
+  const outside = (a,b) => a.right<=b.left || a.left>=b.right || a.bottom<=b.top || a.top>=b.bottom;
+  const box = element => { const r=element.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height}; };
+  for (const [width,height] of [[320,568],[390,600],[402,680],[430,932],[800,600],[1280,720]]) {
     frame.style.width=`${width}px`; frame.style.height=`${height}px`; await sleep(150);
     doc().querySelector('[aria-label="Sophia 球馆总览"]').click(); await until(() => metric().dataset.cameraMoving === 'false', '全景未稳定'); await sleep(100);
     const step = doc().querySelector('.game-step').getBoundingClientRect();
     const boards = [...doc().querySelectorAll('.world-scoreboard')].map(b => b.getBoundingClientRect());
-    assert(boards.every(b => step.right <= b.left || step.left >= b.right || step.bottom <= b.top || step.top >= b.bottom), `${width}×${height} 步骤提示挡住记分牌`);
-    sizes.push({width,height,step:{x:step.x,y:step.y,width:step.width,height:step.height}});
+    assert(boards.every(b => outside(step,b)), `${width}×${height} 全景步骤提示挡住记分牌`);
+    doc().querySelectorAll('.game-dock button')[1].click(); await until(() => doc().querySelector('.schedule-round.active'), '赛程未打开');
+    doc().querySelector('.schedule-round.active>div').children[2].click(); await until(() => metric().dataset.cameraMoving === 'false' && !doc().querySelector('.world-camera-controls').hidden, '近景工具条未显示'); await sleep(100);
+    const status=doc().querySelector('.game-step'), controls=doc().querySelector('.world-camera-controls');
+    assert(outside(status.getBoundingClientRect(),controls.getBoundingClientRect()), `${width}×${height} 状态卡与工具条重叠`);
+    assert(outside(controls.getBoundingClientRect(),doc().querySelectorAll('.world-scoreboard')[2].getBoundingClientRect()), `${width}×${height} 近景工具条挡住本场记分牌`);
+    assert([...controls.querySelectorAll('button')].every(b => { const r=b.getBoundingClientRect(); return r.left>=0 && r.right<=width && r.width>=44 && r.height>=44; }), '视角按钮超出视口或触区过小');
+    const zoom=Number(metric().dataset.cameraZoom); doc().querySelector('[aria-label="放大球馆"]').click(); await until(() => metric().dataset.cameraMoving==='false' && Number(metric().dataset.cameraZoom)>zoom, '放大按钮失效');
+    doc().querySelector('[aria-label="缩小球馆"]').click(); await until(() => metric().dataset.cameraMoving==='false', '缩小未完成');
+    assert(outside(status.getBoundingClientRect(),controls.getBoundingClientRect()), '缩放后重新重叠');
+    assert(!doc().querySelector('[data-scene-play],.play-anchor'), '三个场边互动未删除');
+    sizes.push({width,height,status:box(status),controls:box(controls)});
   }
+  assert(Number(metric().dataset.recordRevision)===revision, '界面检查改变了赛事');
+  const peerDoc=peer.contentDocument, peerWin=peer.contentWindow, nativeFetch=peerWin.fetch.bind(peerWin);
+  let guestRole;
+  peerWin.fetch=async (input,init) => { const response=await nativeFetch(input,{...init,credentials:'omit'}); if(String(input)===root && response.status===200) guestRole=(await response.clone().json()).role; return response; };
+  peer.style.width='402px'; peer.style.height='680px'; peerDoc.querySelector('.sync-icon').click();
+  await until(() => guestRole==='guest' && peerDoc.querySelector('.game-step')?.textContent.includes('等待管理者'), '匿名协作的等待管理者提示未出现');
+  assert(!peerDoc.querySelector('.game-primary-action>.button'), '访客显示了管理按钮');
+  peerDoc.querySelectorAll('.game-dock button')[1].click(); await until(() => peerDoc.querySelector('.schedule-round.active'), '访客赛程未打开');
+  peerDoc.querySelector('.schedule-round.active>div').children[2].click(); await until(() => metric(peer).dataset.cameraMoving==='false' && !peerDoc.querySelector('.world-camera-controls').hidden, '访客近景未就绪');
+  assert(outside(peerDoc.querySelector('.game-step').getBoundingClientRect(),peerDoc.querySelector('.world-camera-controls').getBoundingClientRect()), '访客等待卡片与工具条重叠');
+  peerWin.fetch=nativeFetch;
   frame.style.width='390px'; frame.style.height='844px';
-  checks.push({case:'手机与桌面全景步骤提示不挡记分牌',sizes});
+  checks.push({case:'六种视口、近景工具条/状态卡避让、缩放仍可用、三个互动移除',revision,sizes,guestRole});
 });

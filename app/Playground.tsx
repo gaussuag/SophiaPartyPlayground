@@ -196,6 +196,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const allClosed = state?.phase === "ACTIVE" && state.rounds.every(r => r.phase === "CLOSED");
   const profile = state?.players.find(p => p.id === profileId);
   const step = state && projection ? venueStep(state, projection, focused, canManage, !readOnly) : null;
+  const feedback = message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (staleSlot) setSlotFocus(null); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>;
   function startMatch(match: MatchView) {
     if (!state || !projection || !canWrite || !canManage || !match.canStart) return;
     setCourtId(match.courtId);
@@ -228,11 +229,12 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       <div className="game-header-actions"><button className={"icon-button sync-icon " + (view?.status ?? "loading")} aria-label={"同步记录：" + (view?.message ?? "连接中")} onClick={() => void session?.refresh()}>{busy || view?.status === "loading" ? <LoaderCircle size={19} className="spin" /> : view?.status === "offline" || view?.status === "unknown-outcome" ? <CloudOff size={20} /> : <CloudCheck size={20} />}</button><button className="icon-button" disabled={!!score} aria-label="更多选项" onClick={() => setPanel("tools")}><Ellipsis size={22} /></button></div>
     </header>
     <output className="sr-only" aria-live="polite">{view?.message}</output>
-    {message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (staleSlot) setSlotFocus(null); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>}
-    {state && projection && view && session && <><div className="game-context">
-      {!panel && !score && !edit && !selection && !slotFocus && !message && step && <p className="game-step"><strong>{focused && `${state.courts.find(c => c.id === focused.courtId)!.number} 号场 · `}{step.status}</strong><span>{step.next}</span></p>}
-      {edit && <div className="game-edit-banner"><span>更正参赛者</span><button className="icon-button" aria-label="取消名单更正" onClick={() => editLineup(null)}><X size={16} /></button></div>}
-    </div>{!score && <div className="game-hud">
+    {(!state || score) && feedback}
+    {state && projection && view && session && <>{!score && <div className="game-hud">
+      <div className="game-context">{feedback}
+        {!panel && !score && !edit && !selection && !slotFocus && !message && step && <p className="game-step"><strong>{focused && !projection.canAdvance && `${state.courts.find(c => c.id === focused.courtId)!.number} 号场 · `}{step.status}</strong><span>{step.next}</span></p>}
+        {edit && <div className="game-edit-banner"><span>更正参赛者</span><button className="icon-button" aria-label="取消名单更正" onClick={() => editLineup(null)}><X size={16} /></button></div>}
+      </div>
       {!edit && viewedRoundId && viewedRoundId !== state.activeRoundId && state.activeRoundId && <button className="game-current-link" onClick={() => chooseRound(state.activeRoundId!)}>返回当前轮 <ArrowRight size={13} /></button>}
       {selection && chosenPlayer ? <div className="game-selection-bar"><i className={"team-dot " + chosenPlayer.teamId.toLowerCase()} /><strong>{chosenPlayer.name}</strong>{reservation && !edit && <button className="return-player" aria-label={"移出 " + chosenPlayer.name} disabled={!canWrite} onClick={() => void returnToBench(chosenPlayer.id, selection.basis)}><RotateCcw size={15} />回候场</button>}<button className="icon-button" aria-label="查看球友资料" onClick={() => setProfileId(chosenPlayer.id)}><Info size={17} /></button><button className="icon-button" aria-label="取消选择球友" onClick={clearSelection}><X size={18} /></button></div>
         : slotFocus && chosenPosition ? <SlotPicker key={`${slotFocus.matchId}:${slotFocus.slotId}`} target={chosenPosition} courtNumber={state.courts.find(c => c.id === chosenPosition.courtId)!.number} players={candidates} roster={state.players} disabled={!canArrange} onClose={clearSelection} onChoose={playerId => void place(playerId, slotFocus.matchId, slotFocus.slotId, slotFocus.basis)} />

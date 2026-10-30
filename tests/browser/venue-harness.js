@@ -44,7 +44,7 @@ document.querySelector('#gestures').onclick=()=>run(async()=>{
  const person=doc().querySelector('[data-player-id="W01"]'),r=person.getBoundingClientRect();
  emit('pointerdown',1,r.x+r.width/2,r.y+r.height/2,person);emit('pointermove',1,180,400);emit('pointerdown',2,250,400,doc().querySelector('.world-scoreboard'));
  emit('pointerup',1,180,400);emit('pointermove',2,280,450);emit('pointerup',2,280,450);await painted();assert(pose().recordRevision===revision,'多指误提交人物');checks.push({case:'拖人时第二指落在记分牌',result:'取消无提交'});
- await home();const toy=doc().querySelector('[data-scene-play="ball"]'),tr=toy.getBoundingClientRect();emit('pointerdown',1,tr.x+20,tr.y+20,toy);emit('pointermove',1,tr.x+60,tr.y+20,toy);emit('pointerup',1,tr.x+60,tr.y+20,toy);toy.dispatchEvent(new(win().MouseEvent)('click',{bubbles:true,detail:1,clientX:tr.x+60,clientY:tr.y+20}));await painted();assert(toy.dataset.active==='false','划动误触玩具');checks.push({case:'从玩具按钮滑动',result:'相机可转、无彩蛋'});
+ assert(!doc().querySelector('[data-scene-play],.play-anchor'),'场边互动入口未移除');checks.push({case:'移除三个场边互动',result:'按钮与投影锚点均不存在'});
  await home();const layer=doc().querySelector('.projected-labels');
  doc().querySelector('[data-player-id="W07"]').scrollIntoView({block:'center'});await painted();
  assert(layer.scrollTop===0&&layer.scrollLeft===0,'聚焦滚动使 DOM 标签脱离 3D 坐标');

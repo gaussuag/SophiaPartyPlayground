@@ -6,8 +6,6 @@ import { Vector3 } from "three";
 import { LabelProjection, Scene, SceneMetrics, slotKey, type Anchors, type Elements, type Point } from "./Scene";
 import { CameraMotion } from "./camera-motion";
 import { CameraHud } from "./camera-hud";
-import { ScenePlay, ScenePlayLabels } from "./ScenePlay";
-import { ScenePlayController } from "./scene-play";
 import { VenuePerformance } from "./venue-performance";
 import { VenueInput, groundAt, type PointerSample } from "./venue-input";
 import { LocalChoreography } from "./local-choreography";
@@ -55,7 +53,6 @@ export function Venue(props: VenueProps) {
   const [editorSize, setEditorSize] = useState({ width: 340, height: 390 });
   const [motion] = useState(() => new CameraMotion(overview(layout)));
   const [hud] = useState(() => new CameraHud(root));
-  const [play] = useState(() => new ScenePlayController());
   const [timing] = useState(() => new VenuePerformance(typeof window !== "undefined" && new URLSearchParams(window.location.search).has("venueMetrics")));
   const [input] = useState(() => new VenueInput(motion));
   const [choreography] = useState(() => new LocalChoreography());
@@ -63,7 +60,7 @@ export function Venue(props: VenueProps) {
   useEffect(() => {
     const previous = previousView.current;
     if (previous.key === props.cameraRequest.key && previous.layout === layout) return;
-    input.cancel(); play.cancel();
+    input.cancel();
     const changed = previous.key !== props.cameraRequest.key;
     const court = changed ? props.state.courts.find(c => c.id === props.cameraRequest.courtId) : undefined;
     const current = motion.snapshot();
@@ -77,7 +74,7 @@ export function Venue(props: VenueProps) {
     motion.move(court ? courtNavigation(court.number, layout, current) : !changed && sameOrientation && previous.measured ? constrainNavigation(resized, layout) : overview(layout), !changed);
     previousView.current = { key: props.cameraRequest.key, layout, measured: true };
     invalidate.current?.();
-  }, [layout, motion, input, play, props.cameraRequest.key, props.cameraRequest.courtId, props.state.courts]);
+  }, [layout, motion, input, props.cameraRequest.key, props.cameraRequest.courtId, props.state.courts]);
 
   useEffect(() => {
     const node = root.current; if (!node) return;
@@ -103,7 +100,7 @@ export function Venue(props: VenueProps) {
     const observer = new ResizeObserver(entries => { const box = entries[0].borderBoxSize[0]; setEditorSize({ width: box.inlineSize, height: box.blockSize }); });
     observer.observe(node); return () => observer.disconnect();
   }, [props.editor?.matchId]);
-  useEffect(() => { if (props.editor || lost || props.animationActive === false) { input.cancel(); play.cancel(); } }, [props.editor, lost, input, play, props.animationActive]);
+  useEffect(() => { if (props.editor || lost || props.animationActive === false) { input.cancel(); } }, [props.editor, lost, input, props.animationActive]);
 
   function projectPointer(clientX: number, clientY: number): Point | null {
     return input.ground({ x: clientX, y: clientY });
@@ -252,12 +249,11 @@ export function Venue(props: VenueProps) {
         setLost(false);
       }} fallback={<span>三维球馆画布</span>}>
         <ambientLight intensity={1.65} /><directionalLight position={[6, 15, 10]} intensity={2.2} color="#fff1d2" /><directionalLight position={[-10, 5, -7]} intensity={0.5} color="#c7e4da" />
-        <ContextRecovery onLost={() => { cancel(); play.cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
+        <ContextRecovery onLost={() => { cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
         <Scene props={props} choreography={choreography} activityActive={props.animationActive !== false && !props.editor && !lost} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} pressedPlayerId={pressedPlayerId} timing={timing} />
-        <ScenePlay controller={play} layout={layout} anchors={anchors} disabled={!!props.editor || lost || props.animationActive === false} />
         <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} choreography={choreography} />
       </Canvas>
-      <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}<ScenePlayLabels controller={play} elements={elements} disabled={!!props.editor || lost || props.animationActive === false} /></div>
+      <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}</div>
       {!props.editor && <div hidden ref={node => hud.bind("element", node)} data-scene-ui data-camera-ui className="world-camera-controls" aria-label="球馆视角"><button className="camera-heading" aria-label="视角回正" onClick={() => { const home = overview(layout); motion.move({ ...motion.snapshot(), yaw: home.yaw, pitch: home.pitch }); invalidate.current?.(); }}><Compass ref={node => hud.bind("compass", node)} size={17} /></button><button ref={node => hud.bind("minus", node)} aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output ref={node => hud.bind("scale", node)}>1.0×</output><button ref={node => hud.bind("plus", node)} aria-label="放大球馆" onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label="恢复三场全景" onClick={() => { cancel(); motion.move(frameOverview(layout, motion.snapshot())); invalidate.current?.(); }}><Scan size={16} />全景</button></div>}
       <output hidden aria-hidden="true" data-venue-metrics data-world-courts={props.state.courts.length} data-world-layout={JSON.stringify(props.state.courts.map(c => [c.id, courtCenter(c.number, layout)]))} data-record-revision={props.state.revision} ref={metrics} />
     </SceneBoundary>

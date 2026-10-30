@@ -18,7 +18,6 @@
 - venue/gesture-controller.test.ts：直接调用真实 React／R3F 接入的指针拥有者，覆盖触界超额反向、up 末样本、多指与第三指、取消、原生 DOMRect accessor、implicit capture 转交、重复提交和 resize 落点。
 - venue/avatar-*.test.ts：路线避网、转向到位、改目标、多人独立、结果去重、恢复与减少动态效果；authority 检查通过 session、实际 playerPlacement 和 AvatarMotion 验证即时预测、确认不停步、失败平滑纠正、未知结果／原编号重试、回执领先读取、双客户端与确认缓存隔离，以及持久化间隙的重复提交防护。
 - venue/avatar-attention.test.ts：候选举手有限结束、重复渲染不续播、切席位重播、关闭／隐藏／减少动态效果取消且保留静态选人提示。
-- venue/scene-play.test.ts：三种有限互动的复位、取消、点击／滑动仲裁及 320×568 起的触区与底部 dock 留白。
 - fixtures/：从原始模板构建隔离的测试活动。
 - [verify-local.mjs](../scripts/verify-local.mjs)：针对开发服务和真实本地 D1 做完整 HTTP 演练；自动创建独立活动。
 - [verify-production.mjs](../scripts/verify-production.mjs)：针对本地生产构建检查 guest 协作角色和管理隔离、请求拒绝后 SSR 及产物隔离。使用已经在同一 worktree 初始化的测试 eventId。
