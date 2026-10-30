@@ -18,8 +18,34 @@
 
 ## 发布与数据
 
-最终生产、原public Site版本、提交、原生回执及线上前后摘要待补记。本次不重置、不推进、不录分到线上活动。
+最终生产、原public Site版本、提交、原生回执及线上前后摘要见下。本次不重置、不推进、不录分到线上活动。
 
 320×568 的整轮确认弹窗已专门压缩留白和阵容卡间距，三场双方名单及统一按钮同屏完整，无需逐场确认。真实浏览器点击统一按钮后，再次完成全七轮、同分、更正、历史和刷新验收（local-r20-finale-3，revision117）。第一次布局调试中热更新重建了弹窗，检查器提前读到尚未提交的revision11；在稳定代码的新活动上重新执行已通过，未对该失败演练或线上做重置。
 
 发布前只读观察：真实v2活动已由用户完成并关闭七轮，revision139、21个赛果版本；新版会按其有效积分直接进入谢幕，无需代为推进或补录。最终摘要在发布后复核。
+
+
+## 版本20生产与发布
+
+- 官方source workflow构建、提交、推送并打包源码 aa76b9859936dfe104e6edc727338701038f64bc；此前完整32文件243项检查已通过，最终窄屏弹窗收紧后类型与静态检查再次通过。
+- 生产SSR／API／setup 200，匿名StartRound与重置、伪造管理写入均401；初始化窗口404，非法请求403／400／413后SSR正常。客户端无开发身份或records实现泄漏。
+- 客户端JS/CSS gzip 445422字节，较版本19增加3048字节。未新增资源下载／网络机制，彩带为共享几何实例；既有大chunk提示保留，无构建错误。
+- saved version：appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_7f22def2f3c881919b60314241cd55fe，version_number=20。
+- deployment：appgdep_6ae4de59751081919743e16c743ac3fc，原生succeeded，env_set_revision仍5。get_site确认Sophia Sunshine Cup、public、latest_version_number=20。
+- 实际URL：https://sophia-sunshine-cup.gaussuag777.chatgpt.site 。发布后匿名HTTP无Cookie／真实身份／bypass：根页、活动读取、CSV 200且无登录重定向；管理、StartRound、备份、重置401，伪造身份忽略，初始化窗口关闭。
+- 真实正式活动已由用户录完并关闭七轮，保持revision139、21个赛果版本。此次不重置、不代为推进，不补造比赛；原交付窗口刷新后自动进入「谢幕彩蛋」，实际积分白15:黑13、白队获胜；白队发球、黑队聚集、Sophia飞行彩带均已渲染，控制台error记录为空。截图outputs/round-finale/site-v20.png。IAB不冒充独立未登录会话或Safari实机。
+
+## 线上记录保护
+
+发布紧邻前后四份完整公开状态SHA-256一致：
+
+| 活动 | revision／赛果版本数 | SHA-256 |
+| --- | --- | --- |
+| v2 正式 | 139／21 | 04f2317df6f8cb03cb8e1fc71a57069ef01744bbd1e452dc052b1efa4bd67bda |
+| v2 验收 | 9／2 | d0e6f14cf3a761b88d1adf7ee25c9961148fb4b192a70d3cb318902b600a3e58 |
+| v1 历史 | 107／9 | df4f0f9a8d62d69f68adcca0d1963ae7fe4521a335496f13b104ac8ca021a79a |
+| v1 验收 | 22／3 | f130499a76b0838c46cc081e8caae17417842f49a966e55e37a81fbb2a014be8 |
+
+JSON、截图、原生回执、生产与公开报告均在outputs/round-finale/，由.gitignore排除；数据库、演练导出和凭据未进入提交。原Avatar worktree及未跟踪研究稿未修改。
+
+剩余实机：Safari刷新后查看统一入口及完赛自动谢幕，确认发球、飞行彩带、切历史／回彩蛋、后台／锁屏与长期性能；243项自动检查和桌面窄屏不替代实际iPhone验收。
