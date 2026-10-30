@@ -40,3 +40,6 @@
 测试从公开 Interface 观察外部行为；真实数据库语义用真实本地 D1 验证。测试活动明确 eventId 和本地 URL，与正式活动分开。生成日志与截图置于忽略的输出目录；实际 iPhone 检查单独记录设备、步骤、结果与未测项。
 
 [排阵即时动画 harness](browser/optimistic-harness.html) 在开发服务用 `/tests/browser/optimistic-harness.html?event=local-...` 打开；活动需已开放第一轮、W01 尚未安排。按 1 → 5 执行延迟保存、拒绝回位、成功响应丢失、未送达原编号重试，以及头像候选／场景高亮／走动中触摸／Escape／另一客户端修改后旧选位失效，读取人物锚点与正式版本。故障仅注入 harness 内的 iframe fetch，不进入产品或生产构建；仍不等同于实际 iPhone 验收。
+
+- venue/paddle.test.ts：当前全员固定且不同的球拍配色、历史备用色、实体轮廓／厚度／握把、竖起且前倾的挂载方向、单次绘制与几何预算、缓存复用和实例颜色隔离。
+- [球拍评审页](browser/paddle-studio.html)：开发服务 /tests/browser/paddle-studio.html，使用真实 Avatar 和同一球拍网格对照正／侧／背面、13 种配色与挥拍。只提供本地视觉探针，不读写活动、不进入生产路由；该页手动演示挥拍参数，正式热身／比赛仍由真实场次驱动。

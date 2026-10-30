@@ -8,6 +8,7 @@ import type { AvatarPlacements } from "./avatar-placements";
 import { AvatarMotion } from "./avatar-motion";
 import { AvatarAttention } from "./avatar-attention";
 import { AngelWings } from "./AngelWings";
+import { Paddle } from "./Paddle";
 import { angelPose } from "./angel-pose";
 import { avatarAppearance } from "./avatar-appearance";
 import type { LocalChoreography } from "./local-choreography";
@@ -95,7 +96,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const stride = angel ? 0 : walking ? Math.sin(phase) * 0.5 : gait;
     leftLeg.current.rotation.x = angel ? airborne.leg : stride; rightLeg.current.rotation.x = angel ? airborne.leg : -stride;
     leftArm.current.rotation.x = -stride * 0.7 - stretch * .6;
-    rightArm.current.rotation.x = stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.35 : 0) - swing * 1.35;
+    rightArm.current.rotation.x = -0.22 + stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.35 : 0) - swing * 1.35;
     leftArm.current.rotation.z = -0.12 - stretch * 1.8 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
     rightArm.current.rotation.z = 0.12 + selection * 0.4 + stretch * 1.8 + swing * .35 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0) + invitation.wave;
     leftLeg.current.position.x = status === "playing" ? -0.16 : -0.12;
@@ -117,7 +118,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
       <group ref={leftArm} position={[-0.28, 0.84, 0]} rotation={[0, 0, -0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
       <group ref={rightArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}>
         <mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
-        <mesh position={[0.02, -0.38, 0.14]} rotation={[Math.PI / 2, 0, -0.18]} scale={[0.13, 0.19, 0.025]}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color={player.teamId === "WHITE" ? "#c69e53" : "#789e90"} /></mesh>
+        <Paddle playerId={player.id} skin={skin} />
       </group>
       <group ref={leftLeg} position={[-0.12, 0.4, 0]}><mesh geometry={legGeometry}><meshStandardMaterial color={trousers} /></mesh></group>
       <group ref={rightLeg} position={[0.12, 0.4, 0]}><mesh geometry={legGeometry}><meshStandardMaterial color={trousers} /></mesh></group>
