@@ -18,5 +18,18 @@
 - 浏览器覆盖 320×568、390×600、402×680、430×932、800×600、1280×720；分别进入全景、第三场近景，实际显示工具条并检查避让、按钮触区及缩放功能，业务版本不变。
 - 同一隔离活动用无 Cookie 的读取确认 guest，复核“等待管理者确认本轮结束”及不显示管理按钮。该本地受控请求检查不等同独立未登录生产浏览器或真实 Safari。
 - 实际 iPhone Safari 的更新版尚待用户复测，不把桌面尺寸检查记为实机通过。
+- 追加选人回归：320×568 空席位不被姓名遮挡、头像候选及触区、走动中点击、Escape 取消、另一客户端改变后的旧选位失效均通过。
+- 中间取景预算曾导致 320×568 近景倍率小于 1；修正顶部及底部留白预算后，17 项世界坐标检查及完整 160 项再次通过。打包自动审批曾因这次未解决的失败暂缓，取得全套通过证据后继续同一官方流程，最终没有待批准动作。
+- 最终生产构建及本地生产 HTTP 检查通过；guest 读取、伪造管理写入 401、开发初始化与维护窗口 404。客户端 gzip 合计 431,619 字节，没有开发身份或服务端实现混入客户端。
 
-发布前正式活动 revision 75、generation 0、6 条赛果版本，状态 SHA-256 `6faf23d6afea0ad04a45f56ac0ae3dfcc91122d6baec9faaa6f1d514ca7345e3`；线上隔离活动 revision 22、3 条赛果版本，摘要 `f130499a76b0838c46cc081e8caae17417842f49a966e55e37a81fbb2a014be8`。仅用本地活动演练，不改正式记录。最终生产构建、Sites 版本和发布后摘要在工具确认后补录。
+发布前后正式活动均 revision 75、generation 0、6 条赛果版本，状态 SHA-256 均为 `6faf23d6afea0ad04a45f56ac0ae3dfcc91122d6baec9faaa6f1d514ca7345e3`；线上隔离活动均 revision 22、3 条赛果版本，摘要 `f130499a76b0838c46cc081e8caae17417842f49a966e55e37a81fbb2a014be8`。仅用本地活动演练，没有重置、恢复或导入正式记录。
+
+## 发布回执
+
+- 同一公开站点 [Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)，Sites **版本 12**，原生 get_site 返回 public。
+- 源码 `7dff1a50cc5c2c906e5306aa958a760042eef9cc`，官方 source helper 完成构建、提交、推送和打包。
+- 版本 ID `appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_68032efba4a88191bdad5d3e6e27c461`；部署 `appgdep_6ae445d49ae88191bc6e4b5b94511c96`，2026-10-30 07:23:23 UTC 返回 succeeded。生产运行时配置仍为 revision 3。
+- archive SHA-256 `63208487f0ca2d65fde8b456dfcebbf5bffe3fd5f5208e8ecefac359ee3be815`，85 文件。
+- 发布后无 Cookie／真实身份／bypass token 的 HTTP 复核：主页、公开数据及 CSV 200，无登录跳转；匿名管理轮次和备份 401；初始化窗口关闭，自报身份无效。
+- 线上实际显示第三场近景工具条与底部状态区，矩形不相交，三个互动入口数量为 0；恢复三场全景后保存最终截图。此 IAB 已有管理登录，不将其当作独立匿名浏览器证据。
+- 期间另一任务新增 `docs/development/avatar-visual-upgrade-research-2026-10-30.md`。本次没有修改或提交该文档；仅在官方打包进程使用临时 Git 排除配置，未修改仓库／用户的永久忽略规则。
