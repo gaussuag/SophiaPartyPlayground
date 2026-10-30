@@ -85,10 +85,15 @@ export function slotPosition(slot: Slot, slots: Slot[]): Point {
 export function benchMarkerPosition(side: RosterTeamId): Point {
   return side === "FREE" ? [13.7, 0.1, 0] : [0, 0.1, side === "WHITE" ? 12.6 : -10.3];
 }
+export function benchAreas(layout: WorldLayout): [number, number, number, number][] {
+  const edge = layout.width / 2 - 1.3;
+  return [[-edge, edge, 6.8, 9.3], [-edge, edge, -9.3, -6.8],
+    ...[-13.15, -4.3, 4.3, 13.15].map(x => [x - .55, x + .55, -5.4, 5.4] as [number, number, number, number])];
+}
 export function isBenchPoint(point: Point, side: RosterTeamId, layout: WorldLayout): boolean {
   const marker = benchMarkerPosition(side);
   if (Math.hypot(point[0] - marker[0], point[2] - marker[2]) < 1.8) return true;
-  return side !== "FREE" && Math.abs(point[2] - (side === "WHITE" ? 8.4 : -8.4)) <= 1.4 && Math.abs(point[0]) <= layout.width / 2 - 0.2;
+  return benchAreas(layout).some(([left, right, back, front]) => point[0] >= left && point[0] <= right && point[2] >= back && point[2] <= front);
 }
 
 /** The viewed round's authoritative lineup is also the post-result tableau. */

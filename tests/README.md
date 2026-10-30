@@ -1,5 +1,8 @@
 # 测试入口
 
+- `venue/short-routes.test.ts`：最短路长度、无遮挡直行、直线飞越球网、最近空闲下场点、预测 ACK／拒绝、可见中断点、换轮与历史／恢复重建。
+- [路线浏览器回归](browser/short-routes-harness.html)：开发服务 `/tests/browser/short-routes-harness.html?event=local-新的编号`，双客户端对照实际锚点、步行／飞行轨迹、就近下场、人物间距、头像无光环、暂停及请求预算。仍非 Safari 实机。
+
 2026-10-30 v2 发布源码：21 文件、179 项自动检查通过；类型、静态检查及本地生产通过。新旧完整 HTTP＋D1 和浏览器证据见 [交付记录](../docs/delivery/cup-v2-schedule-and-points-2026-10-30.md)。实机检查分别记录。
 
 - 新赛制入口：competition/cup-v2.test.ts、records/cup-v2.test.ts、venue/angel.test.ts，覆盖 13 人／21 场、跨两侧自由选手匹配、代表队、1／2 分、更正／撤回／名单纠错和跨赛制恢复拒绝。

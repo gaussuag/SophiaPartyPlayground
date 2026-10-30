@@ -1,6 +1,8 @@
 import type { EventProjection, EventState, MatchView, TeamId } from "../competition";
 import { playerPlacement, type Point, type WorldLayout } from "./world";
 
+import type { AvatarPlacements } from "./avatar-placements";
+
 type Mode = "ready" | "warmup" | "playing" | "rest";
 type Actor = { id: string; side: TeamId; base: Point; facing: number; onCourt: boolean; matchId?: string };
 export type CourtProgramme = { key: string; matchId: string; mode: Mode; white: string[]; black: string[]; sequences: string[][]; ballCount: number };
@@ -68,12 +70,13 @@ export class LocalChoreography {
     }
     if (change.locked) this.locked = new Set(change.locked);
   }
-  sync(state: EventState, view: EventProjection, layout: WorldLayout) {
+  sync(state: EventState, view: EventProjection, layout: WorldLayout, positions?: AvatarPlacements) {
     const context = `${state.id}:${state.generation}:${view.round.id}`;
     const reset = context !== this.context; this.context = context;
     const plans = courtProgrammes(state, view), previous = this.actors;
     this.actors = new Map(state.players.map(player => {
-      const placement = playerPlacement(state, view, player.id, layout);
+      const canonical = playerPlacement(state, view, player.id, layout), local = positions?.get(player.id);
+      const placement = !canonical.onCourt && local && !local.onCourt ? local : canonical;
       const match = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants).some(p => p.playerId === player.id));
       const actor: Actor = { id: player.id, side: placement.sideId ?? (player.teamId === "BLACK" ? "BLACK" : "WHITE"), base: placement.position, facing: placement.facing, onCourt: placement.onCourt, matchId: match?.id };
       const old = !reset && previous.get(player.id);

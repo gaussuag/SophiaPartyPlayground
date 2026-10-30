@@ -4,6 +4,7 @@ import { BoxGeometry, CapsuleGeometry, Group, SphereGeometry } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { EventProjection, Player } from "../competition";
 import type { Anchors } from "./Scene";
+import type { AvatarPlacements } from "./avatar-placements";
 import { AvatarMotion } from "./avatar-motion";
 import { AvatarAttention } from "./avatar-attention";
 import { AngelWings } from "./AngelWings";
@@ -19,41 +20,39 @@ const torsoGeometry = new CapsuleGeometry(0.215, 0.3, 3, 8);
 const armGeometry = new CapsuleGeometry(0.068, 0.28, 2, 6).translate(0, -0.14, 0);
 const legGeometry = new CapsuleGeometry(0.078, 0.24, 2, 6).translate(0, -0.14, 0);
 const eyesGeometry = mergeGeometries([-1, 1].map(side => new BoxGeometry(0.04, 0.045, 0.035).translate(side * 0.085, 0.02, 0.225)));
-export function Avatar({ player, index, position, selected, muted, onCourt, status, anchors, begin, layout, context, facing, results, choreography, candidateKey }: {
+export function Avatar({ player, index, position, selected, muted, onCourt, status, anchors, begin, layout, context, facing, results, choreography, positions, candidateKey }: {
   player: Player; index: number; position: Point; selected: boolean; muted: boolean; onCourt: boolean;
   status: EventProjection["playerStates"][string]["status"]; anchors: Anchors;
   begin: (playerId: string, event: PointerEvent) => void;
   layout: WorldLayout; context: string; facing: number; results: AvatarResults; choreography: LocalChoreography;
-  candidateKey?: string;
+  positions: AvatarPlacements; candidateKey?: string;
 }) {
   const root = useRef<Group>(null), body = useRef<Group>(null), head = useRef<Group>(null);
   const leftArm = useRef<Group>(null), rightArm = useRef<Group>(null), leftLeg = useRef<Group>(null), rightLeg = useRef<Group>(null);
   const invitationRing = useRef<Group>(null);
   const angel = player.teamId === "FREE";
-  const flight = useRef({ clock: 0, wing: .18 });
+  const flight = useRef({ clock: 0, wing: .18, lift: .19 });
   const invalidate = useThree(s => s.invalidate);
   const [initial] = useState(position);
-  const [motion] = useState(() => new AvatarMotion(position, facing, context));
+  const [motion] = useState(() => new AvatarMotion(position, facing, context, angel ? "fly" : "walk"));
   const [attention] = useState(() => new AvatarAttention());
-  const animation = useRef({ selected: 0, result: 0, resultKind: "acknowledge", resultToken: 0, context });
+  const animation = useRef({ selected: 0, result: 0, resultKind: "acknowledge", resultToken: 0, context, facing });
   const decoration = useRef<Point>([0, 0, 0]);
-  const [x, y, z] = position;
-  useEffect(() => {
-    const changed = motion.destination.some((n, i) => n !== [x, y, z][i]);
-    // The route starts at the visible local pose, including any bench wandering.
-    const from = animation.current.context === context && changed ? root.current?.position.toArray() as Point | undefined : undefined;
-    if (changed || animation.current.context !== context) decoration.current = [0, 0, 0];
-    animation.current.context = context;
-    motion.retarget([x, y, z], facing, layout, context, choreography.reduced || !choreography.active, from);
-    choreography.arrived(player.id, !motion.moving);
-    animation.current.result = 0;
-    invalidate();
-  }, [motion, x, y, z, facing, layout, context, invalidate, choreography, player.id]);
   useEffect(() => { animation.current.selected = selected && !choreography.reduced ? 0.5 : 0; invalidate(); }, [selected, choreography, invalidate]);
   useEffect(() => { attention.cue(candidateKey ?? null, choreography.reduced); invalidate(); }, [candidateKey, attention, choreography, invalidate]);
   useFrame((_, delta) => {
     if (!root.current || !body.current || !head.current || !leftArm.current || !rightArm.current || !leftLeg.current || !rightLeg.current) return;
     const a = animation.current, enabled = choreography.enabled, dt = enabled ? Math.min(delta, 0.05) : 0;
+    const destination = positions.get(player.id) ?? { position, facing };
+    const [x, y, z] = destination.position;
+    const changed = motion.destination.some((n, i) => n !== destination.position[i]);
+    if (changed || animation.current.context !== positions.context || a.facing !== destination.facing) {
+      const from = animation.current.context === positions.context && changed ? root.current.position.toArray() as Point : undefined;
+      decoration.current = [0, 0, 0]; animation.current.context = positions.context; animation.current.facing = destination.facing; animation.current.result = 0;
+      motion.retarget(destination.position, destination.facing, layout, positions.context, choreography.reduced || !choreography.active, from);
+      choreography.arrived(player.id, !motion.moving);
+    }
+
     const local = choreography.pose(player.id), reduced = choreography.reduced;
     const invitation = attention.step(dt, reduced, !choreography.active);
     const reaction = results.get(player.id);
@@ -75,17 +74,21 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const cheer = a.result > 0 ? Math.sin(Math.min(1, a.result / 0.28) * Math.PI / 2) : 0;
     root.current.position.set(...motion.position.map((n, i) => n + decoration.current[i]) as Point);
     root.current.userData.walking = motion.moving;
+    root.current.userData.destination = motion.destination;
+    root.current.userData.travelled = motion.travelled;
     root.current.userData.inviting = invitation.animating;
     root.current.userData.ambientWalking = settled && !!local?.walking;
     root.current.userData.localAction = settled ? local?.action : "transfer";
     root.current.userData.localHeld = !!local?.held;
     if (invitationRing.current) invitationRing.current.scale.setScalar(invitation.ringScale);
     body.current.rotation.y = settled && local ? local.yaw : motion.yaw;
-    if (enabled && !local?.held) flight.current.clock += dt;
+    if (enabled && (!local?.held || moving)) flight.current.clock += dt;
     const airborne = angelPose(flight.current.clock, walking || !!local?.walking, reduced);
     flight.current.wing = airborne.wing;
+    if (reduced || !choreography.active) flight.current.lift = airborne.lift;
+    else if (!local?.held || moving) flight.current.lift += (airborne.lift - flight.current.lift) * Math.min(1, dt * 10);
     root.current.userData.flying = angel && motion.moving;
-    body.current.position.y = angel ? airborne.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
+    body.current.position.y = angel ? flight.current.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
     body.current.rotation.z = angel ? airborne.bank : walking ? Math.sin(phase) * 0.025 : gait * .04;
     head.current.rotation.x = -selection * 0.12 + (a.resultKind === "acknowledge" ? cheer * 0.18 : 0);
     head.current.rotation.y = look;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useLayoutEffect, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, Vector3, type OrthographicCamera } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -8,6 +8,7 @@ import { BOARD_SIZE, benchMarkerPosition, boardCenter, cameraView, courtCenter, 
 import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
 import { Avatar } from "./Avatar";
+import { AvatarPlacements } from "./avatar-placements";
 import { RallyBalls } from "./RallyBalls";
 import type { LocalChoreography } from "./local-choreography";
 import { AvatarResults } from "./avatar-results";
@@ -133,8 +134,15 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   const avatarView = props.arrangementView?.round.id === view.round.id ? props.arrangementView : view;
   const candidateKey = props.slotSelection ? `${props.slotSelection.matchId}:${props.slotSelection.slotId}` : undefined;
   const [results] = useState(() => new AvatarResults());
+  const [positions] = useState(() => new AvatarPlacements());
   const invalidate = useThree(s => s.invalidate);
-  useEffect(() => { choreography.sync(state, view, layout); invalidate(); }, [choreography, state, view, layout, invalidate]);
+  useLayoutEffect(() => {
+    positions.sync(state, avatarView, layout, id => anchors.get(`player:${id}`)?.parent?.position.toArray() as Point | undefined);
+    choreography.sync(state, view, layout, positions);
+    const player = props.selection && state.players.find(p => p.id === props.selection!.playerId);
+    if (player && avatarView.playerStates[player.id].status === "reserved") anchors.get(`bench:${player.teamId}`)?.position.set(...positions.exitFor(player.id, layout));
+    invalidate();
+  }, [positions, choreography, state, view, avatarView, layout, anchors, props.selection, invalidate]);
   useEffect(() => {
     choreography.interact({ locked: [props.selection?.playerId, ...(props.candidatePlayerIds ?? []), ...(props.pending?.playerIds ?? [])].filter((id): id is string => !!id) });
     invalidate();
@@ -165,7 +173,7 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (!canRepresentSide(p, chosenSlot.sideId) || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} choreography={choreography} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} choreography={choreography} positions={positions} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
     })}
     {(["WHITE", "BLACK", "FREE"] as RosterTeamId[]).map(side => <group key={side} position={benchMarkerPosition(side)} ref={refFor(anchors, `bench:${side}`)} />)}
     {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * 9.9]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
@@ -185,6 +193,8 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
       if (timing.enabled && id.startsWith("player:")) {
         element.dataset.walking = String(!!node.parent?.userData.walking);
         element.dataset.flying = String(!!node.parent?.userData.flying);
+        element.dataset.targetPosition = (node.parent?.userData.destination ?? []).map((n: number) => n.toFixed(3)).join(",");
+        element.dataset.travelled = String(node.parent?.userData.travelled ?? 0);
         element.dataset.inviting = String(!!node.parent?.userData.inviting);
         element.dataset.ambientWalking = String(!!node.parent?.userData.ambientWalking);
         element.dataset.localAction = String(node.parent?.userData.localAction ?? "rest");
