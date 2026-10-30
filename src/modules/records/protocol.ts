@@ -13,6 +13,7 @@ const commandSchema: z.ZodType<CompetitionCommand> = z.discriminatedUnion("type"
   z.object({ type: z.literal("RemovePlayer"), ...match, slotId: id }).strict(),
   z.object({ type: z.literal("CancelDraft"), ...match }).strict(),
   z.object({ type: z.literal("StartMatch"), ...match }).strict(),
+  z.object({ type: z.literal("StartRound"), roundId: id }).strict(),
   z.object({ type: z.literal("BeginResultEntry"), ...match }).strict(),
   z.object({ type: z.literal("UndoStart"), ...match, reason: z.literal("ACTUAL_NOT_STARTED") }).strict(),
   z.object({ type: z.literal("UndoEndDeclaration"), ...match, reason: z.literal("ACCIDENTAL_END") }).strict(),

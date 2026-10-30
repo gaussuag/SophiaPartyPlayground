@@ -12,6 +12,8 @@ import { PADDLE_FACE } from "./paddle-pose";
 import { ParkEnvironment } from "./ParkEnvironment";
 import { COURT_PALETTE, sunlitMaterial } from "./sunlight";
 import { AvatarPlacements } from "./avatar-placements";
+import { planFinale, FINALE_CONFETTI_COUNT } from "./finale";
+import { FinaleConfetti } from "./FinaleConfetti";
 import { RallyBalls } from "./RallyBalls";
 import type { LocalChoreography } from "./local-choreography";
 import { AvatarResults } from "./avatar-results";
@@ -136,18 +138,20 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   choreography: LocalChoreography; activityActive: boolean;
 }) {
   const { state, view } = props;
+  const ending = useMemo(() => props.finale ? planFinale(state) : undefined, [props.finale, state]);
   const avatarView = props.arrangementView?.round.id === view.round.id ? props.arrangementView : view;
   const candidateKey = props.slotSelection ? `${props.slotSelection.matchId}:${props.slotSelection.slotId}` : undefined;
   const [results] = useState(() => new AvatarResults());
   const [positions] = useState(() => new AvatarPlacements());
   const invalidate = useThree(s => s.invalidate);
   useLayoutEffect(() => {
-    positions.sync(state, avatarView, layout, id => anchors.get(`player:${id}`)?.parent?.position.toArray() as Point | undefined);
-    choreography.sync(state, view, layout, positions);
+    if (ending) positions.present(state, ending);
+    else positions.sync(state, avatarView, layout, id => anchors.get(`player:${id}`)?.parent?.position.toArray() as Point | undefined);
+    choreography.sync(state, view, layout, positions, ending);
     const player = props.selection && state.players.find(p => p.id === props.selection!.playerId);
     if (player && avatarView.playerStates[player.id].status === "reserved") anchors.get(`bench:${player.teamId}`)?.position.set(...positions.exitFor(player.id, layout));
     invalidate();
-  }, [positions, choreography, state, view, avatarView, layout, anchors, props.selection, invalidate]);
+  }, [positions, choreography, state, view, avatarView, layout, anchors, props.selection, ending, invalidate]);
   useEffect(() => {
     choreography.interact({ locked: [props.selection?.playerId, ...(props.candidatePlayerIds ?? []), ...(props.pending?.playerIds ?? [])].filter((id): id is string => !!id) });
     invalidate();
@@ -174,15 +178,16 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
     <mesh geometry={walkways} position={[0, 0.04, 0]} material={sunlitMaterial("#e7dfc9", { tiles: true })} dispose={null} />
     {courtPositions.map(({ court, position }) => <Court key={court.id} number={court.number} position={position} match={view.matches.find(m => m.courtId === court.id)} props={props} anchors={anchors} hovered={hovered} editorSize={editorSize} layout={layout} />)}
     {state.players.map((p, index) => {
-      const { position, facing, onCourt } = playerPlacement(state, avatarView, p.id, layout);
+      const { position, facing, onCourt } = ending?.placements[p.id] ?? playerPlacement(state, avatarView, p.id, layout);
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (!canRepresentSide(p, chosenSlot.sideId) || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} choreography={choreography} positions={positions} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={!ending && (unavailable && !props.editingMatchId || mismatch)} status={ending ? "available" : avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} choreography={choreography} positions={positions} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
     })}
     {(["WHITE", "BLACK", "FREE"] as RosterTeamId[]).map(side => <group key={side} position={benchMarkerPosition(side)} ref={refFor(anchors, `bench:${side}`)} />)}
     {dragging && <DragGhost point={dragPoint} />}
     <RallyBalls choreography={choreography} />
+    <FinaleConfetti choreography={choreography} />
   </>;
 }
 
@@ -244,6 +249,9 @@ export function SceneMetrics({ target, motion, timing, choreography }: { target:
     if (timing.enabled) {
       target.current.dataset.localAnimationActive = String(choreography.enabled);
       target.current.dataset.localAnimationReduced = String(choreography.reduced);
+      target.current.dataset.finale = choreography.finale?.key ?? "";
+      target.current.dataset.finaleWinner = choreography.finale?.winner ?? "";
+      target.current.dataset.confettiCount = String(choreography.finale?.angel && choreography.enabled ? FINALE_CONFETTI_COUNT : 0);
       target.current.dataset.localBallCount = String(choreography.enabled ? choreography.balls.length : 0);
       target.current.dataset.courtProgrammes = JSON.stringify(choreography.programmes);
       target.current.dataset.localBalls = JSON.stringify(choreography.balls);

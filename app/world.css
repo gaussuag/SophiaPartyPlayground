@@ -71,3 +71,7 @@
 @media(prefers-reduced-motion:reduce){.picker-player{transition:none}.picker-player:active{transform:none}}
 @media(min-width:700px){.game-hud:has(.slot-picker){left:auto;right:24px;bottom:calc(24px + env(safe-area-inset-bottom));transform:none;width:320px}}
 @media(min-width:700px) and (max-height:500px){.game-hud:has(.slot-picker){right:16px;bottom:calc(16px + env(safe-area-inset-bottom));width:256px}}
+
+.round-lineup-confirm{border-top:1px solid #d5ddc8;padding:8px 0}.round-lineup-confirm h3{font-size:13px;margin:0 0 7px}.finale-board{display:grid;align-items:center;pointer-events:none}.finale-choice{gap:3px!important;font-size:11px!important}
+
+.round-confirm-dialog{padding:16px}.round-confirm-dialog .dialog-heading h2{font-size:18px}.round-confirm-dialog .confirm-content{margin:10px 0;line-height:1.5}.round-confirm-dialog .confirm-content>p{font-size:11px;margin:6px 0}.round-confirm-dialog .round-lineup-confirm{padding:6px 0;margin:0}.round-confirm-dialog .round-lineup-confirm h3{font-size:12px;margin:0 0 4px}.round-confirm-dialog .confirmation-lineups{margin:4px 0;padding:6px 8px;gap:4px}.round-confirm-dialog .confirmation-lineups strong{font-size:12px;text-align:right}.round-confirm-dialog .confirm-actions{margin-top:10px}

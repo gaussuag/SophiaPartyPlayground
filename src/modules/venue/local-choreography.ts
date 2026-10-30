@@ -4,6 +4,8 @@ import { playerPlacement, type Point, type WorldLayout } from "./world";
 import type { AvatarPlacements } from "./avatar-placements";
 import { RallyTimeline, type RallyBall, type StrokePose } from "./rally-motion";
 
+import { sampleFinale, type FinalePlan } from "./finale";
+
 type Mode = "ready" | "warmup" | "playing" | "rest";
 type Actor = { id: string; side: TeamId; base: Point; facing: number; onCourt: boolean; free: boolean; matchId?: string };
 export type CourtProgramme = { key: string; matchId: string; mode: Mode; white: string[]; black: string[]; sequences: string[][]; ballCount: number };
@@ -53,6 +55,8 @@ export function courtProgrammes(state: EventState, view: EventProjection): Court
 export class LocalChoreography {
   private actors = new Map<string, Runtime>();
   private courts: Court[] = [];
+  finale: FinalePlan | undefined;
+  finaleClock = 0;
   private arrivals = new Map<string, boolean>();
   private locked = new Set<string>();
   private pressed: string | null = null;
@@ -84,13 +88,13 @@ export class LocalChoreography {
     }
     if (change.locked) this.locked = new Set(change.locked);
   }
-  sync(state: EventState, view: EventProjection, layout: WorldLayout, positions?: AvatarPlacements) {
-    const context = `${state.id}:${state.generation}:${view.round.id}`;
-    const reset = context !== this.context; this.context = context;
+  sync(state: EventState, view: EventProjection, layout: WorldLayout, positions?: AvatarPlacements, finale?: FinalePlan) {
+    const context = finale?.key ?? `${state.id}:${state.generation}:${view.round.id}`;
+    const reset = context !== this.context; this.context = context; this.finale=finale; if(reset) this.finaleClock=0;
     this.walkEdge = Math.min(10.5, layout.width / 2 - 1.5);
-    const plans = courtProgrammes(state, view), previous = this.actors;
+    const plans = finale ? [] : courtProgrammes(state, view), previous = this.actors;
     this.actors = new Map(state.players.map(player => {
-      const canonical = playerPlacement(state, view, player.id, layout), local = positions?.get(player.id);
+      const canonical = finale?.placements[player.id] ?? playerPlacement(state, view, player.id, layout), local = positions?.get(player.id);
       const placement = !canonical.onCourt && local && !local.onCourt ? local : canonical;
       const match = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants).some(p => p.playerId === player.id));
       const actor: Actor = { id: player.id, side: placement.sideId ?? (player.teamId === "BLACK" ? "BLACK" : "WHITE"), base: placement.position, facing: placement.facing, onCourt: placement.onCourt, free: player.teamId === "FREE", matchId: match?.id };
@@ -123,6 +127,14 @@ export class LocalChoreography {
       if (runtime.actor.onCourt) continue;
       if (this.arrivals.get(runtime.actor.id) === false) { runtime.pose.offset = zero(); runtime.pose.walking = false; continue; }
       if (!runtime.pose.held) this.bench(runtime, dt, roaming);
+    }
+    if (this.finale) {
+      if (![...this.actors.keys()].some(id => this.arrivals.get(id) === false)) {
+        this.finaleClock += dt; const frame=sampleFinale(this.finale,this.finaleClock);
+        for(const [id,pose] of frame.poses) if(!this.actors.get(id)?.pose.held) Object.assign(this.actors.get(id)!.pose,pose);
+        this.ballsValue=frame.balls;
+      }
+      return true;
     }
     for (const court of this.courts) {
       const ids = [...court.plan.white, ...court.plan.black];

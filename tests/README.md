@@ -58,3 +58,7 @@
 - venue/rally-variation.test.ts：多 seed 的非固定接球次序、四人公平参与、接触／落点／弧线／落地时机变化、可重查未来姿态、严格拍面连续接触和过网／边界。
 - venue/spectator-wander.test.ts：真实场下名单连续三分钟走停、超出原位、步道边界、人物间距、按下／点选冻结、暂停与减少动态效果、无关读取连续性和上场退出走动。
 - [随机回球与场外走停浏览器验收](browser/varied-rally-harness.html)：使用新 local 活动，实际32秒采样单球线路、落点、场外人物位置与两客户端差异；触屏按下／选中冻结、暂停恢复、真实阵容一致和无动画写入。桌面合成触屏不替代真实 Safari。
+
+- competition/round-start-finale.test.ts、records/round-start.test.ts：整轮未排齐拒绝、唯一阵容／单revision、兼容已开始比赛、新旧七轮、晚解锁、同分、可信权限、并发／幂等／无部分提交。
+- venue/finale.test.ts：全员角色、仅胜队发球、最多六球、Sophia飞行、固定彩带池、暂停／减少动态效果及历史清理；fixtures/finished-cup.ts 仅构建有效七轮，避免导入测试文件重复注册。
+- [整轮确认与谢幕浏览器验收](browser/round-finale-harness.html)：新的 local 活动、真实D1／HTTP，两客户端统一一次确认、完整21场七轮、末轮确认前隐藏、自动进入、白胜／同分／黑胜、更正换位、历史退出重进、刷新恢复与无动画写入。旧 cup-v2-harness 的逐场确认 UI 为历史流程，新统一开赛界面以此入口验证；旧协议 HTTP 和单元回归继续保留。

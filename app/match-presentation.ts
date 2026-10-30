@@ -1,3 +1,4 @@
+import { roundStartStatus } from "../src/modules/competition";
 import type { EventProjection, EventState, MatchView } from "../src/modules/competition";
 
 export const matchStatus = (match: MatchView) => match.phase === "PLANNING" ? match.planningLabel : match.phase === "COMPLETED" ? "比赛结束" : "比赛中";
@@ -9,6 +10,8 @@ export function venueStep(state: EventState, view: EventProjection, match: Match
   if (view.round.phase === "UPCOMING") return { status: "尚未开始", next: "新轮开放后重新安排阵容" };
   if (!view.isCurrent || view.round.phase === "CLOSED") return { status: "本轮已结束", next: "点记分牌查看赛果" };
   if (view.canAdvance) return { status: "本轮已录分完成", next: manage ? view.round.number === state.rounds.length ? "确认最后一轮结束" : "确认本轮结束，进入下一轮" : "等待管理者确认本轮结束" };
+  const start = roundStartStatus(view);
+  if (start.pending.length && (!match || match.phase === "PLANNING")) return { status: `阵容已就绪 ${start.ready}/${start.pending.length} 场`, next: start.canStart ? manage ? "统一确认本轮阵容并开始" : "等待管理者确认本轮阵容" : "安排本轮全部场地阵容" };
   if (!match) return { status: `${view.roundLabel} · ${roundProgress(view)}`, next: "点球场或记分牌查看当前步骤" };
   if (match.phase === "PLANNING") return { status: matchStatus(match), next: match.canStart ? manage ? "点记分牌确认上场并开始" : "等待管理者确认上场" : collaborate ? "点球友或空位安排阵容" : "等待阵容安排" };
   return { status: matchStatus(match), next: match.phase === "COMPLETED" ? "点记分牌查看赛果" : collaborate ? "打完后点记分牌录入比分" : "点记分牌查看对阵" };

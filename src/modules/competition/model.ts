@@ -36,7 +36,8 @@ export type CompetitionCommand =
   | { type: "WithdrawCurrentResult"; matchId: string; reason: "RESULT_ENTERED_TOO_EARLY" }
   | { type: "CorrectRecordedLineup"; matchId: string; lineupRevisionId: string; participants: { slotId: string; playerId: string }[]; reason: "RECORDED_LINEUP_ERROR" }
   | { type: "AdvanceRound"; roundId: string }
-  | { type: "FinishEvent" };
+  | { type: "FinishEvent" }
+  | { type: "StartRound"; roundId: string };
 export type DecisionContext = { now: string; actorId: string; commandId: string };
 export type RuleError = { code: string; message: string; matchId?: string };
 export type Decision = { ok: true; state: EventState; changedIds: string[] } | { ok: false; error: RuleError };

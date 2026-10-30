@@ -16,6 +16,8 @@ export type VenueProps = {
   state: EventState; view: EventProjection; courtId: string | null;
   /** Local planning poses only; never used for court state or available actions. */
   arrangementView?: EventProjection;
+  /** Local, read-only finale view unlocked by closed authoritative rounds. */
+  finale?: boolean;
   cameraRequest: { courtId: string | null; key: number };
   selection: PlayerSelection | null; slotSelection: SlotSelection | null;
   candidatePlayerIds?: string[];

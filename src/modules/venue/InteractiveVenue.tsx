@@ -9,7 +9,7 @@ import { CameraHud } from "./camera-hud";
 import { VenuePerformance } from "./venue-performance";
 import { VenueInput, groundAt, type PointerSample } from "./venue-input";
 import { LocalChoreography } from "./local-choreography";
-import { canRepresentSide } from "../competition";
+import { canRepresentSide, roundStartStatus, finaleOutcome } from "../competition";
 import type { VenueProps } from "./model";
 import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, isBenchPoint, overview, worldLayout } from "./world";
 
@@ -136,7 +136,7 @@ export function Venue(props: VenueProps) {
     return found;
   }
   function begin(playerId: string, event: PointerEvent) {
-    if (event.button === 0 && !props.editor) { choreography.interact({ pressed: playerId }); input.claimPlayer(sample(event), playerId); }
+    if (event.button === 0 && !props.editor && !props.finale) { choreography.interact({ pressed: playerId }); input.claimPlayer(sample(event), playerId); }
   }
   const isWalking = (playerId: string) => !!anchors.get(`player:${playerId}`)?.parent?.userData.walking;
   function benchTarget(playerId: string, point: Point) {
@@ -176,13 +176,16 @@ export function Venue(props: VenueProps) {
       },
     );
   });
+  const roundReady = roundStartStatus(props.view).canStart;
+  const ending = props.finale ? finaleOutcome(props.state) : null;
   const labels: { key: string; className?: string; editor?: boolean; content: ReactNode }[] = props.state.courts.map(c => {
+    if (ending?.unlocked) return { key: `court:${c.id}`, className: "board-anchor", content: <div className="world-scoreboard finale-board" role="img" aria-label={c.number === 2 ? "谢幕彩蛋" : `${c.number === 1 ? "白队" : "黑队"} ${c.number === 1 ? ending.totals.WHITE : ending.totals.BLACK} 分`}><span className="board-face"><b>{c.number === 1 ? "白" : c.number === 3 ? "黑" : "✦"}</b><span className="board-action">{c.number === 2 ? "谢谢每一位" : `${c.number === 1 ? ending.totals.WHITE : ending.totals.BLACK} 分`}</span></span></div> };
     const match = props.view.matches.find(m => m.courtId === c.id);
     if (match && props.editor?.matchId === match.id) return { key: `court:${c.id}`, className: "board-anchor editing-board", editor: true, content: props.editor.content };
     const ready = match?.phase === "PLANNING" && match.canStart && props.view.isCurrent && props.state.phase === "ACTIVE";
-    const canStart = ready && props.canConfirm;
+    const canStart = ready && roundReady && props.canConfirm;
     const locked = !!props.editor || !!props.editingMatchId || canStart && !props.canWrite;
-    const action = !match ? "休息区" : match.phase === "PLANNING" ? props.readOnly ? "查看球场" : ready ? canStart ? "确认上场" : "等待确认" : "安排阵容" : match.phase === "PLAYING" || match.phase === "AWAITING_RESULT" ? props.readOnly ? "比赛进行中" : "录入赛果" : props.canCorrect ? "更正比分" : "查看赛果";
+    const action = !match ? "休息区" : match.phase === "PLANNING" ? props.readOnly ? "查看球场" : ready ? canStart ? "整轮确认" : !roundReady ? "待齐备" : "等待确认" : "安排阵容" : match.phase === "PLAYING" || match.phase === "AWAITING_RESULT" ? props.readOnly ? "比赛进行中" : "录入赛果" : props.canCorrect ? "更正比分" : "查看赛果";
     return { key: `court:${c.id}`, className: "board-anchor", content: <button data-scene-ui className={`world-scoreboard ${match?.phase.toLowerCase() ?? "rest"} ${canStart ? "ready" : ""}`} aria-label={`${c.number} 号场 · ${action}`} title={`${c.number} 号场 · ${match?.label ?? "休息区"} · ${action}`} disabled={locked} onClick={() => props.onIntent(!match || match.phase === "PLANNING" && !canStart ? { type: "court", courtId: c.id } : canStart ? { type: "start", matchId: match!.id } : { type: "scoreboard", matchId: match!.id })}>
       <span className="board-face"><b>{String(c.number).padStart(2, "0")}</b>
         {match?.result ? <svg className="board-result" viewBox="0 0 64 22" role="img" aria-label={`白队 ${match.result.whiteScore}，黑队 ${match.result.blackScore}`}>
@@ -197,7 +200,7 @@ export function Venue(props: VenueProps) {
     const selected = props.selection?.playerId === player.id;
     const target = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
     const mismatch = !!target && (!canRepresentSide(player, target.sideId) || !!target.gender && target.gender !== player.gender);
-    const locked = status.status === "playing" || status.status === "played_this_round";
+    const locked = !props.finale && (status.status === "playing" || status.status === "played_this_round");
     const pending = props.pending?.playerIds?.includes(player.id) || props.pending?.playerId === player.id;
     const candidate = props.candidatePlayerIds?.includes(player.id);
     labels.push({

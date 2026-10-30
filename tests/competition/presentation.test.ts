@@ -6,11 +6,13 @@ import { arrange, completeRound, readyForRound, step } from "../fixtures/event";
 it("distinguishes preparing, ready and actual playing without treating the current round as a match", () => {
   let state = readyForRound(1), view = project(state), match = view.matches[0];
   expect(view.roundLabel).toBe("当前轮"); expect(matchStatus(match)).toBe("安排阵容"); expect(roundProgress(view)).toBe("已录分 0/3 场");
-  expect(venueStep(state, view, match, false, true).next).toContain("安排阵容");
+  expect(venueStep(state, view, match, false, true).next).toContain("安排本轮");
   state = arrange(state, match.id); view = project(state); match = view.matches[0];
   expect(matchStatus(match)).toBe("准备完成"); expect(roundProgress(view)).toBe("已录分 0/3 场");
-  expect(venueStep(state, view, match, false, true).next).toBe("等待管理者确认上场");
-  expect(venueStep(state, view, match, true, true).next).toContain("点记分牌确认上场");
+  expect(venueStep(state, view, match, false, true).next).toBe("安排本轮全部场地阵容");
+  for(const remaining of state.matches.filter(m=>m.roundId===state.activeRoundId)) state=arrange(state,remaining.id); view=project(state);match=view.matches[0];
+  expect(venueStep(state,view,match,false,true).next).toBe("等待管理者确认本轮阵容");
+  expect(venueStep(state, view, match, true, true).next).toContain("统一确认本轮阵容");
   state = step(state, { type: "StartMatch", matchId: match.id }); view = project(state); match = view.matches[0];
   expect(matchStatus(match)).toBe("比赛中"); expect(view.roundLabel).toBe("当前轮");
   expect(venueStep(state, view, match, false, true).next).toContain("录入比分");

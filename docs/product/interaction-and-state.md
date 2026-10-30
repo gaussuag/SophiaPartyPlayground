@@ -137,3 +137,11 @@ Sophia 所在场次显示“胜方 +2”；录分牌说明本场积分。赛果�
 reset 是 records 的独立维护操作，不属于公开比赛命令。保存前锁定确认时的 revision／generation；原子替换为 PREPARED、全部 UPCOMING／PLANNING、空阵容与空赛果，保留现有赛事定义与审计。成功后所有客户端按新 generation 重建并回到第一轮，关闭过期排阵／比分编辑；旧草稿仍按旧 generation 隔离，不能自动提交到新一轮。
 
 请求结果未知时保留原编号并查回执，不能再次生成重置；其他人已更新时要求重新核对。管理员可下载最新维护前恢复点，再通过现有恢复确认还原重置前比赛。
+
+## 整轮确认与结束视图（2026-10-31）
+
+StartRound 固定 roundId 与确认时 revision／generation；只处理当前轮仍 PLANNING 的场次，先验证全部，再建立各自唯一 LineupRevision，同时进入 PLAYING。一个成功请求只递增一次 revision，形成一条审计及回执；旧 StartMatch 留作兼容。一次确认页列出全部待上场场次，未全部就绪时按钮禁用。
+
+最后一轮 AdvanceRound 的既有管理确认成功后，七轮 CLOSED 且全部比赛有有效结果才解锁谢幕。当前页面和其他客户端自动切换；再次加载已完赛活动也默认谢幕。轮次菜单的彩蛋项后置显示，查看历史时还原原阵容与比分、停止彩带和发球，回彩蛋再按积分生成。
+
+谢幕只改变展示模式；EventState 仍只有七轮，StartRound／AdvanceRound／FinishEvent 等权威状态不由动画触发。FinishEvent 仍可从管理菜单归档。平分共同庆祝、更正后换胜方、备份恢复／重置后的重新解锁都从最新权威快照推导。

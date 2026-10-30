@@ -170,3 +170,9 @@ records.resetEvent 对 POST /api/events/[eventId]/reset 使用严格小请求：
 重置保留当前快照的名单和赛程，避免旧活动被当前模板替换；只清空动态比赛事实。新 generation、revision、ResetEvent 审计、回执及 beforeRestore 恢复点在同一条件 UPDATE 保存。回执兼容保留 SUPERSEDED_BY_RESTORE 状态与 RESTORE_RELOAD_REQUIRED 错误码，文案统一为“重置或恢复”；旧 generation 的命令不能重放。
 
 重置前状态复用 beforeRestore 单一最近维护恢复点，GET backup?beforeRestore=1 仍仅 admin；没有 schema 迁移、数据库删除或部署初始化。session 将 ResetEnvelope 与 RestoreEnvelope 通过同一持久化 pending／回执核对通道发送，超时不自动再次重置。公开读取不包含恢复点和私有回执。
+
+## 批量确认与本机谢幕（2026-10-31）
+
+StartRound 是 CompetitionCommand 的受管命令，包含 roundId；envelope、服务端角色、版本与 generation、指纹和回执仍沿原通道。decide 先完整验证当前轮所有 PLANNING 阵容，使用 commandId＋matchId 产生各自唯一阵容版本，在一次条件 UPDATE 保存。冲突／失败不留下部分上场；同编号并发及响应丢失沿原回执恢复。
+
+finaleOutcome 只读取已关闭七轮与当前有效积分，planFinale 只生成本机人物目标和角色分工，不写数据库。谢幕不进入 rounds／matches，也不使用最后一轮阵容代替全员。坐标、发球、飞行和112个彩带实例由原本机循环控制，无新增网络／逐帧写入。

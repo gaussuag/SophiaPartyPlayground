@@ -3,7 +3,7 @@ import legacyTemplate from "../../../data/event-template-v1.json";
 import type { CompetitionCommand, Decision, DecisionContext, EventProjection, EventState, Gender, Match, MatchType, Participant, Player, RuleError, RuleVersion, Slot, TeamId } from "./model";
 export type * from "./model";
 import { matchPoints } from "./scoring";
-export { matchPoints, teamStandings, SOPHIA_ID } from "./scoring";
+export { matchPoints, teamStandings, finaleOutcome, SOPHIA_ID } from "./scoring";
 
 class Rejection extends Error {
   constructor(readonly detail: RuleError) { super(detail.message); }
@@ -94,6 +94,17 @@ function checkScores(white: number, black: number) {
   requireRule(white !== black, "EQUAL_SCORE", "请输入有胜负的最终比分");
 }
 
+function checkStart(state: EventState, match: Match) {
+  requireRule(match.phase === "PLANNING", "INVALID_PHASE", "此场已经确认上场");
+  requireRule(!state.matches.some(m => m.id !== match.id && m.courtId === match.courtId && m.phase === "PLAYING"), "COURT_BUSY", "此场地仍有比赛进行中");
+  checkLineup(state, match);
+}
+function confirmStart(state: EventState, match: Match, context: DecisionContext, id: string) {
+  state.lineups.push({ id, matchId: match.id, participants: match.draftSlots.map(s => participant(state, s)), confirmedAt: context.now, supersedes: state.lineups.filter(l => l.matchId === match.id).at(-1)?.id ?? null, reason: null });
+  match.activeLineupRevisionId = id; match.phase = "PLAYING"; match.startedAt = context.now; match.endDeclaredAt = null;
+  return id;
+}
+
 /** The only seam for business transitions. Input is never mutated. */
 export function decide(snapshot: EventState, command: CompetitionCommand, context: DecisionContext): Decision {
   try {
@@ -152,12 +163,17 @@ export function decide(snapshot: EventState, command: CompetitionCommand, contex
         requireRule(slots.length, "UNKNOWN_SLOT", "找不到这个席位"); slots.forEach(s => { if (s.playerId) changedIds.push(s.playerId); s.playerId = null; }); break;
       }
       case "StartMatch": {
-        requireCurrent(match!); requireRule(match!.phase === "PLANNING", "INVALID_PHASE", "此场已经确认上场");
-        requireRule(!state.matches.some(m => m.id !== match!.id && m.courtId === match!.courtId && m.phase === "PLAYING"), "COURT_BUSY", "此场地仍有比赛进行中");
-        checkLineup(state, match!);
-        const id = `${context.commandId}:lineup`;
-        state.lineups.push({ id, matchId: match!.id, participants: match!.draftSlots.map(s => participant(state, s)), confirmedAt: context.now, supersedes: state.lineups.filter(l => l.matchId === match!.id).at(-1)?.id ?? null, reason: null });
-        match!.activeLineupRevisionId = id; match!.phase = "PLAYING"; match!.startedAt = context.now; match!.endDeclaredAt = null; changedIds.push(id); break;
+        requireCurrent(match!); checkStart(state, match!);
+        changedIds.push(confirmStart(state, match!, context, context.commandId + ":lineup")); break;
+      }
+      case "StartRound": {
+        const round = currentRound();
+        requireRule(state.phase === "ACTIVE" && round?.phase === "OPEN" && round.id === command.roundId, "NOT_CURRENT_ROUND", "只能确认当前开放轮次");
+        const pending = state.matches.filter(m => m.roundId === round.id && m.phase === "PLANNING");
+        requireRule(pending.length, "NO_PENDING_MATCHES", "本轮没有等待上场的场次");
+        for (const m of pending) checkStart(state, m);
+        for (const m of pending) { changedIds.push(m.id, confirmStart(state, m, context, context.commandId + ":lineup:" + m.id)); }
+        changedIds.push(round.id); break;
       }
       case "UndoStart":
         requireCurrent(match!); requireRule(match!.phase === "PLAYING" && !match!.activeResultRevisionId, "INVALID_PHASE", "只能撤销尚未录分的误开赛");
@@ -315,4 +331,10 @@ export function verifySnapshot(candidate: EventState): RuleError | null {
     }
     return null;
   } catch (error) { return error instanceof Rejection ? error.detail : { code: "INVALID_BACKUP", message: "备份结构不完整或格式错误" }; }
+}
+
+/** Shared presentation readiness; authorization and full validation remain in decide. */
+export function roundStartStatus(view: EventProjection) {
+  const pending = view.matches.filter(m => m.phase === "PLANNING"), ready = pending.filter(m => m.canStart).length;
+  return { pending, ready, canStart: view.isCurrent && view.round.phase === "OPEN" && pending.length > 0 && ready === pending.length };
 }

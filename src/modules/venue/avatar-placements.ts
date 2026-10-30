@@ -1,6 +1,7 @@
 import type { EventProjection, EventState } from "../competition";
 import { avatarRoute, type TravelMode } from "./avatar-motion";
 import { benchRows, courtCenter, playerPlacement, type Point, type WorldLayout } from "./world";
+import type { FinalePlan } from "./finale";
 type Placement = ReturnType<typeof playerPlacement>;
 const separation = 2.8;
 const distance = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -48,6 +49,7 @@ export function nearestBenchPoint(from: Point, layout: WorldLayout, occupied: re
 export class AvatarPlacements {
   private values = new Map<string, Placement>();
   private owner = "";
+  private presentation = false;
   private round = "";
   private number = 0;
   private live = false;
@@ -55,11 +57,17 @@ export class AvatarPlacements {
   private modes = new Map<string, TravelMode>();
   context = "initial";
   get(playerId: string) { return this.values.get(playerId); }
+  present(state: EventState, plan: FinalePlan) {
+    const owner = state.id+":"+state.generation;
+    if (owner !== this.owner) this.context = owner+":visit-"+(++this.epoch);
+    this.values = new Map(Object.entries(plan.placements)); this.owner=owner; this.round="finale"; this.live=false; this.presentation=true;
+  }
   exitFor(playerId: string, layout: WorldLayout, visible?: Point) {
     const current = this.values.get(playerId)!;
     return nearestBenchPoint(visible ?? current.position, layout, [...this.values].filter(([id]) => id !== playerId).map(([, p]) => p.position), this.modes.get(playerId));
   }
   sync(state: EventState, view: EventProjection, layout: WorldLayout, visible: (id: string) => Point | undefined = () => undefined) {
+    if (this.presentation) { this.owner = ""; this.presentation = false; }
     const owner = `${state.id}:${state.generation}`;
     const advancing = owner === this.owner && this.live && view.isCurrent && view.round.number === this.number + 1;
     const reset = owner !== this.owner || view.round.id !== this.round && !advancing;

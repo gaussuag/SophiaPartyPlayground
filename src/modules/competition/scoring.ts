@@ -20,3 +20,11 @@ export function teamStandings(state: EventState) {
   }
   return { enabled: state.ruleVersion === 2, totals, wins, completed, totalMatches: state.matches.length };
 }
+
+/** Finale is a derived local view, never an eighth competition round. */
+export function finaleOutcome(state: EventState) {
+  const standings = teamStandings(state);
+  const unlocked = state.rounds.length === 7 && state.rounds.every(r => r.phase === "CLOSED") && state.activeRoundId === null && standings.completed === standings.totalMatches;
+  const winner: TeamId | null = unlocked && standings.enabled && standings.totals.WHITE !== standings.totals.BLACK ? standings.totals.WHITE > standings.totals.BLACK ? "WHITE" : "BLACK" : null;
+  return { unlocked, winner, loser: winner ? winner === "WHITE" ? "BLACK" as const : "WHITE" as const : null, totals: standings.totals };
+}

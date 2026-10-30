@@ -31,7 +31,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
 }) {
   const root = useRef<Group>(null), body = useRef<Group>(null), head = useRef<Group>(null);
   const leftArm = useRef<Group>(null), rightArm = useRef<Group>(null), leftLeg = useRef<Group>(null), rightLeg = useRef<Group>(null);
-  const invitationRing = useRef<Group>(null);
+  const invitationRing = useRef<Group>(null), nameAnchor = useRef<Group | null>(null);
   const angel = player.teamId === "FREE";
   const flight = useRef({ clock: 0, wing: .18, lift: .19, arriving: false });
   const invalidate = useThree(s => s.invalidate);
@@ -97,7 +97,8 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     if (reduced || !choreography.active) flight.current.lift = targetLift;
     else if (!local?.held || moving || landing) flight.current.lift += (targetLift - flight.current.lift) * Math.min(1, dt * 10);
     if (landing && Math.abs(flight.current.lift - .19) < .01) flight.current.arriving = false;
-    root.current.userData.flying = angel && (motion.moving || landing);
+    if (nameAnchor.current) nameAnchor.current.position.set(...(local?.action === "finale-confetti" && stroke ? [0, stroke.lift + 1.55, 0] : onCourt || player.teamId === "WHITE" ? [0,-.1,0] : angel ? [0,2.05,0] : [0,1.8,0]) as Point);
+    root.current.userData.flying = angel && (motion.moving || landing || local?.action === "finale-confetti");
     body.current.position.y = stroke ? stroke.lift : angel ? flight.current.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
     body.current.rotation.z = stroke ? 0 : angel ? airborne.bank : walking ? Math.sin(phase) * 0.025 : gait * .04;
     head.current.rotation.x = -selection * 0.12 + (a.resultKind === "acknowledge" ? cheer * 0.18 : 0);
@@ -140,6 +141,6 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
       </group>
     </group>
     <mesh position={[0, 0.8, 0]} visible={false}><boxGeometry args={[1, 1.8, 0.8]} /><meshBasicMaterial /></mesh>
-    <group position={onCourt || player.teamId === "WHITE" ? [0, -0.1, 0] : player.teamId === "FREE" ? [0, 2.05, 0] : [0, 1.8, 0]} ref={node => { if (node) anchors.set(`player:${player.id}`, node); else anchors.delete(`player:${player.id}`); }} />
+    <group position={onCourt || player.teamId === "WHITE" ? [0, -0.1, 0] : player.teamId === "FREE" ? [0, 2.05, 0] : [0, 1.8, 0]} ref={node => { nameAnchor.current=node; if (node) anchors.set(`player:${player.id}`, node); else anchors.delete(`player:${player.id}`); }} />
   </group>;
 }

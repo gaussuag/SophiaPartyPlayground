@@ -1,7 +1,7 @@
 "use client";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowRight, Check, ChevronDown, CloudCheck, CloudOff, Ellipsis, Flag, Info, LayoutGrid, List, LoaderCircle, LogIn, LogOut, Pause, Play, RefreshCw, RotateCcw, Trophy, X } from "lucide-react";
-import { project, type CompetitionCommand, type MatchView } from "../src/modules/competition";
+import { ArrowRight, Check, ChevronDown, CloudCheck, CloudOff, Ellipsis, Flag, Info, LayoutGrid, List, LoaderCircle, LogIn, LogOut, Pause, Play, RefreshCw, RotateCcw, Sparkles, Trophy, X } from "lucide-react";
+import { project, roundStartStatus, finaleOutcome, type CompetitionCommand, type MatchView } from "../src/modules/competition";
 import type { PlayerSelection, SelectionBasis, SlotSelection, VenueIntent } from "../src/modules/venue";
 import { placementCandidates, placementCommand, placementTargets } from "./placements";
 import { SlotPicker } from "./SlotPicker";
@@ -19,6 +19,7 @@ import "./game.css";
 import "./world.css";
 
 const Venue = lazy(() => import("../src/modules/venue").then(m => ({ default: m.Venue })));
+const FINALE = "__finale__";
 type Panel = "rounds" | "schedule" | "records" | "tools" | "match" | null;
 type Confirmation = { title: string; body: ReactNode; label: string; command: CompetitionCommand; basis: SelectionBasis };
 
@@ -52,7 +53,15 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const canWrite = !!view && view.role !== "viewer" && view.status === "synced" && view.cacheReady && !view.pending.length;
   const canManage = !!view && canExecute(view.role, "StartMatch");
   const canCorrect = !!view && canExecute(view.role, "CorrectResult");
-  const projection = state ? project(state, { roundId: viewedRoundId ?? undefined }) : null;
+  const outcome = state ? finaleOutcome(state) : null;
+  const finale = !!outcome?.unlocked && (viewedRoundId === FINALE || viewedRoundId === null);
+  const projection = state ? project(state, { roundId: viewedRoundId === FINALE ? undefined : viewedRoundId ?? undefined }) : null;
+  const roundStart = projection ? roundStartStatus(projection) : null;
+  const wasUnlocked = useRef(false);
+  useEffect(() => {
+    if (outcome?.unlocked && !wasUnlocked.current) { setViewedRoundId(FINALE); setCourtId(null); setSelection(null); setSlotFocus(null); setLineupEdit(null); setScore(null); setPanel(null); setCameraRequest(p => ({ courtId: null, key: p.key + 1 })); }
+    wasUnlocked.current = !!outcome?.unlocked;
+  }, [outcome?.unlocked]);
   const arrangementView = view?.arrangement && projection?.isCurrent ? project(view.arrangement.state) : undefined;
   const arrangementId = view?.arrangement?.commandId;
   useEffect(() => {
@@ -172,13 +181,14 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
     if (!state || !projection || !session || score) return;
     if (intent.type === "court") { chooseCourt(intent.courtId); return; }
     if (lineupEdit && (intent.type === "start" || intent.type === "scoreboard")) { setHint("请先保存或取消名单更正"); return; }
-    if (intent.type === "start") { const match = projection.matches.find(m => m.id === intent.matchId); if (match && canWrite && canManage) startMatch(match); return; }
+    if (finale) return;
+    if (intent.type === "start") { if (canWrite && canManage) startRound(); return; }
     if (intent.type === "scoreboard") {
       const match = projection.matches.find(m => m.id === intent.matchId);
       if (!match) return;
       chooseCourt(match.courtId, false);
       if (match.phase !== "PLANNING") await openScore(match);
-      else if (match.canStart && canManage && canWrite) startMatch(match);
+      else if (match.canStart && canManage && canWrite) startRound();
       else chooseCourt(match.courtId);
       return;
     }
@@ -205,19 +215,18 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const message = busy ? savingMessage : hint || (staleSlot ? "记录已更新，请重新点选位置" : view && (view.status === "offline" || view.status === "conflict" || view.status === "unknown-outcome" || view.errorCode) ? view.message : "");
   const allClosed = state?.phase === "ACTIVE" && state.rounds.every(r => r.phase === "CLOSED");
   const profile = state?.players.find(p => p.id === profileId);
-  const step = state && projection ? venueStep(state, projection, focused, canManage, !readOnly) : null;
+  const step = finale ? { status: outcome?.winner ? (outcome.winner === "WHITE" ? "白队获胜" : "黑队获胜") : "双方共同庆祝", next: "七轮完赛 · Sophia 的谢幕时刻" } : state && projection ? venueStep(state, projection, focused, canManage, !readOnly) : null;
   const feedback = message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (staleSlot) setSlotFocus(null); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>;
-  function startMatch(match: MatchView) {
-    if (!state || !projection || !canWrite || !canManage || !match.canStart) return;
-    setCourtId(match.courtId);
-    ask("确认上场", <><p>第 {projection.round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场 · {match.label}</p><LineupNames participants={namesFor(state, match.draftSlots)} /></>, "确认上场并开始", { type: "StartMatch", matchId: match.id });
+  function startRound() {
+    if (!state || !projection || !canWrite || !canManage || !roundStart?.canStart) return;
+    ask("确认本轮上场阵容", <><p>第 {projection.round.number} 轮 · 同时确认 {roundStart.pending.length} 场</p>{roundStart.pending.map(m => <section className="round-lineup-confirm" key={m.id}><h3>{state.courts.find(c => c.id === m.courtId)!.number} 号场 · {m.label}</h3><LineupNames participants={namesFor(state, m.draftSlots)} /></section>)}<p>确认后同时锁定阵容并开始比赛。</p></>, "确认阵容并全部开赛", { type: "StartRound", roundId: projection.round.id });
   }
 
   return <div className="game-shell">
     {state && projection && session && view
       ? <main className="game-stage" aria-label="Sophia 三维球馆">
           <Suspense fallback={<div className="game-loading"><LoaderCircle size={24} /></div>}>
-            <Venue state={state} view={projection} arrangementView={arrangementView} courtId={courtId} cameraRequest={cameraRequest} selection={selection} slotSelection={slotFocus} placements={targets}
+            <Venue state={state} view={projection} finale={finale} arrangementView={arrangementView} courtId={courtId} cameraRequest={cameraRequest} selection={selection} slotSelection={slotFocus} placements={targets}
               animationActive={!panel && !score && !confirm && !profile && !showHelp && !animationsPaused}
               candidatePlayerIds={canArrange ? candidates.map(p => p.id) : []}
               pending={projection.isCurrent && (envelope || view.arrangement) ? { playerId: pendingPlayer, playerIds: view.arrangement?.playerIds, matchId: pendingMatch, slotId: pendingSlot, unknown: view.status === "unknown-outcome" } : undefined}
@@ -235,7 +244,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
         </main>}
     <header className="game-header">
       <button className="game-brand" aria-label="Sophia 球馆总览" title={SITE_TITLE} onClick={() => { setScore(null); setPanel(null); setCourtId(null); setLineupEdit(null); clearSelection(); flyTo(null); }}><span className="brand-mark"><i /><i /><i /><i /></span><span className="game-brand-name"><strong>SOPHIA</strong><small>SUNSHINE CUP</small></span></button>
-      {projection && <button className="game-round-switch" disabled={!!score} aria-label={`切换轮次：第 ${projection.round.number} 轮，${roundProgress(projection)}`} title={projection.roundLabel} onClick={() => setPanel("rounds")}><span>第 {projection.round.number} 轮</span><small>{roundProgress(projection)}</small><ChevronDown size={14} /></button>}
+      {projection && <button className="game-round-switch" disabled={!!score} aria-label={finale ? "切换轮次：谢幕彩蛋" : `切换轮次：第 ${projection.round.number} 轮，${roundProgress(projection)}`} title={projection.roundLabel} onClick={() => setPanel("rounds")}><span>{finale ? "谢幕彩蛋" : `第 ${projection.round.number} 轮`}</span><small>{finale ? `白 ${outcome?.totals.WHITE} : 黑 ${outcome?.totals.BLACK}` : roundProgress(projection)}</small><ChevronDown size={14} /></button>}
       <div className="game-header-actions"><button className={"icon-button sync-icon " + (view?.status ?? "loading")} aria-label={"同步记录：" + (view?.message ?? "连接中")} onClick={() => void session?.refresh()}>{busy || view?.status === "loading" ? <LoaderCircle size={19} className="spin" /> : view?.status === "offline" || view?.status === "unknown-outcome" ? <CloudOff size={20} /> : <CloudCheck size={20} />}</button><button className="icon-button" disabled={!!score} aria-label="更多选项" onClick={() => setPanel("tools")}><Ellipsis size={22} /></button></div>
     </header>
     <output className="sr-only" aria-live="polite">{view?.message}</output>
@@ -251,8 +260,9 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
         : canManage && <div className="game-primary-action">
           {edit ? <button className="button primary" disabled={!canWrite} onClick={() => ask("确认实际参赛者", <><p>第 {projection.round.number} 轮 · {state.courts.find(c => c.id === focused!.courtId)!.number} 号场 · {focused!.label}</p><LineupNames participants={namesFor(state, slots)} /></>, "保存名单更正", { type: "CorrectRecordedLineup", ...edit, reason: "RECORDED_LINEUP_ERROR" })}>保存名单更正 <Check size={17} /></button>
             : state.phase === "PREPARED" || state.phase === "WARMUP" ? <button className="button primary" disabled={!canWrite} onClick={() => ask("开始第一轮", <p>开放三块球场的正式比赛。</p>, "开放第一轮", { type: "OpenFirstRound" })}>开始第一轮 <ArrowRight size={17} /></button>
+            : !finale && state.phase === "ACTIVE" && roundStart && roundStart.pending.length > 0 && projection.isCurrent ? <button className="button primary" disabled={!canWrite || !roundStart.canStart} onClick={startRound}>确认本轮阵容 {roundStart.ready}/{roundStart.pending.length} 场 <Check size={17} /></button>
             : projection.canAdvance ? <button className="button primary" disabled={!canWrite} onClick={() => ask(projection.round.number === 7 ? "确认第七轮结束" : "确认本轮结束", <p>本轮 {projection.total} 场赛果已齐。{projection.round.number === 7 ? "确认关闭最后一轮，保留全部比赛记录。" : "确认后进入第 " + (projection.round.number + 1) + " 轮，全部选手回候场重新排阵。"}</p>, projection.round.number === 7 ? "确认第七轮结束" : "确认并进入下一轮", { type: "AdvanceRound", roundId: projection.round.id })}>{projection.round.number === 7 ? "确认第七轮结束" : "确认本轮结束"} <ArrowRight size={17} /></button>
-            : allClosed ? <button className="button primary" disabled={!canWrite} onClick={() => ask("结束活动", <p>{state.rounds.length} 轮 {state.matches.length} 场已完成。</p>, "结束活动", { type: "FinishEvent" })}>结束活动 <Check size={17} /></button>
+            : allClosed && !finale ? <button className="button primary" disabled={!canWrite} onClick={() => ask("结束活动", <p>{state.rounds.length} 轮 {state.matches.length} 场已完成。</p>, "结束活动", { type: "FinishEvent" })}>结束活动 <Check size={17} /></button>
             : null}
         </div>}
     </div>}</>}
@@ -262,18 +272,18 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       <button className={panel === "records" ? "active" : ""} onClick={() => setPanel("records")}><Trophy size={19} /><span>赛果</span></button>
     </nav>}
     {panel && state && projection && session && view && <GameDrawer title={panel === "rounds" ? "轮次" : panel === "schedule" ? "赛程" : panel === "records" ? "赛果" : panel === "match" ? "场次详情" : "球馆"} onClose={() => setPanel(null)} className={panel === "match" ? "game-details" : ""}>
-      {panel === "rounds" && <div className="game-round-grid">{state.rounds.map(round => <button key={round.id} aria-label={`第 ${round.number} 轮`} aria-pressed={round.id === projection.round.id} className={round.id === projection.round.id ? "selected" : ""} onClick={() => chooseRound(round.id)}><strong>{String(round.number).padStart(2, "0")}</strong>{round.phase === "CLOSED" ? <Check size={13} /> : round.phase === "OPEN" ? <i /> : null}</button>)}</div>}
+      {panel === "rounds" && <div className="game-round-grid">{state.rounds.map(round => <button key={round.id} aria-label={`第 ${round.number} 轮`} aria-pressed={!finale && round.id === projection.round.id} className={!finale && round.id === projection.round.id ? "selected" : ""} onClick={() => chooseRound(round.id)}><strong>{String(round.number).padStart(2, "0")}</strong>{round.phase === "CLOSED" ? <Check size={13} /> : round.phase === "OPEN" ? <i /> : null}</button>)}{outcome?.unlocked && <button aria-label="谢幕彩蛋" aria-pressed={finale} className={finale ? "selected finale-choice" : "finale-choice"} onClick={() => chooseRound(FINALE)}><Sparkles size={20} /><span>谢幕</span></button>}</div>}
       {panel === "schedule" && <Schedule state={state} onSelect={selectMatch} />}
       {panel === "records" && <Records state={state} view={view} session={session} onSelect={selectMatch} />}
       {panel === "match" && focused && <MatchPanel state={state} view={view} session={session} projection={projection} match={focused} slots={slots}
-        onArrange={() => { setPanel(null); clearSelection(); }} edit={edit} setEdit={editLineup} hint={hint} setHint={setHint} ask={ask} openScore={m => void openScore(m)} />}
-      {panel === "tools" && <div className="game-tools"><p className="tool-identity">{view.role === "admin" ? "活动管理" : view.role === "operator" ? "操作员" : view.role === "participant" ? "参赛协作" : view.role === "guest" ? "访客协作" : "观赛"}{localDevelopment && <small>本地演练</small>}</p>{focused && <button onClick={() => setPanel("match")}><Ellipsis size={18} />{state.courts.find(c => c.id === focused.courtId)!.number} 号场{canCorrect ? "详情与纠错" : "详情"}</button>}<button onClick={() => { setPanel(null); setShowHelp(true); }}><Info size={18} />操作说明</button><button onClick={() => void session.refresh()}><RefreshCw size={18} />同步记录</button><button aria-pressed={animationsPaused} onClick={() => { setAnimationsPaused(value => !value); setPanel(null); }}>{animationsPaused ? <Play size={18} /> : <Pause size={18} />}{animationsPaused ? "恢复场景动画" : "暂停场景动画"}</button>{canManage && state.phase === "PREPARED" && <button disabled={!canWrite} onClick={async () => { if (await session.dispatch({ type: "StartWarmup" })) setPanel(null); }}><Flag size={18} />开始热身</button>}{view.role === "admin" && <button disabled={!canWrite} onClick={() => { setPanel(null); clearSelection(); setResetBasis({ revision: state.revision, generation: state.generation }); }}><RotateCcw size={18} />重置比赛数据</button>}{anonymous ? <a target="_top" href={"/signin-with-chatgpt?return_to=" + returnTo}><LogIn size={18} />管理者登录</a> : <a target="_top" href={"/signout-with-chatgpt?return_to=" + returnTo}><LogOut size={18} />退出登录</a>}<small className="tool-sync-time">{view.lastSyncedAt ? "最后同步 " + new Date(view.lastSyncedAt).toLocaleTimeString("zh-CN") : "尚未同步"} · v{state.revision}</small></div>}
+        onConfirmRound={startRound} onArrange={() => { setPanel(null); clearSelection(); }} edit={edit} setEdit={editLineup} hint={hint} setHint={setHint} ask={ask} openScore={m => void openScore(m)} />}
+      {panel === "tools" && <div className="game-tools"><p className="tool-identity">{view.role === "admin" ? "活动管理" : view.role === "operator" ? "操作员" : view.role === "participant" ? "参赛协作" : view.role === "guest" ? "访客协作" : "观赛"}{localDevelopment && <small>本地演练</small>}</p>{focused && !finale && <button onClick={() => setPanel("match")}><Ellipsis size={18} />{state.courts.find(c => c.id === focused.courtId)!.number} 号场{canCorrect ? "详情与纠错" : "详情"}</button>}<button onClick={() => { setPanel(null); setShowHelp(true); }}><Info size={18} />操作说明</button><button onClick={() => void session.refresh()}><RefreshCw size={18} />同步记录</button><button aria-pressed={animationsPaused} onClick={() => { setAnimationsPaused(value => !value); setPanel(null); }}>{animationsPaused ? <Play size={18} /> : <Pause size={18} />}{animationsPaused ? "恢复场景动画" : "暂停场景动画"}</button>{canManage && state.phase === "PREPARED" && <button disabled={!canWrite} onClick={async () => { if (await session.dispatch({ type: "StartWarmup" })) setPanel(null); }}><Flag size={18} />开始热身</button>}{canManage && allClosed && <button disabled={!canWrite} onClick={() => ask("结束活动", <p>七轮比赛已全部完成，保留所有记录与谢幕演出。</p>, "确认活动结束", { type: "FinishEvent" })}><Check size={18} />确认活动结束</button>}{view.role === "admin" && <button disabled={!canWrite} onClick={() => { setPanel(null); clearSelection(); setResetBasis({ revision: state.revision, generation: state.generation }); }}><RotateCcw size={18} />重置比赛数据</button>}{anonymous ? <a target="_top" href={"/signin-with-chatgpt?return_to=" + returnTo}><LogIn size={18} />管理者登录</a> : <a target="_top" href={"/signout-with-chatgpt?return_to=" + returnTo}><LogOut size={18} />退出登录</a>}<small className="tool-sync-time">{view.lastSyncedAt ? "最后同步 " + new Date(view.lastSyncedAt).toLocaleTimeString("zh-CN") : "尚未同步"} · v{state.revision}</small></div>}
       {!localDevelopment && panel === "tools" && <a className="game-setup-link" href={"/setup?event=" + encodeURIComponent(eventId)}>身份与权限</a>}
     </GameDrawer>}
     {resetBasis && session && view && <ResetEventDialog session={session} view={view} basis={resetBasis} onClose={() => setResetBasis(null)} onComplete={() => { setResetBasis(null); flyTo(null); }} />}
-    {confirm && session && <ConfirmDialog title={confirm.title} actionLabel={confirm.label} busy={busy} onClose={() => setConfirm(null)} onConfirm={async () => { const saving = session.dispatch(confirm.command, confirm.basis); if (session.getView().arrangement) { setConfirm(null); clearSelection(); } const ok = await saving; setConfirm(null); clearSelection(); if (ok && confirm.command.type === "CorrectRecordedLineup") setLineupEdit(null); }}>{confirm.body}</ConfirmDialog>}
+    {confirm && session && <ConfirmDialog className={confirm.command.type === "StartRound" ? "round-confirm-dialog" : undefined} title={confirm.title} actionLabel={confirm.label} busy={busy} onClose={() => setConfirm(null)} onConfirm={async () => { const saving = session.dispatch(confirm.command, confirm.basis); if (session.getView().arrangement) { setConfirm(null); clearSelection(); } const ok = await saving; setConfirm(null); clearSelection(); if (ok && confirm.command.type === "CorrectRecordedLineup") setLineupEdit(null); }}>{confirm.body}</ConfirmDialog>}
     {profile && <ConfirmDialog title={profile.name} actionLabel="返回球馆" cancelLabel={null} busy={false} onClose={() => setProfileId(null)} onConfirm={() => setProfileId(null)}><p>{profile.teamId === "FREE" ? "自由阵营 · 可代表黑白任一队" : profile.teamId === "WHITE" ? "白队" : "黑队"} · {profile.gender === "MALE" ? "男" : "女"}</p><p>{projection?.playerStates[profile.id].label}</p></ConfirmDialog>}
-    {showHelp && <ConfirmDialog title="安排一场比赛" actionLabel="回到球馆" cancelLabel={null} busy={false} onClose={() => setShowHelp(false)} onConfirm={() => setShowHelp(false)}><ol className="help-steps"><li>单指划空地旋转视角；双指缩放、移动；点全景复位。</li><li>点球友再点场内位置，或直接拖入；开赛前可移到其他场地，拖到前后两排候场区即可下场。</li><li>阵容齐备后，由活动管理者确认上场；确认后锁住阵容。</li><li>所有访客可点记分牌录分，确认有效比分后本场结束，选手留场。</li><li>本轮赛果齐备后，由活动管理者确认本轮结束；新轮回候场，历史轮恢复原对阵。</li></ol></ConfirmDialog>}
+    {showHelp && <ConfirmDialog title="安排一场比赛" actionLabel="回到球馆" cancelLabel={null} busy={false} onClose={() => setShowHelp(false)} onConfirm={() => setShowHelp(false)}><ol className="help-steps"><li>单指划空地旋转视角；双指缩放、移动；点全景复位。</li><li>点球友再点场内位置，或直接拖入；开赛前可移到其他场地，拖到前后两排候场区即可下场。</li><li>本轮阵容齐备后，由活动管理者统一确认全部场地；确认后锁住阵容。</li><li>所有访客可点记分牌录分，确认有效比分后本场结束，选手留场。</li><li>本轮赛果齐备后，由活动管理者确认本轮结束；新轮回候场，历史轮恢复原对阵。</li></ol></ConfirmDialog>}
   </div>;
 }
 
