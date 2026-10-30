@@ -11,7 +11,7 @@ let mf: Miniflare; let db: D1Database;
 const now = "2026-10-28T05:00:00.000Z";
 const ctx = (actorId: string | null = "admin-a", role: RecordsContext["role"] = "admin"): RecordsContext => ({ db, actorId, role, now });
 const envelope = (state: EventState, command: CompetitionCommand, commandId = crypto.randomUUID()) => ({ eventId: state.id, commandId, expectedRevision: state.revision, expectedGeneration: state.generation, command });
-async function initial() { const id = `test-${crypto.randomUUID()}`; return (await initializeEvent(ctx(), id)).state; }
+async function initial() { const id = `test-${crypto.randomUUID()}`; return (await initializeEvent(ctx(), id, { ruleVersion: 1 })).state; }
 async function apply(state: EventState, command: CompetitionCommand) { return (await execute(ctx(), envelope(state, command))).state; }
 async function fill(state: EventState, matchId: string) {
   for (const slot of state.matches.find(m => m.id === matchId)!.draftSlots) {
@@ -53,7 +53,7 @@ describe("real local D1 authority", () => {
     expect(race.filter(r => r.created)).toHaveLength(1);
     const pristine = race[0].state;
     expect(pristine.name).toBe(SITE_TITLE); expect(pristine.revision).toBe(0); expect(pristine.phase).toBe("PREPARED");
-    expect(pristine.players).toHaveLength(14); expect(pristine.matches).toHaveLength(20);
+    expect(pristine.players).toHaveLength(13); expect(pristine.matches).toHaveLength(21);
     expect(pristine.lineups).toEqual([]); expect(pristine.results).toEqual([]); expect(pristine.audit).toEqual([]);
     expect(pristine.matches.flatMap(m => m.draftSlots).every(s => s.playerId === null)).toBe(true);
     const qa = (await initializeConfiguredEvent(ctx(), config, { ...request, eventId: id + "-qa" })).state;

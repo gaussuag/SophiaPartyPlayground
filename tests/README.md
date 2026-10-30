@@ -1,5 +1,10 @@
 # 测试入口
 
+- 新赛制入口：competition/cup-v2.test.ts、records/cup-v2.test.ts、venue/angel.test.ts，覆盖 13 人／21 场、跨两侧自由选手匹配、代表队、1／2 分、更正／撤回／名单纠错和跨赛制恢复拒绝。
+- `npm run verify:cup-v2`：真实 HTTP＋D1 的 21 场、7 次推进竞争、公开排阵／录分、Sophia 对侧抢占、重复回执、两客户端读取、更正、CSV 和恢复；CI 在旧 v1 HTTP 回归后运行。
+- [v2 浏览器回归](browser/cup-v2-harness.html)：开发服务打开 `/tests/browser/cup-v2-harness.html?event=local-新的编号`，点击运行。自动创建自己的空 v2 活动，检查姓名／头像、飞行、开赛确认、录分、积分更正、偶数轮候选、匿名端、三种手机尺寸和动画请求预算。已存在的非空活动会拒绝重置。该测试不是 Safari 实机验收。
+- 旧 fixtures/event.ts 显式使用 ruleVersion=1；下面 v1 第七轮 2/2、自由双打等用例保留作兼容回归。新活动默认 v2，末轮 3/3。rally／optimistic 等旧 harness 需通过开发初始化入口显式创建 v1 独立活动，不能用它们判断新赛制的类型。
+
 - venue/local-choreography.test.ts：通过实际 project／playerPlacement 与本机驱动 Interface 验证 0～4 人、1v2、双球热身／单球比赛、单打、换人／跨场／移除、录分后留场、历史恢复、个人候场边界、点击冻结、独立节奏及暂停／减少动态效果。动画不写业务记录。
 - competition/presentation.test.ts：核对“准备完成”不算已开赛、录分进度含义、第七轮 2/2 和协作／管理角色的下一步提示。
 

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, Check, X } from "lucide-react";
-import type { EventState, Participant } from "../src/modules/competition";
+import { matchPoints, type EventState, type Participant } from "../src/modules/competition";
 import type { EventSession, SessionView } from "../src/modules/session";
 import { canExecute } from "../src/modules/records/permissions";
 
@@ -51,6 +51,7 @@ export function ScoreboardEditor({ target, session, view, onClose, onRebind }: {
       <header className="dialog-heading"><div><p className="eyebrow">第 {round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场 · {match.label}</p><h2 id="score-title">{readOnly ? "记分牌" : target.resultRevisionId ? "更正比分" : "最终比分"}</h2></div><button type="button" className="icon-button" aria-label="关闭记分牌并保留草稿" onClick={onClose}><X size={21} /></button></header>
       <div className="scoreboard-body">
       {stale && !submitting && <div className="notice warning" role="alert"><strong>阵容或赛果已在其他设备改变</strong><p>{readOnly ? "请关闭后重新打开记分牌，查看最新记录。" : "输入已保留。请查看最新名单与比分，再确认是否沿用输入。"}</p><p>{state.lineups.find(l => l.id === match.activeLineupRevisionId)?.participants.map(p => p.name).join(" / ")}</p><p>{match.activeResultRevisionId ? (() => { const r = state.results.find(r => r.id === match.activeResultRevisionId)!; return `当前有效比分：白队 ${r.whiteScore} : ${r.blackScore} 黑队`; })() : "当前尚无有效赛果"}</p>{!readOnly && <button type="button" className="button secondary" disabled={!match.activeLineupRevisionId} onClick={rebind}>已核对当前记录，沿用输入</button>}</div>}
+      {state.ruleVersion === 2 && <p className="score-award">{matchPoints(state, match.id, target.lineupRevisionId) === 2 ? "Sophia 参赛 · 胜方积 2 分" : "本场胜方积 1 分"}</p>}
       <div className="score-inputs">
         {(["WHITE", "BLACK"] as const).map(side => <label key={side} className={`score-side ${side === "BLACK" ? "black-side" : ""}`}><span className="team-heading"><i className={`team-dot ${side.toLowerCase()}`} />{side === "WHITE" ? "白队" : "黑队"}</span><span className="score-names">{target.participants.filter(p => p.sideId === side).map(p => p.name).join(" / ")}</span>{readOnly ? <strong className="score-readout">{side === "WHITE" ? white || "—" : black || "—"}</strong> : <input autoComplete="off" inputMode="numeric" pattern="[0-9]*" type="text" maxLength={16} disabled={busy} aria-label={side === "WHITE" ? "白队最终比分" : "黑队最终比分"} placeholder="—" value={side === "WHITE" ? white : black} onChange={e => { setError(""); void save(side === "WHITE" ? e.target.value : white, side === "BLACK" ? e.target.value : black); }} />}</label>)}
       </div>

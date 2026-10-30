@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { matchStatus, roundProgress, venueStep } from "../../app/match-presentation";
-import { project } from "../../src/modules/competition";
+import { createEvent, project } from "../../src/modules/competition";
 import { arrange, completeRound, readyForRound, step } from "../fixtures/event";
 
 it("distinguishes preparing, ready and actual playing without treating the current round as a match", () => {
@@ -23,4 +23,9 @@ it("completed progress counts results, guests wait for management and the sevent
   expect(venueStep(state, view, undefined, false, true).next).toBe("等待管理者确认本轮结束");
   const historical = project(state, { roundId: state.rounds[0].id });
   expect(venueStep(state, historical, historical.matches[0], false, true)).toEqual({ status: "本轮已结束", next: "点记分牌查看赛果" });
+});
+
+it("starts the revised cup with a clear pre-round step", () => {
+  const state = createEvent("local-prepared-v2", "2026-10-30T00:00:00Z");
+  expect(venueStep(state, project(state), undefined, false, true)).toEqual({ status: "赛前热身", next: "等待管理者开放第一轮" });
 });

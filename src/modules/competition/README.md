@@ -12,3 +12,5 @@
 
 依据：[规则](../../../docs/product/requirements.md)、[状态机](../../../docs/product/interaction-and-state.md)、[数据契约](../../../docs/architecture/data-and-sync.md)。
 
+
+2026-10-30 v2：createEvent(id, now, ruleVersion=2) 新建 13 人／21 场，版本 1 保留旧模板。canRepresentSide 将名单归属与实际比赛侧分开；全轮跨两侧统一匹配，Sophia 不会被重复计入。matchPoints(state, matchId, lineupRevisionId?) 与 teamStandings(state) 隐藏 1／2 分、有效版本和更正重算；不写累计表，也不引入原始数值权重。verifySnapshot 验证对应版本的模板身份和场次数量。

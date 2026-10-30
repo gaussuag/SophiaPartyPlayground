@@ -76,3 +76,12 @@ dialog.game-drawer[open]{display:flex;flex-direction:column}
 @media(prefers-reduced-motion:reduce){.game-position{transition:none}}
 .game-drawer .schedule-round>header>span{display:none}
 @media(max-width:359px){.game-context .game-focus-bar{gap:0}.game-context .game-focus-bar>.icon-button{min-width:40px;width:40px}.game-context .game-focus-bar>button:first-child{gap:5px;padding-left:9px;padding-right:5px}}
+
+/* The freely assigned host remains visually distinct from both competing sides. */
+.team-dot.free{background:#b18cc9;border:1px solid #836197}.game-player-label.free>span{background:#f1def6f5;color:#60406f;border:1px solid #d1b1dc}.game-bench-marker.free{background:#eee0f3;color:#60406f}
+.picker-player.free{background:#f2e8f5;border-color:#dcc1e3}.picker-player small{display:block;font-size:10px;line-height:1.5;color:#805489}
+.schedule-rule{font-size:12px;line-height:1.8;color:#546c46;margin:0 0 16px}.schedule-round>header .sophia-round-note{display:block;margin-top:6px;color:#82578a;font-size:10px}
+.points-badge{display:inline-flex;align-items:center;white-space:nowrap;font-size:10px;font-style:normal;font-weight:650;padding:3px 6px;border-radius:8px;color:#785282;background:#f0e3f4;margin-left:6px}
+.schedule-round>div>button>strong{display:flex;align-items:center;flex-wrap:wrap;gap:3px}.schedule-round .points-badge{margin-left:0}
+.team-standings{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 16px}.team-standings>div{padding:14px 16px;border-radius:18px;border:1px solid #dae0cb;background:#f6f8ed;display:flex;flex-direction:column;gap:8px}.team-standings>div.black{background:#284a38;color:#f2f6e3;border-color:#284a38}.team-standings>div>span{font-size:12px;display:flex;gap:6px;align-items:center}.team-standings strong{font-size:38px;line-height:1.1;font-variant-numeric:tabular-nums}.team-standings strong small{font-size:12px;margin-left:7px;font-weight:400}.team-standings>div>span:last-child{font-size:11px;opacity:.7}
+.score-award{margin:0 0 12px;color:#805489;text-align:center;font-size:12px}.schedule-section .count-tag{white-space:nowrap}

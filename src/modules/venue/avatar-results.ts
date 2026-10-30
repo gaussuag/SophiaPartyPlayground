@@ -27,7 +27,7 @@ export class AvatarResults {
       const key = `${state.id}:${state.generation}:${match.id}`;
       if (!current.has(match.id) || this.completed.has(match.id) || this.seen.has(key)) continue;
       this.seen.add(key);
-      for (const participant of match.participants) this.reactions.set(participant.playerId, { token: ++this.sequence, kind: participant.teamId === match.result!.winnerTeamId ? "celebrate" : "acknowledge" });
+      for (const participant of match.participants) this.reactions.set(participant.playerId, { token: ++this.sequence, kind: participant.sideId === match.result!.winnerTeamId ? "celebrate" : "acknowledge" });
     }
     this.completed = current;
   }

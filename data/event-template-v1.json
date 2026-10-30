@@ -1,0 +1,406 @@
+{
+  "schemaVersion": 1,
+  "templateId": "sophia-pickleball-party-v1",
+  "event": {
+    "name": "Sophia Party Playground",
+    "date": null,
+    "timeZone": null
+  },
+  "confirmedRules": {
+    "sides": [
+      "WHITE",
+      "BLACK"
+    ],
+    "openDoubles": {
+      "playersPerSide": 2,
+      "genderRestriction": null,
+      "mustKeepTeams": true
+    },
+    "maxMatchesPerPlayerPerRound": 1,
+    "concurrentMatchesPerPlayer": 1,
+    "startRequiresExplicitConfirmation": true,
+    "ending": {
+      "drivenBy": "FINAL_SCORE_ENTRY",
+      "targetScoreHandledOnSite": true,
+      "timeLimitEnforced": false
+    },
+    "drawSupported": false,
+    "roundAdvance": {
+      "mode": "MANUAL",
+      "requiresAllOfficialMatchesCompleted": true
+    },
+    "access": {
+      "allParticipantsCanAccess": true,
+      "sharedRecordsRequired": true
+    },
+    "delivery": {
+      "platform": "SITES",
+      "localValidationBeforePublish": true,
+      "publishAsFinalStage": true
+    }
+  },
+  "implementationDefaults": {
+    "score": {
+      "valueType": "NON_NEGATIVE_SAFE_INTEGER",
+      "equalScores": "REJECT_INPUT",
+      "winner": "HIGHER_SCORE",
+      "targetScoreThreshold": null
+    },
+    "earlyNextRoundAssignment": false,
+    "selectionGesture": "SLOT_THEN_CHARACTER_TAP",
+    "writeAccess": "AUTHORIZED_OPERATORS",
+    "authority": "SERVER",
+    "offline": "READ_CACHED_AND_EDIT_LOCAL_SCORE_DRAFT_ONLY",
+    "foregroundSyncIntervalMs": 2000,
+    "wholeRoundFeasibilityCheck": true
+  },
+  "deferred": {
+    "rawValueMeaning": null,
+    "teamStandingsRule": null,
+    "operatorAccounts": null,
+    "targetDevices": null,
+    "venueNetwork": null
+  },
+  "teams": [
+    {
+      "id": "WHITE",
+      "name": "白队"
+    },
+    {
+      "id": "BLACK",
+      "name": "黑队"
+    }
+  ],
+  "players": [
+    {
+      "id": "W01",
+      "name": "尼克",
+      "rawValue": 1,
+      "gender": "MALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-01"
+    },
+    {
+      "id": "W02",
+      "name": "Vvn",
+      "rawValue": 3,
+      "gender": "FEMALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-02"
+    },
+    {
+      "id": "W03",
+      "name": "大飛",
+      "rawValue": 2,
+      "gender": "MALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-03"
+    },
+    {
+      "id": "W04",
+      "name": "Lavonne",
+      "rawValue": 2,
+      "gender": "FEMALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-04"
+    },
+    {
+      "id": "W05",
+      "name": "大海",
+      "rawValue": 3,
+      "gender": "FEMALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-05"
+    },
+    {
+      "id": "W06",
+      "name": "阿寬",
+      "rawValue": 2,
+      "gender": "MALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-06"
+    },
+    {
+      "id": "W07",
+      "name": "Mike",
+      "rawValue": 1,
+      "gender": "MALE",
+      "teamId": "WHITE",
+      "avatarKey": "white-07"
+    },
+    {
+      "id": "B01",
+      "name": "Sophia",
+      "rawValue": 2,
+      "gender": "FEMALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-01"
+    },
+    {
+      "id": "B02",
+      "name": "Kyle",
+      "rawValue": 3,
+      "gender": "MALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-02"
+    },
+    {
+      "id": "B03",
+      "name": "苡萱",
+      "rawValue": 3,
+      "gender": "FEMALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-03"
+    },
+    {
+      "id": "B04",
+      "name": "Leo",
+      "rawValue": 1,
+      "gender": "MALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-04"
+    },
+    {
+      "id": "B05",
+      "name": "鐵毛",
+      "rawValue": 2,
+      "gender": "MALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-05"
+    },
+    {
+      "id": "B06",
+      "name": "高斯",
+      "rawValue": 1,
+      "gender": "MALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-06"
+    },
+    {
+      "id": "B07",
+      "name": "Xenia",
+      "rawValue": 2,
+      "gender": "FEMALE",
+      "teamId": "BLACK",
+      "avatarKey": "black-07"
+    }
+  ],
+  "courts": [
+    {
+      "id": "C01",
+      "number": 1
+    },
+    {
+      "id": "C02",
+      "number": 2
+    },
+    {
+      "id": "C03",
+      "number": 3
+    }
+  ],
+  "warmup": {
+    "plannedStart": "13:00",
+    "plannedEnd": "13:40",
+    "courtIds": [
+      "C01",
+      "C02",
+      "C03"
+    ]
+  },
+  "rounds": [
+    {
+      "id": "R01",
+      "number": 1,
+      "plannedStart": "13:40",
+      "plannedEnd": "13:55"
+    },
+    {
+      "id": "R02",
+      "number": 2,
+      "plannedStart": "14:00",
+      "plannedEnd": "14:15"
+    },
+    {
+      "id": "R03",
+      "number": 3,
+      "plannedStart": "14:20",
+      "plannedEnd": "14:35"
+    },
+    {
+      "id": "R04",
+      "number": 4,
+      "plannedStart": "14:40",
+      "plannedEnd": "14:55"
+    },
+    {
+      "id": "R05",
+      "number": 5,
+      "plannedStart": "15:00",
+      "plannedEnd": "15:15"
+    },
+    {
+      "id": "R06",
+      "number": 6,
+      "plannedStart": "15:20",
+      "plannedEnd": "15:35"
+    },
+    {
+      "id": "R07",
+      "number": 7,
+      "plannedStart": "15:40",
+      "plannedEnd": "15:55"
+    }
+  ],
+  "matches": [
+    {
+      "id": "M-R01-C01",
+      "roundId": "R01",
+      "courtId": "C01",
+      "type": "MIXED_DOUBLES",
+      "label": "混双①"
+    },
+    {
+      "id": "M-R01-C02",
+      "roundId": "R01",
+      "courtId": "C02",
+      "type": "MIXED_DOUBLES",
+      "label": "混双②"
+    },
+    {
+      "id": "M-R01-C03",
+      "roundId": "R01",
+      "courtId": "C03",
+      "type": "MENS_DOUBLES",
+      "label": "男双①"
+    },
+    {
+      "id": "M-R02-C01",
+      "roundId": "R02",
+      "courtId": "C01",
+      "type": "OPEN_DOUBLES",
+      "label": "自由双打①"
+    },
+    {
+      "id": "M-R02-C02",
+      "roundId": "R02",
+      "courtId": "C02",
+      "type": "MENS_SINGLES",
+      "label": "男单①"
+    },
+    {
+      "id": "M-R02-C03",
+      "roundId": "R02",
+      "courtId": "C03",
+      "type": "MENS_SINGLES",
+      "label": "男单②"
+    },
+    {
+      "id": "M-R03-C01",
+      "roundId": "R03",
+      "courtId": "C01",
+      "type": "MIXED_DOUBLES",
+      "label": "混双③"
+    },
+    {
+      "id": "M-R03-C02",
+      "roundId": "R03",
+      "courtId": "C02",
+      "type": "WOMENS_DOUBLES",
+      "label": "女双①"
+    },
+    {
+      "id": "M-R03-C03",
+      "roundId": "R03",
+      "courtId": "C03",
+      "type": "MENS_SINGLES",
+      "label": "男单③"
+    },
+    {
+      "id": "M-R04-C01",
+      "roundId": "R04",
+      "courtId": "C01",
+      "type": "MIXED_DOUBLES",
+      "label": "混双④"
+    },
+    {
+      "id": "M-R04-C02",
+      "roundId": "R04",
+      "courtId": "C02",
+      "type": "MIXED_DOUBLES",
+      "label": "混双⑤"
+    },
+    {
+      "id": "M-R04-C03",
+      "roundId": "R04",
+      "courtId": "C03",
+      "type": "MENS_DOUBLES",
+      "label": "男双②"
+    },
+    {
+      "id": "M-R05-C01",
+      "roundId": "R05",
+      "courtId": "C01",
+      "type": "OPEN_DOUBLES",
+      "label": "自由双打②"
+    },
+    {
+      "id": "M-R05-C02",
+      "roundId": "R05",
+      "courtId": "C02",
+      "type": "OPEN_DOUBLES",
+      "label": "自由双打③"
+    },
+    {
+      "id": "M-R05-C03",
+      "roundId": "R05",
+      "courtId": "C03",
+      "type": "OPEN_DOUBLES",
+      "label": "自由双打④"
+    },
+    {
+      "id": "M-R06-C01",
+      "roundId": "R06",
+      "courtId": "C01",
+      "type": "MIXED_DOUBLES",
+      "label": "混双⑥"
+    },
+    {
+      "id": "M-R06-C02",
+      "roundId": "R06",
+      "courtId": "C02",
+      "type": "WOMENS_SINGLES",
+      "label": "女单①"
+    },
+    {
+      "id": "M-R06-C03",
+      "roundId": "R06",
+      "courtId": "C03",
+      "type": "OPEN_DOUBLES",
+      "label": "自由双打⑤"
+    },
+    {
+      "id": "M-R07-C01",
+      "roundId": "R07",
+      "courtId": "C01",
+      "type": "MIXED_DOUBLES",
+      "label": "混双⑦"
+    },
+    {
+      "id": "M-R07-C02",
+      "roundId": "R07",
+      "courtId": "C02",
+      "type": "OPEN_DOUBLES",
+      "label": "自由双打⑥"
+    }
+  ],
+  "courtBlocks": [
+    {
+      "roundId": "R07",
+      "courtId": "C03",
+      "kind": "REST_OR_VIEWING",
+      "label": "休息／观赛"
+    }
+  ]
+}
+

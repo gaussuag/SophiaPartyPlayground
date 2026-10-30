@@ -1,4 +1,4 @@
-import type { EventProjection, EventState, Slot, TeamId } from "../competition";
+import type { EventProjection, EventState, Slot, RosterTeamId, TeamId } from "../competition";
 
 export type Point = [number, number, number];
 export type WorldLayout = ReturnType<typeof worldLayout>;
@@ -82,13 +82,13 @@ export function slotPosition(slot: Slot, slots: Slot[]): Point {
   const index = side.findIndex(s => s.id === slot.id);
   return [side.length === 1 ? 0 : index === 0 ? -1.5 : 1.5, 0.06, slot.sideId === "WHITE" ? 3.15 : -3.15];
 }
-export function benchMarkerPosition(side: TeamId): Point {
-  return [0, 0.1, side === "WHITE" ? 12.6 : -10.3];
+export function benchMarkerPosition(side: RosterTeamId): Point {
+  return side === "FREE" ? [13.7, 0.1, 0] : [0, 0.1, side === "WHITE" ? 12.6 : -10.3];
 }
-export function isBenchPoint(point: Point, side: TeamId, layout: WorldLayout): boolean {
+export function isBenchPoint(point: Point, side: RosterTeamId, layout: WorldLayout): boolean {
   const marker = benchMarkerPosition(side);
   if (Math.hypot(point[0] - marker[0], point[2] - marker[2]) < 1.8) return true;
-  return Math.abs(point[2] - (side === "WHITE" ? 8.4 : -8.4)) <= 1.4 && Math.abs(point[0]) <= layout.width / 2 - 0.2;
+  return side !== "FREE" && Math.abs(point[2] - (side === "WHITE" ? 8.4 : -8.4)) <= 1.4 && Math.abs(point[0]) <= layout.width / 2 - 0.2;
 }
 
 /** The viewed round's authoritative lineup is also the post-result tableau. */
@@ -96,17 +96,21 @@ export function playerPlacement(state: EventState, view: EventProjection, player
   const player = state.players.find(p => p.id === playerId)!;
   const match = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants).some(p => p.playerId === playerId));
   let position: Point;
+  let sideId: TeamId | null = null;
   if (match) {
     const slotId = match.phase === "PLANNING" ? match.draftSlots.find(s => s.playerId === playerId)!.id : match.participants.find(p => p.playerId === playerId)!.slotId;
-    const point = slotPosition(match.draftSlots.find(s => s.id === slotId)!, match.draftSlots);
+    const slot = match.draftSlots.find(s => s.id === slotId)!;
+    sideId = slot.sideId;
+    const point = slotPosition(slot, match.draftSlots);
     const center = courtCenter(state.courts.find(c => c.id === match.courtId)!.number, layout);
     position = center.map((n, i) => n + point[i]) as Point;
   } else {
-    const teamIndex = state.players.filter(p => p.teamId === player.teamId).findIndex(p => p.id === playerId);
-    position = [(teamIndex - 3) * 3.6, 0.07, player.teamId === "WHITE" ? 8.4 : -8.4];
+    const team = state.players.filter(p => p.teamId === player.teamId);
+    const teamIndex = team.findIndex(p => p.id === playerId);
+    position = player.teamId === "FREE" ? [13.7, 0.07, 0] : [(teamIndex - (team.length - 1) / 2) * 3.6, 0.07, player.teamId === "WHITE" ? 8.4 : -8.4];
   }
-  const facing = player.teamId === "WHITE" ? Math.PI : 0;
-  return { position, facing, onCourt: !!match };
+  const facing = sideId === "WHITE" || !sideId && player.teamId === "WHITE" ? Math.PI : !sideId && player.teamId === "FREE" ? -Math.PI / 2 : 0;
+  return { position, facing, onCourt: !!match, sideId };
 }
 export function courtNavigation(number: number, layout: WorldLayout, current = overview(layout)): Navigation {
   const court = courtCenter(number, layout);

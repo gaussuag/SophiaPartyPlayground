@@ -6,6 +6,8 @@ import type { EventProjection, Player } from "../competition";
 import type { Anchors } from "./Scene";
 import { AvatarMotion } from "./avatar-motion";
 import { AvatarAttention } from "./avatar-attention";
+import { AngelWings } from "./AngelWings";
+import { angelPose } from "./angel-pose";
 import { avatarAppearance } from "./avatar-appearance";
 import type { LocalChoreography } from "./local-choreography";
 import type { AvatarResults } from "./avatar-results";
@@ -27,6 +29,8 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
   const root = useRef<Group>(null), body = useRef<Group>(null), head = useRef<Group>(null);
   const leftArm = useRef<Group>(null), rightArm = useRef<Group>(null), leftLeg = useRef<Group>(null), rightLeg = useRef<Group>(null);
   const invitationRing = useRef<Group>(null);
+  const angel = player.teamId === "FREE";
+  const flight = useRef({ clock: 0, wing: .18 });
   const invalidate = useThree(s => s.invalidate);
   const [initial] = useState(position);
   const [motion] = useState(() => new AvatarMotion(position, facing, context));
@@ -77,12 +81,16 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     root.current.userData.localHeld = !!local?.held;
     if (invitationRing.current) invitationRing.current.scale.setScalar(invitation.ringScale);
     body.current.rotation.y = settled && local ? local.yaw : motion.yaw;
-    body.current.position.y = walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
-    body.current.rotation.z = walking ? Math.sin(phase) * 0.025 : gait * .04;
+    if (enabled && !local?.held) flight.current.clock += dt;
+    const airborne = angelPose(flight.current.clock, walking || !!local?.walking, reduced);
+    flight.current.wing = airborne.wing;
+    root.current.userData.flying = angel && motion.moving;
+    body.current.position.y = angel ? airborne.lift : walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
+    body.current.rotation.z = angel ? airborne.bank : walking ? Math.sin(phase) * 0.025 : gait * .04;
     head.current.rotation.x = -selection * 0.12 + (a.resultKind === "acknowledge" ? cheer * 0.18 : 0);
     head.current.rotation.y = look;
-    const stride = walking ? Math.sin(phase) * 0.5 : gait;
-    leftLeg.current.rotation.x = stride; rightLeg.current.rotation.x = -stride;
+    const stride = angel ? 0 : walking ? Math.sin(phase) * 0.5 : gait;
+    leftLeg.current.rotation.x = angel ? airborne.leg : stride; rightLeg.current.rotation.x = angel ? airborne.leg : -stride;
     leftArm.current.rotation.x = -stride * 0.7 - stretch * .6;
     rightArm.current.rotation.x = stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.35 : 0) - swing * 1.35;
     leftArm.current.rotation.z = -0.12 - stretch * 1.8 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
@@ -101,6 +109,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}><circleGeometry args={[0.34, 20]} /><meshBasicMaterial color="#435740" transparent opacity={0.13} depthWrite={false} /></mesh>
     {(selected || status !== "available") && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}><ringGeometry args={[selected ? 0.38 : 0.35, selected ? 0.49 : 0.39, 24]} /><meshBasicMaterial color={ringColor} transparent opacity={muted && !selected ? 0.55 : 0.95} /></mesh>}
     <group ref={body} rotation={[0, facing, 0]}>
+      {angel && <AngelWings pose={flight} />}
       <mesh geometry={torsoGeometry} position={[0, 0.68, 0]}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
       <group ref={leftArm} position={[-0.28, 0.84, 0]} rotation={[0, 0, -0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
       <group ref={rightArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}>
@@ -116,6 +125,6 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
       </group>
     </group>
     <mesh position={[0, 0.8, 0]} visible={false}><boxGeometry args={[1, 1.8, 0.8]} /><meshBasicMaterial /></mesh>
-    <group position={onCourt || player.teamId === "WHITE" ? [0, -0.1, 0] : [0, 1.8, 0]} ref={node => { if (node) anchors.set(`player:${player.id}`, node); else anchors.delete(`player:${player.id}`); }} />
+    <group position={onCourt || player.teamId === "WHITE" ? [0, -0.1, 0] : player.teamId === "FREE" ? [0, 2.05, 0] : [0, 1.8, 0]} ref={node => { if (node) anchors.set(`player:${player.id}`, node); else anchors.delete(`player:${player.id}`); }} />
   </group>;
 }

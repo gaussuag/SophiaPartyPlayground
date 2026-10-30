@@ -13,17 +13,17 @@
 - 初始化创建空草稿、空确认阵容、空赛果；不预设任何人上哪一场。
 - 正常启动只读数据库，不重复播种；初始化是显式、幂等的管理操作。
 - 正式初始化通过默认关闭的 `/api/setup` 窗口，仅允许管理员为服务端预先配置的正式／验收编号补建。INSERT 冲突不修改已有快照；姓名、比分、回执和版本保持原样。运行时开关与授权名单只放 Sites 环境配置。
-- 备份恢复按原 eventId 恢复，并明确其目标；另开活动应从模板新建，不把同一场真实活动伪装成另一个 eventId。
+- 备份恢复按原 eventId 恢复，并明确其目标；另开活动应从模板新建，不把同一场真实活动伪装成另一个 eventId。2026-10-30 用户明确将旧线上记录定为可清零测试，新赛制因此新建独立正式活动。
 
 ## 逻辑模型
 
 | 对象 | 关键字段 | 不变量 |
 | --- | --- | --- |
 | Event | id、schemaVersion、revision、generation、phase、activeRoundId、date、timeZone、ruleVersion | 同一活动一个权威版本；最多一个开放轮次；恢复时 generation 递增 |
-| Team | id、name | 白、黑两队身份固定 |
+| Team | id、name | WHITE／BLACK 为比赛队；FREE 仅为 Sophia 名单阵营 |
 | Player | id、name、gender、teamId、rawValue、avatarKey | 原始资料按名单保存，rawValue 不参与规则 |
 | Court | id、number | 三个实体场地 |
-| Round | id、number、plannedStart、plannedEnd、phase、openedAt、closedAt | 第七轮只有两场正式比赛 |
+| Round | id、number、plannedStart、plannedEnd、phase、openedAt、closedAt | v2 每轮三场；v1 第七轮两场，按 ruleVersion 校验 |
 | Match | id、roundId、courtId、type、phase、draftSlots、activeLineupRevisionId、activeResultRevisionId、startedAt、endDeclaredAt | roundId + courtId 在活动内唯一；时间变更留审计 |
 | DraftSlot | sideId、slotId、playerId 或 null | 每席一人；按类型验证队伍和性别 |
 | LineupRevision | id、matchId、participants、confirmedAt、supersedes、reason | 参与者包含 playerId、姓名／队伍／性别快照；旧版本不改写 |
@@ -152,3 +152,13 @@ Sites 受信任身份入口、生产禁用开发身份、跨站写拒绝均保�
 
 本地 D1 支持通过 Wrangler 在本机运行并与远端数据分离；实际命令遵守当前 Sites starter 配置，不擅自连接远端测试。[D1 本地开发](https://developers.cloudflare.com/d1/best-practices/local-development/)
 
+
+## v2 赛制与积分一致性
+
+schemaVersion 继续为 1；ruleVersion 区分旧 v1（14 人／20 场）与新 v2（13 人／21 场）。模板分别保留在 event-template-v1.json 和 event-template.json。createEvent 默认 v2；verifySnapshot 根据快照 ruleVersion 选择对应模板并验证全部身份、完整场次和引用。现有活动读取／初始化不隐式改版，INSERT 冲突不改名单或数据，无 SQL 表结构迁移。
+
+Player.teamId 与 Participant.teamId 表示 WHITE／BLACK／FREE 的名单阵营；Slot.sideId 与 Participant.sideId 仅 WHITE／BLACK，确认时记录 Sophia 的实际代表队。全轮可行性使用跨两侧的二分匹配，一个 playerId 最多匹配一个席位；不再将两队各自的女性人数独立计算。
+
+matchPoints 与 teamStandings 为 competition 的纯查询 Interface。每场仅使用 activeResultRevisionId 对应的 ResultRevision 与其 lineupRevisionId 判断 Sophia 是否参赛。更正比分、名单更正、撤回和恢复后自动重新计算，不写入另一套积分累计表，不为动画或积分新增轮询。CSV 与浏览器使用同一查询，旧 v1 不追溯套用新积分。
+
+正式默认编号为 sophia-sunshine-cup-v2，隔离验收为 sophia-sunshine-cup-v2-acceptance；原测试活动不导入。上线通过现有管理员、默认关闭的初始化窗口幂等补建，随后关闭窗口；不会每次部署重置数据。生产身份与公开协作权限保持原配置。

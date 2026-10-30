@@ -18,3 +18,5 @@ D1 连接／schema 位于 db/，作为具体实现。先用真实本地 D1 做�
 
 依据：[架构](../../../docs/architecture/overview.md)、[数据与同步](../../../docs/architecture/data-and-sync.md)。
 
+
+2026-10-30：初始化默认新赛制 v2，已有 eventId 不变；ruleVersion 选项仅为内部显式旧夹具使用，生产 setup 不接受客户端选择模板。CSV 追加“胜方积分”和“Sophia代表队”，按每个当前有效赛果引用的确认阵容计算，旧赛制留空。备份恢复按快照版本校验，保留 v1 和 v2 的正确归属。

@@ -75,7 +75,7 @@ export class LocalChoreography {
     this.actors = new Map(state.players.map(player => {
       const placement = playerPlacement(state, view, player.id, layout);
       const match = view.matches.find(m => (m.phase === "PLANNING" ? m.draftSlots : m.participants).some(p => p.playerId === player.id));
-      const actor: Actor = { id: player.id, side: player.teamId, base: placement.position, facing: placement.facing, onCourt: placement.onCourt, matchId: match?.id };
+      const actor: Actor = { id: player.id, side: placement.sideId ?? (player.teamId === "BLACK" ? "BLACK" : "WHITE"), base: placement.position, facing: placement.facing, onCourt: placement.onCourt, matchId: match?.id };
       const old = !reset && previous.get(player.id);
       if (old && old.actor.onCourt === actor.onCourt && old.actor.matchId === actor.matchId && distance(old.actor.base, actor.base) < .001) { old.actor = actor; old.pose.base = actor.base; return [player.id, old]; }
       const rng = random(this.seed ^ hash(player.id + context));

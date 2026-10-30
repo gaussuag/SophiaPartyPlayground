@@ -1,6 +1,6 @@
 import { createEvent, decide, type CompetitionCommand, type EventState } from "../../src/modules/competition";
 let sequence = 0;
-export function fresh(id = `test-${++sequence}`) { return createEvent(id, "2026-10-28T05:00:00.000Z"); }
+export function fresh(id = `test-${++sequence}`) { return createEvent(id, "2026-10-28T05:00:00.000Z", 1); }
 export function step(state: EventState, command: CompetitionCommand): EventState {
   const i = ++sequence;
   const decision = decide(state, command, { now: new Date(Date.parse("2026-10-28T05:00:00.000Z") + i * 1000).toISOString(), actorId: "test-operator", commandId: `test-command-${i}` });

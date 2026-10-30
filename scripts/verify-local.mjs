@@ -14,7 +14,7 @@ async function request(path, payload, authenticated = true, extraHeaders = {}) {
   let data; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   return { response, data };
 }
-const initialized = await request("/api/local/initialize", { eventId }); assert.equal(initialized.response.status, 200);
+const initialized = await request("/api/local/initialize", { eventId, ruleVersion: 1 }); assert.equal(initialized.response.status, 200);
 let state = initialized.data.state;
 const root = `/api/events/${eventId}`;
 const envelope = command => ({ eventId, commandId: crypto.randomUUID(), expectedRevision: state.revision, expectedGeneration: state.generation, command });

@@ -76,6 +76,7 @@ jobs:
           ready http://127.0.0.1:5173/ "$dev_pid" outputs/ci/dev.log
           npm run local:init -- local-ci
           npm run verify:local
+          npm run verify:cup-v2
           kill -- "-$dev_pid" 2>/dev/null || true
           wait "$dev_pid" 2>/dev/null || true
           dev_pid=""

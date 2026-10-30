@@ -8,7 +8,7 @@ import { localCache } from "../../src/modules/session/cache";
 const sessions: EventSession[] = [];
 afterEach(() => { sessions.splice(0).forEach(s => s.dispose()); vi.restoreAllMocks(); });
 function server(role: Role = "operator") {
-  let state = createEvent(`session-${crypto.randomUUID()}`, "2026-10-28T05:00:00.000Z");
+  let state = createEvent(`session-${crypto.randomUUID()}`, "2026-10-28T05:00:00.000Z", 1);
   const receipts = new Map<string, { appliedRevision: number; status: string }>();
   let mode: "normal" | "commit-then-drop" | "drop-without-commit" | "offline" = "normal";
   let posts = 0;

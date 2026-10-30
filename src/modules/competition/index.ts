@@ -1,6 +1,9 @@
-import template from "../../../data/event-template.json";
-import type { CompetitionCommand, Decision, DecisionContext, EventProjection, EventState, Gender, Match, MatchType, Participant, Player, RuleError, Slot, TeamId } from "./model";
+import currentTemplate from "../../../data/event-template.json";
+import legacyTemplate from "../../../data/event-template-v1.json";
+import type { CompetitionCommand, Decision, DecisionContext, EventProjection, EventState, Gender, Match, MatchType, Participant, Player, RuleError, RuleVersion, Slot, TeamId } from "./model";
 export type * from "./model";
+import { matchPoints } from "./scoring";
+export { matchPoints, teamStandings, SOPHIA_ID } from "./scoring";
 
 class Rejection extends Error {
   constructor(readonly detail: RuleError) { super(detail.message); }
@@ -21,10 +24,11 @@ function slotsFor(type: MatchType): Slot[] {
 }
 
 /** Explicit initialization only. Loading a page never calls this factory. */
-export function createEvent(id: string, now: string): EventState {
+export function createEvent(id: string, now: string, ruleVersion: RuleVersion = 2): EventState {
+  const template = ruleVersion === 1 ? legacyTemplate : currentTemplate;
   requireRule(/^[a-zA-Z0-9_-]{1,80}$/.test(id), "INVALID_EVENT_ID", "活动编号无效");
   return {
-    id, templateId: template.templateId, schemaVersion: 1, ruleVersion: 1, revision: 0, generation: 0,
+    id, templateId: template.templateId, schemaVersion: 1, ruleVersion, revision: 0, generation: 0,
     name: template.event.name, date: template.event.date, timeZone: template.event.timeZone,
     phase: "PREPARED", activeRoundId: null, updatedAt: now,
     teams: structuredClone(template.teams) as EventState["teams"], players: structuredClone(template.players) as Player[], courts: structuredClone(template.courts),
@@ -41,22 +45,32 @@ function occupiedSlots(state: EventState, match: Match): Slot[] {
   if (match.phase === "PLANNING") return match.draftSlots;
   return slotsFor(match.type).map(slot => ({ ...slot, playerId: lineup(state, match).find(p => p.slotId === slot.id)?.playerId ?? null }));
 }
+/** A free-roster player still occupies one real side and one seat in a round. */
+export function canRepresentSide(player: Pick<Player, "teamId">, side: TeamId): boolean {
+  return player.teamId === side || player.teamId === "FREE";
+}
 function roundAvailable(state: EventState, roundId: string): boolean {
-  for (const sideId of ["WHITE", "BLACK"] as TeamId[]) {
-    const slots = state.matches.filter(m => m.roundId === roundId).flatMap(m => occupiedSlots(state, m)).filter(s => s.sideId === sideId);
-    const used = slots.filter(s => s.playerId).map(s => s.playerId!);
-    if (new Set(used).size !== used.length) return false;
-    const people = state.players.filter(p => p.teamId === sideId && !used.includes(p.id));
-    const remaining = slots.filter(s => !s.playerId).sort((a, b) => Number(!a.gender) - Number(!b.gender));
-    const fit = (index: number, available: Player[]): boolean => index === remaining.length || available.some((p, i) => (!remaining[index].gender || remaining[index].gender === p.gender) && fit(index + 1, available.filter((_, j) => i !== j)));
-    if (!fit(0, people)) return false;
-  }
-  return true;
+  const slots = state.matches.filter(m => m.roundId === roundId).flatMap(m => occupiedSlots(state, m));
+  const used = slots.flatMap(s => s.playerId ? [s.playerId] : []);
+  if (new Set(used).size !== used.length) return false;
+  const people = state.players.filter(p => !used.includes(p.id));
+  const remaining = slots.filter(s => !s.playerId);
+  const candidates = remaining.map(slot => people.filter(p => canRepresentSide(p, slot.sideId) && (!slot.gender || p.gender === slot.gender)));
+  // One bipartite matching across BOTH sides: Sophia cannot be counted twice.
+  const owners = new Map<string, number>();
+  const fit = (at: number, seen: Set<string>): boolean => candidates[at].some(player => {
+    if (seen.has(player.id)) return false;
+    seen.add(player.id);
+    const previous = owners.get(player.id);
+    if (previous === undefined || fit(previous, seen)) { owners.set(player.id, at); return true; }
+    return false;
+  });
+  return candidates.map((_, i) => i).sort((a, b) => candidates[a].length - candidates[b].length).every(i => fit(i, new Set()));
 }
 function checkPlayer(state: EventState, match: Match, slot: Slot, playerId: string) {
   const player = state.players.find(p => p.id === playerId);
   requireRule(player, "UNKNOWN_PLAYER", "找不到这位选手");
-  requireRule(player.teamId === slot.sideId, "WRONG_TEAM", `此席位需要${slot.sideId === "WHITE" ? "白队" : "黑队"}选手`);
+  requireRule(canRepresentSide(player, slot.sideId), "WRONG_TEAM", `此席位需要${slot.sideId === "WHITE" ? "白队" : "黑队"}选手`);
   requireRule(!slot.gender || player.gender === slot.gender, "WRONG_GENDER", `此席位需要${slot.gender === "MALE" ? "男性" : "女性"}选手`);
   for (const other of state.matches) {
     for (const used of occupiedSlots(state, other)) {
@@ -111,7 +125,7 @@ export function decide(snapshot: EventState, command: CompetitionCommand, contex
         requireRule(command.type === "AssignPlayer" || slot.playerId, "SLOT_EMPTY", "此席位为空，请直接安排");
         checkPlayer(state, match!, slot, command.playerId);
         slot.playerId = command.playerId;
-        requireRule(roundAvailable(state, match!.roundId), "ROUND_INFEASIBLE", "这样安排会使本轮其他比赛缺少符合条件的选手，请保留所需男性或女性选手");
+        requireRule(roundAvailable(state, match!.roundId), "ROUND_INFEASIBLE", state.ruleVersion === 2 && state.rounds.find(r => r.id === match!.roundId)!.number % 2 === 0 ? "本轮每侧需 3 名女性，Sophia 需代表黑队；请保留其他场次的选手" : "这样安排会使本轮其他比赛缺少符合条件的选手，请保留所需男性或女性选手");
         changedIds.push(command.playerId); break;
       }
       case "MovePlayer": {
@@ -226,7 +240,7 @@ export function project(state: EventState, viewContext: { roundId?: string } = {
   const matches = state.matches.filter(m => m.roundId === round.id).map(m => {
     let canStart = false;
     if (m.phase === "PLANNING" && m.roundId === state.activeRoundId) { try { checkLineup(state, m); canStart = true; } catch { /* Explain each candidate through decide. */ } }
-    return { ...m, participants: lineup(state, m), result: state.results.find(r => r.id === m.activeResultRevisionId) ?? null, canStart, planningLabel: canStart ? "准备完成" : "安排阵容" };
+    return { ...m, participants: lineup(state, m), result: state.results.find(r => r.id === m.activeResultRevisionId) ?? null, canStart, planningLabel: canStart ? "准备完成" : "安排阵容", points: matchPoints(state, m.id) };
   });
   const completed = matches.filter(m => m.phase === "COMPLETED").length;
   const playerStates: EventProjection["playerStates"] = Object.fromEntries(state.players.map(p => [p.id, { status: "available", label: "可安排" }]));
@@ -242,11 +256,11 @@ export function project(state: EventState, viewContext: { roundId?: string } = {
 export function verifySnapshot(candidate: EventState): RuleError | null {
   try {
     const validTime = (value: unknown) => typeof value === "string" && Number.isFinite(Date.parse(value));
-    requireRule(candidate && candidate.schemaVersion === 1 && candidate.ruleVersion === 1 && Number.isSafeInteger(candidate.revision) && candidate.revision >= 0 && Number.isSafeInteger(candidate.generation) && candidate.generation >= 0, "INVALID_BACKUP", "备份版本无效");
+    requireRule(candidate && candidate.schemaVersion === 1 && (candidate.ruleVersion === 1 || candidate.ruleVersion === 2) && Number.isSafeInteger(candidate.revision) && candidate.revision >= 0 && Number.isSafeInteger(candidate.generation) && candidate.generation >= 0, "INVALID_BACKUP", "备份版本无效");
     requireRule(validTime(candidate.updatedAt) && typeof candidate.name === "string" && (candidate.date === null || typeof candidate.date === "string") && (candidate.timeZone === null || typeof candidate.timeZone === "string"), "INVALID_BACKUP", "备份活动信息无效");
-    const initial = createEvent(candidate.id, candidate.updatedAt);
+    const initial = createEvent(candidate.id, candidate.updatedAt, candidate.ruleVersion);
     requireRule(candidate.templateId === initial.templateId && JSON.stringify(candidate.players) === JSON.stringify(initial.players) && JSON.stringify(candidate.courts) === JSON.stringify(initial.courts) && JSON.stringify(candidate.teams) === JSON.stringify(initial.teams) && JSON.stringify(candidate.courtBlocks) === JSON.stringify(initial.courtBlocks), "IDENTITY_MISMATCH", "备份名单、场地或模板身份不匹配");
-    requireRule(candidate.rounds.length === 7 && candidate.matches.length === 20 && new Set(candidate.matches.map(m => m.id)).size === 20 && new Set(candidate.rounds.map(r => r.id)).size === 7, "INVALID_BACKUP", "备份必须包含七轮二十场");
+    requireRule(candidate.rounds.length === 7 && candidate.matches.length === initial.matches.length && new Set(candidate.matches.map(m => m.id)).size === initial.matches.length && new Set(candidate.rounds.map(r => r.id)).size === 7, "INVALID_BACKUP", "备份必须包含该赛制的完整七轮场次");
     requireRule(["PREPARED", "WARMUP", "ACTIVE", "FINISHED"].includes(candidate.phase), "INVALID_BACKUP", "活动阶段无效");
     requireRule(new Set(candidate.lineups.map(l => l.id)).size === candidate.lineups.length && new Set(candidate.results.map(r => r.id)).size === candidate.results.length, "INVALID_BACKUP", "版本编号重复");
     const open = candidate.rounds.filter(r => r.phase === "OPEN");
@@ -287,7 +301,7 @@ export function verifySnapshot(candidate: EventState): RuleError | null {
       requireRule(m, "INVALID_BACKUP", "阵容引用不存在的场次");
       const slots = slotsFor(m.type);
       requireRule(l.participants.length === slots.length && new Set(l.participants.map(p => p.playerId)).size === slots.length && slots.every(s => l.participants.filter(p => p.slotId === s.id).length === 1), "INVALID_BACKUP", "确认阵容席位错误");
-      for (const p of l.participants) { const player = candidate.players.find(x => x.id === p.playerId); const s = slots.find(x => x.id === p.slotId)!; requireRule(player && p.name === player.name && p.gender === player.gender && p.teamId === player.teamId && p.sideId === s.sideId && p.teamId === s.sideId && (!s.gender || p.gender === s.gender), "INVALID_BACKUP", "确认阵容身份或性别错误"); }
+      for (const p of l.participants) { const player = candidate.players.find(x => x.id === p.playerId); const s = slots.find(x => x.id === p.slotId)!; requireRule(player && p.name === player.name && p.gender === player.gender && p.teamId === player.teamId && p.sideId === s.sideId && canRepresentSide(player, s.sideId) && (!s.gender || p.gender === s.gender), "INVALID_BACKUP", "确认阵容身份或性别错误"); }
       requireRule(validTime(l.confirmedAt) && (!l.supersedes || candidate.lineups.slice(0, index).some(prior => prior.id === l.supersedes && prior.matchId === l.matchId)), "INVALID_BACKUP", "阵容历史引用或时刻无效");
     }
     for (const [index, r] of candidate.results.entries()) { checkScores(r.whiteScore, r.blackScore); requireRule(candidate.lineups.some(l => l.id === r.lineupRevisionId && l.matchId === r.matchId) && r.winnerTeamId === (r.whiteScore > r.blackScore ? "WHITE" : "BLACK"), "INVALID_BACKUP", "赛果引用或获胜方无效"); requireRule(validTime(r.submittedAt) && (!r.supersedes || candidate.results.slice(0, index).some(prior => prior.id === r.supersedes && prior.matchId === r.matchId)), "INVALID_BACKUP", "赛果历史引用或时刻无效"); }

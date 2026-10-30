@@ -22,6 +22,7 @@
     "test:storage": "vitest run tests/records",
     "test:session": "vitest run tests/session",
     "verify:local": "node scripts/verify-local.mjs",
+    "verify:cup-v2": "node scripts/verify-cup-v2.mjs",
     "verify:production": "node scripts/verify-production.mjs",
     "verify:public": "node scripts/verify-public.mjs"
   },

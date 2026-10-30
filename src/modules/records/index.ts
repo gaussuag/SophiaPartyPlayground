@@ -1,5 +1,5 @@
 // Server-only entrypoint. App routes inject the real D1 binding and trusted identity.
-import { createEvent, decide, verifySnapshot, type EventState } from "../competition";
+import { createEvent, decide, verifySnapshot, matchPoints, type EventState, type RuleVersion } from "../competition";
 import { envelopeSchema, type Backup, type Receipt, type Role } from "./protocol";
 import { canExecute } from "./permissions";
 export type { Receipt, Role, CommandEnvelope, Backup } from "./protocol";
@@ -54,9 +54,9 @@ export async function readEvent(context: RecordsContext, eventId: string) {
   const aggregate = await load(context, eventId);
   return { state: publicState(aggregate.state), role: context.role };
 }
-export async function initializeEvent(context: RecordsContext, eventId: string, options: { name?: string } = {}) {
+export async function initializeEvent(context: RecordsContext, eventId: string, options: { name?: string; ruleVersion?: RuleVersion } = {}) {
   authorize(context, true); validId(eventId);
-  const state = createEvent(eventId, context.now);
+  const state = createEvent(eventId, context.now, options.ruleVersion);
   if (options.name) state.name = options.name;
   const inserted = await context.db.prepare("INSERT INTO events (event_id, schema_version, revision, snapshot_json, updated_at) VALUES (?, 1, 0, ?, ?) ON CONFLICT(event_id) DO NOTHING")
     .bind(eventId, JSON.stringify({ state, receipts: {} }), context.now).run();
@@ -113,6 +113,7 @@ export async function restoreEvent(context: RecordsContext, eventId: string, inp
   const current = await load(context, eventId);
   const existing = receiptFor(current, input.commandId, context.actorId, hash);
   if (existing) return { state: publicState(current.state), role: context.role, receipt: existing };
+  if (backup.aggregate.state.ruleVersion !== current.state.ruleVersion || backup.aggregate.state.templateId !== current.state.templateId) throw new RecordsError("IDENTITY_MISMATCH", "不能用另一赛制的备份替换当前活动", 422);
   if (current.state.revision !== input.expectedRevision || current.state.generation !== input.expectedGeneration) throw new RecordsError("REVISION_CONFLICT", "维护期间记录已变化，请重新导出、核对后恢复", 409, current.state.revision);
   const state = structuredClone(backup.aggregate.state);
   state.revision = current.state.revision + 1; state.generation = current.state.generation + 1; state.updatedAt = context.now;
@@ -135,12 +136,12 @@ export async function restoreEvent(context: RecordsContext, eventId: string, inp
 
 export function resultsCsv(state: EventState): string {
   const cell = (value: string | number) => `"${String(value).replace(/^[=+@-]/, "'$&").replaceAll('"', '""')}"`;
-  const rows: (string | number)[][] = [["活动", "轮次", "场地", "类型", "白队", "黑队", "白队比分", "黑队比分", "获胜队", "赛果版本"]];
+  const rows: (string | number)[][] = [["活动", "轮次", "场地", "类型", "白队", "黑队", "白队比分", "黑队比分", "获胜队", "赛果版本", "胜方积分", "Sophia代表队"]];
   for (const match of state.matches) {
     const result = state.results.find(r => r.id === match.activeResultRevisionId);
     if (!result) continue;
     const people = state.lineups.find(l => l.id === result.lineupRevisionId)!.participants;
-    rows.push([state.id, state.rounds.find(r => r.id === match.roundId)!.number, state.courts.find(c => c.id === match.courtId)!.number, match.label, people.filter(p => p.sideId === "WHITE").map(p => p.name).join(" / "), people.filter(p => p.sideId === "BLACK").map(p => p.name).join(" / "), result.whiteScore, result.blackScore, result.winnerTeamId === "WHITE" ? "白队" : "黑队", result.id]);
+    rows.push([state.id, state.rounds.find(r => r.id === match.roundId)!.number, state.courts.find(c => c.id === match.courtId)!.number, match.label, people.filter(p => p.sideId === "WHITE").map(p => p.name).join(" / "), people.filter(p => p.sideId === "BLACK").map(p => p.name).join(" / "), result.whiteScore, result.blackScore, result.winnerTeamId === "WHITE" ? "白队" : "黑队", result.id, matchPoints(state, match.id, result.lineupRevisionId) ?? "", state.ruleVersion === 2 ? (people.find(p => p.playerId === "B01")?.sideId === "WHITE" ? "白队" : people.some(p => p.playerId === "B01") ? "黑队" : "") : ""]);
   }
   return `\uFEFF${rows.map(row => row.map(cell).join(",")).join("\r\n")}`;
 }

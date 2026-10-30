@@ -6,7 +6,7 @@ import { createEvent, decide } from "../../src/modules/competition";
 let session: EventSession | undefined;
 afterEach(() => { session?.dispose(); session = undefined; vi.unstubAllGlobals(); });
 it("saves a command and receipt identity over HTTP when randomUUID is absent", async () => {
-  let state = createEvent("local-http-crypto", "2026-10-29T00:00:00.000Z");
+  let state = createEvent("local-http-crypto", "2026-10-29T00:00:00.000Z", 1);
   const random = globalThis.crypto;
   vi.stubGlobal("crypto", { getRandomValues: random.getRandomValues.bind(random) });
   let savedId = "";

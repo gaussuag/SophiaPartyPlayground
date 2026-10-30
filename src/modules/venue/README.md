@@ -49,3 +49,5 @@ courtId 只表达业务操作上下文；cameraRequest 是带序号的本机镜�
 
 资源见 [public](../../../public/README.md)；详细依据见 [交互](../../../docs/product/interaction-and-state.md)与[性能预算](../../../docs/architecture/overview.md)。
 
+
+2026-10-30：Sophia 在 v2 以 FREE 名单阵营显示，独立候场、紫金配色、共享轻量羽毛网格与光环。angel-pose 仅输出本机悬浮／翅膀姿态；上下场沿安全通路飞行，腿无步幅，按下冻结、暂停及减少动态效果继续生效。world.playerPlacement 返回真实 sideId，方向、击球和胜利反应按本场代表队处理，不按 FREE 的名单归属猜测。没有复用另一 worktree 中未合入的角色资产。

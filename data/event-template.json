@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "templateId": "sophia-pickleball-party-v1",
+  "templateId": "sophia-sunshine-cup-v2",
   "event": {
-    "name": "Sophia Party Playground",
+    "name": "Sophia Sunshine Cup",
     "date": null,
     "timeZone": null
   },
@@ -37,6 +37,22 @@
       "platform": "SITES",
       "localValidationBeforePublish": true,
       "publishAsFinalStage": true
+    },
+    "freePlayer": {
+      "playerId": "B01",
+      "canRepresent": [
+        "WHITE",
+        "BLACK"
+      ],
+      "genderRestrictionsApply": true,
+      "maxMatchesPerRound": 1
+    },
+    "teamPoints": {
+      "ordinaryWin": 1,
+      "sophiaMatchWin": 2,
+      "bonusPlayerId": "B01",
+      "awardTo": "WINNER",
+      "source": "ACTIVE_RESULT_LINEUP"
     }
   },
   "implementationDefaults": {
@@ -48,7 +64,7 @@
     },
     "earlyNextRoundAssignment": false,
     "selectionGesture": "SLOT_THEN_CHARACTER_TAP",
-    "writeAccess": "AUTHORIZED_OPERATORS",
+    "writeAccess": "PUBLIC_LINEUP_AND_FIRST_SCORE_MANAGED_START_ADVANCE_CORRECTIONS",
     "authority": "SERVER",
     "offline": "READ_CACHED_AND_EDIT_LOCAL_SCORE_DRAFT_ONLY",
     "foregroundSyncIntervalMs": 2000,
@@ -56,8 +72,10 @@
   },
   "deferred": {
     "rawValueMeaning": null,
-    "teamStandingsRule": null,
-    "operatorAccounts": null,
+    "teamStandingsRule": "SUM_EFFECTIVE_MATCH_AWARDS",
+    "operatorAccounts": [
+      "gaussuag777@gmail.com"
+    ],
     "targetDevices": null,
     "venueNetwork": null
   },
@@ -69,6 +87,10 @@
     {
       "id": "BLACK",
       "name": "黑队"
+    },
+    {
+      "id": "FREE",
+      "name": "自由阵营"
     }
   ],
   "players": [
@@ -121,19 +143,11 @@
       "avatarKey": "white-06"
     },
     {
-      "id": "W07",
-      "name": "Mike",
-      "rawValue": 1,
-      "gender": "MALE",
-      "teamId": "WHITE",
-      "avatarKey": "white-07"
-    },
-    {
       "id": "B01",
       "name": "Sophia",
       "rawValue": 2,
       "gender": "FEMALE",
-      "teamId": "BLACK",
+      "teamId": "FREE",
       "avatarKey": "black-01"
     },
     {
@@ -257,150 +271,149 @@
       "id": "M-R01-C01",
       "roundId": "R01",
       "courtId": "C01",
-      "type": "MIXED_DOUBLES",
-      "label": "混双①"
+      "type": "WOMENS_DOUBLES",
+      "label": "女双"
     },
     {
       "id": "M-R01-C02",
       "roundId": "R01",
       "courtId": "C02",
-      "type": "MIXED_DOUBLES",
-      "label": "混双②"
+      "type": "MENS_DOUBLES",
+      "label": "男双"
     },
     {
       "id": "M-R01-C03",
       "roundId": "R01",
       "courtId": "C03",
-      "type": "MENS_DOUBLES",
-      "label": "男双①"
+      "type": "MENS_SINGLES",
+      "label": "男单"
     },
     {
       "id": "M-R02-C01",
       "roundId": "R02",
       "courtId": "C01",
-      "type": "OPEN_DOUBLES",
-      "label": "自由双打①"
+      "type": "MIXED_DOUBLES",
+      "label": "混双①"
     },
     {
       "id": "M-R02-C02",
       "roundId": "R02",
       "courtId": "C02",
-      "type": "MENS_SINGLES",
-      "label": "男单①"
+      "type": "MIXED_DOUBLES",
+      "label": "混双②"
     },
     {
       "id": "M-R02-C03",
       "roundId": "R02",
       "courtId": "C03",
-      "type": "MENS_SINGLES",
-      "label": "男单②"
+      "type": "WOMENS_SINGLES",
+      "label": "女单"
     },
     {
       "id": "M-R03-C01",
       "roundId": "R03",
       "courtId": "C01",
-      "type": "MIXED_DOUBLES",
-      "label": "混双③"
+      "type": "WOMENS_DOUBLES",
+      "label": "女双"
     },
     {
       "id": "M-R03-C02",
       "roundId": "R03",
       "courtId": "C02",
-      "type": "WOMENS_DOUBLES",
-      "label": "女双①"
+      "type": "MENS_DOUBLES",
+      "label": "男双"
     },
     {
       "id": "M-R03-C03",
       "roundId": "R03",
       "courtId": "C03",
       "type": "MENS_SINGLES",
-      "label": "男单③"
+      "label": "男单"
     },
     {
       "id": "M-R04-C01",
       "roundId": "R04",
       "courtId": "C01",
       "type": "MIXED_DOUBLES",
-      "label": "混双④"
+      "label": "混双①"
     },
     {
       "id": "M-R04-C02",
       "roundId": "R04",
       "courtId": "C02",
       "type": "MIXED_DOUBLES",
-      "label": "混双⑤"
+      "label": "混双②"
     },
     {
       "id": "M-R04-C03",
       "roundId": "R04",
       "courtId": "C03",
-      "type": "MENS_DOUBLES",
-      "label": "男双②"
+      "type": "WOMENS_SINGLES",
+      "label": "女单"
     },
     {
       "id": "M-R05-C01",
       "roundId": "R05",
       "courtId": "C01",
-      "type": "OPEN_DOUBLES",
-      "label": "自由双打②"
+      "type": "WOMENS_DOUBLES",
+      "label": "女双"
     },
     {
       "id": "M-R05-C02",
       "roundId": "R05",
       "courtId": "C02",
-      "type": "OPEN_DOUBLES",
-      "label": "自由双打③"
+      "type": "MENS_DOUBLES",
+      "label": "男双"
     },
     {
       "id": "M-R05-C03",
       "roundId": "R05",
       "courtId": "C03",
-      "type": "OPEN_DOUBLES",
-      "label": "自由双打④"
+      "type": "MENS_SINGLES",
+      "label": "男单"
     },
     {
       "id": "M-R06-C01",
       "roundId": "R06",
       "courtId": "C01",
       "type": "MIXED_DOUBLES",
-      "label": "混双⑥"
+      "label": "混双①"
     },
     {
       "id": "M-R06-C02",
       "roundId": "R06",
       "courtId": "C02",
-      "type": "WOMENS_SINGLES",
-      "label": "女单①"
+      "type": "MIXED_DOUBLES",
+      "label": "混双②"
     },
     {
       "id": "M-R06-C03",
       "roundId": "R06",
       "courtId": "C03",
-      "type": "OPEN_DOUBLES",
-      "label": "自由双打⑤"
+      "type": "WOMENS_SINGLES",
+      "label": "女单"
     },
     {
       "id": "M-R07-C01",
       "roundId": "R07",
       "courtId": "C01",
-      "type": "MIXED_DOUBLES",
-      "label": "混双⑦"
+      "type": "WOMENS_DOUBLES",
+      "label": "女双"
     },
     {
       "id": "M-R07-C02",
       "roundId": "R07",
       "courtId": "C02",
-      "type": "OPEN_DOUBLES",
-      "label": "自由双打⑥"
-    }
-  ],
-  "courtBlocks": [
+      "type": "MENS_DOUBLES",
+      "label": "男双"
+    },
     {
+      "id": "M-R07-C03",
       "roundId": "R07",
       "courtId": "C03",
-      "kind": "REST_OR_VIEWING",
-      "label": "休息／观赛"
+      "type": "MENS_SINGLES",
+      "label": "男单"
     }
-  ]
+  ],
+  "courtBlocks": []
 }
-

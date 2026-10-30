@@ -9,6 +9,7 @@ import { CameraHud } from "./camera-hud";
 import { VenuePerformance } from "./venue-performance";
 import { VenueInput, groundAt, type PointerSample } from "./venue-input";
 import { LocalChoreography } from "./local-choreography";
+import { canRepresentSide } from "../competition";
 import type { VenueProps } from "./model";
 import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, isBenchPoint, overview, worldLayout } from "./world";
 
@@ -193,7 +194,7 @@ export function Venue(props: VenueProps) {
     const status = props.view.playerStates[player.id];
     const selected = props.selection?.playerId === player.id;
     const target = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
-    const mismatch = !!target && (target.sideId !== player.teamId || !!target.gender && target.gender !== player.gender);
+    const mismatch = !!target && (!canRepresentSide(player, target.sideId) || !!target.gender && target.gender !== player.gender);
     const locked = status.status === "playing" || status.status === "played_this_round";
     const pending = props.pending?.playerIds?.includes(player.id) || props.pending?.playerId === player.id;
     const candidate = props.candidatePlayerIds?.includes(player.id);
@@ -210,7 +211,7 @@ export function Venue(props: VenueProps) {
     const label = person ? `安排 ${person.name} 到 ${court.number} 号场 ${target.slotId}` : `${court.number} 号场 ${target.sideId === "WHITE" ? "白队" : "黑队"}${target.gender === "MALE" ? "男性" : target.gender === "FEMALE" ? "女性" : "自由"}位置 ${target.slotId}`;
     labels.push({ key: slotKey(target.matchId, target.slotId), className: "slot-anchor", content: <button className={`game-position ${target.allowed ? "allowed" : ""} ${selected || hovered === slotKey(target.matchId, target.slotId) ? "selected" : ""} ${target.occupantId ? "occupied" : ""} ${props.pending?.matchId === target.matchId && (!props.pending.slotId || props.pending.slotId === target.slotId) ? "pending" : ""} ${props.selection && !target.allowed ? "not-allowed" : ""}`} aria-label={label} disabled={!props.editable} onClick={() => props.onIntent({ type: "slot", matchId: target.matchId, slotId: target.slotId })}>{props.editingMatchId === target.matchId && target.occupantId ? <small>拟 {props.state.players.find(p => p.id === target.occupantId)?.name}</small> : props.selection || !target.gender ? <Plus size={18} /> : target.gender === "MALE" ? <Mars size={17} /> : <Venus size={17} />}</button> });
   }
-  for (const side of ["WHITE", "BLACK"] as const) {
+  for (const side of ["WHITE", "BLACK", "FREE"] as const) {
     const person = props.selection && props.state.players.find(p => p.id === props.selection!.playerId && p.teamId === side);
     const returning = person && props.editable && !props.editingMatchId && props.view.playerStates[person.id].status === "reserved";
     if (returning) labels.push({ key: `bench:${side}`, className: "bench-anchor", content:
