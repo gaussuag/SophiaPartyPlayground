@@ -1,5 +1,7 @@
 # 测试入口
 
+2026-10-30 v2 发布源码：21 文件、179 项自动检查通过；类型、静态检查及本地生产通过。新旧完整 HTTP＋D1 和浏览器证据见 [交付记录](../docs/delivery/cup-v2-schedule-and-points-2026-10-30.md)。实机检查分别记录。
+
 - 新赛制入口：competition/cup-v2.test.ts、records/cup-v2.test.ts、venue/angel.test.ts，覆盖 13 人／21 场、跨两侧自由选手匹配、代表队、1／2 分、更正／撤回／名单纠错和跨赛制恢复拒绝。
 - `npm run verify:cup-v2`：真实 HTTP＋D1 的 21 场、7 次推进竞争、公开排阵／录分、Sophia 对侧抢占、重复回执、两客户端读取、更正、CSV 和恢复；CI 在旧 v1 HTTP 回归后运行。
 - [v2 浏览器回归](browser/cup-v2-harness.html)：开发服务打开 `/tests/browser/cup-v2-harness.html?event=local-新的编号`，点击运行。自动创建自己的空 v2 活动，检查姓名／头像、飞行、开赛确认、录分、积分更正、偶数轮候选、匿名端、三种手机尺寸和动画请求预算。已存在的非空活动会拒绝重置。该测试不是 Safari 实机验收。

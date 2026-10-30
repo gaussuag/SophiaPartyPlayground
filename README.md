@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-30 新赛制本地实现完成，准备更新同一 public Site：Mike 退赛，Sophia 自由阵营天使；13 人、7 轮 21 场交替赛程，普通胜场 1 分、Sophia 参赛场胜方 2 分。用户确认偶数轮 Sophia 代表黑队，线上旧记录为可清零测试，新正式活动从零开始。规则、兼容、验证与发布回执见 [新赛制交付](docs/delivery/cup-v2-schedule-and-points-2026-10-30.md)。
+- 2026-10-30 新赛制已发布为同一 public Site **版本 13**：Mike 退赛，Sophia 自由阵营天使；13 人、7 轮 21 场交替赛程，普通胜场 1 分、Sophia 参赛场胜方 2 分。用户确认偶数轮 Sophia 代表黑队，线上旧记录为可清零测试，新正式活动从零开始。179 项检查、旧／新完整 HTTP＋D1、浏览器和生产验证通过；线上匿名协作、管理开赛和积分更正通过，正式活动保持 0 阵容／0 比分。规则、兼容、验证与发布回执见 [新赛制交付](docs/delivery/cup-v2-schedule-and-points-2026-10-30.md)。
 
 - 2026-10-30 手机状态区与场边对象精简已发布为 Sites 版本 12：状态／保存反馈归入底部操作区，避开上方视角工具条；删除“弹一下、打招呼、吹吹风”的按钮、模型和动画。18 文件、160 项检查、六种视口、选人回归及生产验证通过；减少的 14 项测试只属于已移除功能。正式数据 revision 75／6 条赛果版本和摘要保持一致，见 [本次交付](docs/delivery/hud-and-scene-cleanup-2026-10-30.md)。
 
@@ -19,15 +19,15 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已维护 v2 的 13 人、3 场地、7 轮 21 场模板；保留 v1 的 14 人／20 场用于历史与备份兼容。
 - 已建立代码、数据、测试及资源目录；目录中的 README 是实现职责说明。
 - 已实现 Vinext + React + TypeScript + Three.js／R3F 应用、真实本地 D1 权威存储及四个业务 Module。
-- 三场地、七轮二十场、角色排阵、录分、更正、同步、导出和受控恢复已接通。
-- TypeScript 检查和当前 160 项自动检查通过；已移除三个场边互动的 14 项专属测试。真实 HTTP＋D1 二十场、双客户端、排阵恢复及本机演出的历史证据保留；最新追加六种视口的状态区／工具条避让与选人回归。
+- 三场地、新赛制七轮二十一场、角色排阵、录分、更正、同步、积分、导出和受控恢复已接通；旧二十场仍可读取恢复。
+- TypeScript 检查和当前 179 项自动检查通过；已移除三个场边互动的 14 项专属测试，新增 v2 名单／积分／恢复／天使检查。真实 HTTP＋D1 二十场、双客户端、排阵恢复及本机演出的历史证据保留；最新追加六种视口的状态区／工具条避让与选人回归。
 - 界面以连续三场地 3D 球馆为主，通过缩放和平移查看单场，直接点人物／拖入场内位置。确认上场、录分和更正均从场内记分牌进入；见 [连续球馆与记分牌验证](docs/delivery/ui-continuous-venue-2026-10-29.md)，前次记录保留在 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
 - 记分牌已缩为场边单行操作牌，桌面移到候场区后方，竖屏留在场间空隙；见 [场边记分牌优化](docs/delivery/ui-courtside-scoreboard-2026-10-29.md)。
 - 单指旋转按固定枢轴直接跟手，双指缩放平移；回正、全景和球场近景使用统一过渡。人物资料卡居中，轮次／设置仍从底部弹出。最新 [旋转响应诊断与优化](docs/delivery/ui-orbit-response-2026-10-30.md) 记录了 iPhone 17 反馈及官方参考；前次记录见 [触控与人物弹窗优化](docs/delivery/ui-touch-orbit-2026-10-30.md)。
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 最新版本 12 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。所有访客含匿名可排阵／首次录分，仅 gaussuag777@gmail.com 管理开赛、轮次及纠错。本次发布前后正式活动 revision=75、6 条赛果版本及完整摘要不变，见 [状态区与对象精简](docs/delivery/hud-and-scene-cleanup-2026-10-30.md)；此前交付保留各自历史证据。Safari 更新版仍待用户复测，独立匿名浏览器内容复测未补齐，匿名 HTTP 边界复核通过。
+- ChatGPT Sites 最新版本 13 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。默认活动 `sophia-sunshine-cup-v2`：13 人、21 场，初始第 1 轮待开始、0:0 积分；旧线上记录经用户确认是测试，隔离保留。匿名排阵／首次录分和既有管理权限不变；原生回执、179 项检查及线上更正见 [新赛制交付](docs/delivery/cup-v2-schedule-and-points-2026-10-30.md)。实际 iPhone 新版仍待用户体验；独立匿名生产浏览器内容复测未补齐，匿名 HTTP 已通过。
 
 ## 从这里开始
 

@@ -22,7 +22,7 @@
 
 | Module | 公开 Interface（设计形状） | 隐藏的 Implementation | 不承担 |
 | --- | --- | --- | --- |
-| competition | decide(snapshot, command, context)、project(snapshot, viewContext) | 全部业务约束、状态转换、阵容可行性、胜负、更正及选手状态推导 | 网络、数据库、浏览器、Three.js |
+| competition | decide(snapshot, command, context)、project(snapshot, viewContext)、matchPoints／teamStandings | 全部业务约束、状态转换、阵容可行性、胜负、更正及选手状态推导 | 网络、数据库、浏览器、Three.js |
 | records | readEvent(context)、execute(context, envelope)、readReceipt(context, commandId)、exportEvent(context) | 授权、读取权威状态、调用 decide、条件写入、幂等回执、数据迁移兼容 | 镜头、动画、本机输入草稿 |
 | session | connect(eventId)、getView()、dispatch(command)、subscribe(listener)、dispose() | 请求、版本比较、轮询、重连、回执核对、本机草稿和同步状态 | 重新实现业务规则、直接写数据库 |
 | venue | Venue(view, interaction, onIntent) | 对象身份绑定、拾取热区、镜头、资源、人物位置和短动画 | 业务判定、网络请求、提交成功判断 |
@@ -55,6 +55,7 @@ flowchart TD
 - 不修改传入对象，不读时钟／浏览器存储，不发送网络请求，不播放动画。
 - 当前场次合法性、跨场占用、同轮资格、剩余阵容可行性和纠错资格都集中于此。
 - project 产生当前／历史查看需要的只读视图，不复制出第二份可写业务状态。
+- v2 将选手名单阵营（含 FREE）与单场比赛侧分开，跨两侧统一匹配资格；matchPoints／teamStandings 从当前有效赛果及其确认阵容计算 1／2 分，隐藏历史版本与纠错重算。v1／v2 按 ruleVersion 使用各自模板校验，不用新模板改写旧活动。
 
 ### records
 
