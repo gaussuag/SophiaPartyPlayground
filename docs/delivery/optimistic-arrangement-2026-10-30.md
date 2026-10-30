@@ -30,9 +30,26 @@ Windows、Node 22.21.1；本次开发服务 `http://127.0.0.1:5190`，隔离活�
 
 ## 生产构建与发布
 
-待官方 Sites helper 完成构建、源码提交、推送和打包，再保存版本及部署原 Site。Site 名称 Sophia Sunshine Cup，标识 sophia-sunshine-cup；访问配置继续 public，D1 与生产身份不改，不运行初始化或恢复。
+官方 Sites helper 已完成类型检查、生产构建、源码提交、推送和打包；本地生产预览验证后保存版本并部署原 Site。Site 名称 Sophia Sunshine Cup，标识 sophia-sunshine-cup；访问配置继续 public，D1 与生产身份不改，未运行线上初始化或恢复。
+
+- 源码 commit：`30d403261eccd67738bc26640ed851869f9f5fb3`（Update Site source）。
+- Sites 版本：7；version ID `appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_e8810e7cc5688191a5741de83b3aa1f1`。
+- deployment ID：`appgdep_6ae415e934b08191a8b5d18d9ace10d9`；native 返回 succeeded，2026-10-30 11:58:56 +08:00；runtime config revision=3，访问 policy revision=2、access_mode=public。
+- 公开 URL：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。
+- 本地压缩归档 SHA-256 `76f2f111ffd08036e7033d5990eaccf5863b7b51972e54ebb1f417435efec99e`；native 保存的解包归档摘要 `sha256:7154f973be4e9fb05a338e67f10b814a295e41e4088ff10cbe3dfde252e6a467`。
+
+本地生产预览 `http://127.0.0.1:8790` 的 verify-production 通过：页面／读取 200，guest 角色，伪造开发身份管理写入 401，开发及受控初始化 404；拒绝 403／400／413 请求体后 SSR 继续 200；产物不含开发身份字面量或客户端服务端配置，客户端 JS＋CSS gzip 合计 429,794 bytes。构建仍有 Three.js 相关大 chunk 提示，未因此减少模型或更改画质。
 
 发布前匿名公开读取：正式活动 revision=28、generation=0、0 条赛果，状态 SHA-256 `bd8da5556c5af01789ce0505baeaa6fba576b014da41e0770ba5e556c9700cd7`；它已由用户实际操作，不重置为之前 revision=15。验收活动 revision=16、3 条赛果版本，摘要 `6ffef95a853c5ef7f5b32980ef5e15a977c5ca58938785a3e09fa3bbdbc33544`。发布后重新读取比对；正向线上操作仅使用隔离验收活动，不改正式成绩。
+
+## 发布后验证
+
+- 正式活动在部署后及所有验收操作后仍为 revision=28、generation=0、0 条赛果，完整摘要与上述发布前值相同。
+- verify-public 无管理 Cookie、登录或 bypass token：主页／活动页／公开读取 200，无登录跳转；身份 guest，伪造平台身份被忽略；匿名管理操作与备份 401，公开 CSV 200，初始化窗口关闭。
+- 线上 Chromium 390×844：仅在验收活动安排 W04 到 2 号场 WHITE-2，人物走动且正常保存时无 toast；第二客户端读到 revision=17 和相同占位。随后移出刚加入的 W04，在正式 revision 仍为 17 时已观察到 walking=true、无 toast，保存后为 18。原 W03 占位、确认阵容和三条赛果版本保留。截图 `outputs/optimistic-motion/site-v7-mobile.png`。
+- 无 Cookie／令牌的独立 HTTP 客户端在同一隔离活动再次上场／移出 W04 均 200，原编号重发 replayed=true，回执可核对；验收活动 revision 18 → 20，原 draftSlots、lineups、results、rounds、activeRoundId、generation 均与操作前一致。原始报告在 `outputs/optimistic-motion/online-post-release.json`。只增加正常审计和版本，不撤销或覆盖其他人的记录。
+- 本次没有重新执行线上开赛／录分／轮次推进，以免无关改动验收历史；服务端规则与 runtime 配置未变，沿用版本 6 的正向管理与比赛证据，本地七轮二十场已回归。
+- 当前桌面窗口清单没有 Edge／InPrivate 等独立浏览器窗口；独立未登录浏览器的实际内容检查本次仍未完成。上面的 HTTP 匿名检查与已登录 IAB 页面检查分别记录，不将它们合称独立匿名浏览器通过。
 
 ## 仍需实机体验
 
