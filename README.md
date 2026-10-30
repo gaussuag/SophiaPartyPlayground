@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-30 球拍程序建模升级已完成本地实现：实体圆角拍面、护边、握把／端盖、双面斜纹和握柄手掌，按选手身份固定 13 种配色；参照用户图片调整为拍头朝上、拍面略向前。沿用现有角色与赛事，未恢复废弃 Avatar 方案。192 项自动检查与类型检查通过；验证及发布回执见 [球拍交付](docs/delivery/paddle-upgrade-2026-10-30.md)。
+- 2026-10-30 球拍程序建模升级已发布为原 public Site **版本 15**：实体圆角拍面、护边、握把／端盖、双面斜纹和握柄手掌，按选手身份固定 13 种配色；参照用户图片调整为拍头朝上、拍面略向前。沿用现有角色与赛事，未恢复废弃 Avatar 方案。192 项自动检查与类型检查通过；验证及发布回执见 [球拍交付](docs/delivery/paddle-upgrade-2026-10-30.md)。
 
 - 2026-10-30 直飞与就近下场已发布为原 public Site **版本 14**：Sophia 去掉头顶光环、保留翅膀，直飞越过球场与球网；普通选手按最短路线到目标，仅绕过实体球网。下场停在最近可用场边，位置只保存在当前浏览器；188 项自动检查、类型检查和两组浏览器回归通过。生产与发布回执见 [直飞和最短路线交付](docs/delivery/short-routes-2026-10-30.md)。
 
@@ -31,7 +31,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 最新版本 14 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。默认活动 `sophia-sunshine-cup-v2`：13 人、21 场；保留当前已保存排阵，未重置既有数据。直飞、最短路线及最近候场点只作用于浏览器表现；188 项检查、两组浏览器回归、生产构建及线上匿名 HTTP 通过，回执见 [直飞和最短路线交付](docs/delivery/short-routes-2026-10-30.md)。真实 iPhone 新版仍待用户体验；本次未重做独立匿名生产浏览器内容验收。
+- ChatGPT Sites 最新版本 15 已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。默认活动 `sophia-sunshine-cup-v2`：13 人、21 场，保留现场已有排阵／比分。程序球拍有个人配色、实体结构和握柄姿态，客户端 gzip 比版本 14 增加 1157 字节、同场景绘制次数不变。192 项检查、浏览器及生产验证和数据保护回执见 [球拍交付](docs/delivery/paddle-upgrade-2026-10-30.md)。实际 iPhone 新版效果待用户体验。
 
 ## 从这里开始
 
