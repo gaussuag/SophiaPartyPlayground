@@ -7,6 +7,7 @@ import type { Anchors } from "./Scene";
 import { AvatarMotion } from "./avatar-motion";
 import { AvatarAttention } from "./avatar-attention";
 import { avatarAppearance } from "./avatar-appearance";
+import type { LocalChoreography } from "./local-choreography";
 import type { AvatarResults } from "./avatar-results";
 import type { Point, WorldLayout } from "./world";
 
@@ -16,32 +17,11 @@ const torsoGeometry = new CapsuleGeometry(0.215, 0.3, 3, 8);
 const armGeometry = new CapsuleGeometry(0.068, 0.28, 2, 6).translate(0, -0.14, 0);
 const legGeometry = new CapsuleGeometry(0.078, 0.24, 2, 6).translate(0, -0.14, 0);
 const eyesGeometry = mergeGeometries([-1, 1].map(side => new BoxGeometry(0.04, 0.045, 0.035).translate(side * 0.085, 0.02, 0.225)));
-class AvatarAmbient {
-  private started = -Infinity;
-  pulse() { this.started = performance.now(); }
-  elapsed() { return (performance.now() - this.started) / 1000; }
-}
-
-// A shared, infrequent bout lets the entire demand-rendered scene sleep in
-// between. Each player has different timing/amplitude, not a perpetual sway.
-export function useAvatarAmbient(): AvatarAmbient {
-  const [ambient] = useState(() => new AvatarAmbient());
-  const invalidate = useThree(s => s.invalidate);
-  useEffect(() => {
-    const media = matchMedia("(prefers-reduced-motion: reduce)");
-    const pulse = () => { if (!document.hidden && !media.matches) { ambient.pulse(); invalidate(); } };
-    const timer = window.setInterval(pulse, 14000);
-    pulse();
-    return () => clearInterval(timer);
-  }, [ambient, invalidate]);
-  return ambient;
-}
-
-export function Avatar({ player, index, position, selected, muted, onCourt, status, anchors, begin, layout, context, facing, results, ambient, candidateKey }: {
+export function Avatar({ player, index, position, selected, muted, onCourt, status, anchors, begin, layout, context, facing, results, choreography, candidateKey }: {
   player: Player; index: number; position: Point; selected: boolean; muted: boolean; onCourt: boolean;
   status: EventProjection["playerStates"][string]["status"]; anchors: Anchors;
   begin: (playerId: string, event: PointerEvent) => void;
-  layout: WorldLayout; context: string; facing: number; results: AvatarResults; ambient: AvatarAmbient;
+  layout: WorldLayout; context: string; facing: number; results: AvatarResults; choreography: LocalChoreography;
   candidateKey?: string;
 }) {
   const root = useRef<Group>(null), body = useRef<Group>(null), head = useRef<Group>(null);
@@ -51,63 +31,65 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
   const [initial] = useState(position);
   const [motion] = useState(() => new AvatarMotion(position, facing, context));
   const [attention] = useState(() => new AvatarAttention());
-  const animation = useRef({ selected: 0, result: 0, resultKind: "acknowledge", resultToken: 0, reduced: false });
+  const animation = useRef({ selected: 0, result: 0, resultKind: "acknowledge", resultToken: 0, context });
+  const decoration = useRef<Point>([0, 0, 0]);
   const [x, y, z] = position;
   useEffect(() => {
-    motion.retarget([x, y, z], facing, layout, context, animation.current.reduced);
+    const changed = motion.destination.some((n, i) => n !== [x, y, z][i]);
+    // The route starts at the visible local pose, including any bench wandering.
+    const from = animation.current.context === context && changed ? root.current?.position.toArray() as Point | undefined : undefined;
+    if (changed || animation.current.context !== context) decoration.current = [0, 0, 0];
+    animation.current.context = context;
+    motion.retarget([x, y, z], facing, layout, context, choreography.reduced || !choreography.active, from);
+    choreography.arrived(player.id, !motion.moving);
     animation.current.result = 0;
     invalidate();
-  }, [motion, x, y, z, facing, layout, context, invalidate]);
-  useEffect(() => { animation.current.selected = selected && !animation.current.reduced ? 0.5 : 0; invalidate(); }, [selected, invalidate]);
-  useEffect(() => { attention.cue(candidateKey ?? null, animation.current.reduced); invalidate(); }, [candidateKey, attention, invalidate]);
-  useEffect(() => {
-    const media = matchMedia("(prefers-reduced-motion: reduce)");
-    const reset = () => {
-      animation.current.reduced = media.matches;
-      motion.snap();
-      attention.cancelMotion();
-      animation.current.result = 0; animation.current.selected = 0;
-      animation.current.resultToken = results.get(player.id)?.token ?? 0;
-      invalidate();
-    };
-    reset();
-    document.addEventListener("visibilitychange", reset); media.addEventListener("change", reset);
-    return () => { document.removeEventListener("visibilitychange", reset); media.removeEventListener("change", reset); };
-  }, [motion, attention, invalidate, results, player.id]);
+  }, [motion, x, y, z, facing, layout, context, invalidate, choreography, player.id]);
+  useEffect(() => { animation.current.selected = selected && !choreography.reduced ? 0.5 : 0; invalidate(); }, [selected, choreography, invalidate]);
+  useEffect(() => { attention.cue(candidateKey ?? null, choreography.reduced); invalidate(); }, [candidateKey, attention, choreography, invalidate]);
   useFrame((_, delta) => {
     if (!root.current || !body.current || !head.current || !leftArm.current || !rightArm.current || !leftLeg.current || !rightLeg.current) return;
-    const a = animation.current, dt = Math.min(delta, 0.05);
-    const invitation = attention.step(delta, a.reduced, document.hidden);
+    const a = animation.current, enabled = choreography.enabled, dt = enabled ? Math.min(delta, 0.05) : 0;
+    const local = choreography.pose(player.id), reduced = choreography.reduced;
+    const invitation = attention.step(dt, reduced, !choreography.active);
     const reaction = results.get(player.id);
-    if (reaction && reaction.token !== a.resultToken) { a.resultToken = reaction.token; a.result = a.reduced || document.hidden ? 0 : 1.35; a.resultKind = reaction.kind; }
+    if (reaction && reaction.token !== a.resultToken) { a.resultToken = reaction.token; a.result = !enabled ? 0 : 1.35; a.resultKind = reaction.kind; }
     const oldDistance = motion.travelled;
-    const moving = motion.step(dt, a.reduced || document.hidden);
+    const moving = motion.step(dt, reduced || !choreography.active);
     const walking = motion.walking && motion.travelled > oldDistance;
     const phase = motion.travelled * 7.2;
-    const idleTime = ambient.elapsed() - (index % 7) * 0.12;
-    const idle = !a.reduced && !document.hidden && idleTime >= 0 && idleTime < 2.3;
-    const breath = idle ? Math.sin(idleTime / 2.3 * Math.PI) : 0;
+    const sameBase = !!local && local.base.every((n, i) => Math.abs(n - [x, y, z][i]) < .001);
+    const settled = !motion.moving && sameBase;
+    choreography.arrived(player.id, settled);
+    const target = settled && local ? local.offset : [0, 0, 0];
+    if (reduced || moving) decoration.current = [0, 0, 0];
+    else if (enabled && !local?.held) decoration.current = decoration.current.map((n, i) => n + (target[i] - n) * Math.min(1, dt * 12)) as Point;
+    const swing = settled && local ? local.swing : 0, stretch = settled && local ? local.stretch : 0;
+    const look = settled && local ? local.look : 0, gait = settled && local ? local.gait : 0;
     a.selected = Math.max(0, a.selected - dt); a.result = Math.max(0, a.result - dt);
-    const selection = a.reduced ? 0 : Math.sin(a.selected / 0.5 * Math.PI);
+    const selection = reduced ? 0 : Math.sin(a.selected / 0.5 * Math.PI);
     const cheer = a.result > 0 ? Math.sin(Math.min(1, a.result / 0.28) * Math.PI / 2) : 0;
-    root.current.position.set(...motion.position);
+    root.current.position.set(...motion.position.map((n, i) => n + decoration.current[i]) as Point);
     root.current.userData.walking = motion.moving;
     root.current.userData.inviting = invitation.animating;
+    root.current.userData.ambientWalking = settled && !!local?.walking;
+    root.current.userData.localAction = settled ? local?.action : "transfer";
+    root.current.userData.localHeld = !!local?.held;
     if (invitationRing.current) invitationRing.current.scale.setScalar(invitation.ringScale);
-    body.current.rotation.y = motion.yaw;
-    body.current.position.y = walking ? Math.abs(Math.sin(phase)) * 0.035 : breath * 0.012;
-    body.current.rotation.z = walking ? Math.sin(phase) * 0.025 : breath * (index % 2 ? 0.014 : -0.014);
+    body.current.rotation.y = settled && local ? local.yaw : motion.yaw;
+    body.current.position.y = walking ? Math.abs(Math.sin(phase)) * 0.035 : Math.abs(gait) * .045;
+    body.current.rotation.z = walking ? Math.sin(phase) * 0.025 : gait * .04;
     head.current.rotation.x = -selection * 0.12 + (a.resultKind === "acknowledge" ? cheer * 0.18 : 0);
-    head.current.rotation.y = idle ? Math.sin(idleTime * 2 + index) * breath * 0.12 : 0;
-    const stride = walking ? Math.sin(phase) * 0.5 : 0;
+    head.current.rotation.y = look;
+    const stride = walking ? Math.sin(phase) * 0.5 : gait;
     leftLeg.current.rotation.x = stride; rightLeg.current.rotation.x = -stride;
-    leftArm.current.rotation.x = -stride * 0.7;
-    rightArm.current.rotation.x = stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.2 : 0);
-    leftArm.current.rotation.z = -0.12 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
-    rightArm.current.rotation.z = 0.12 + selection * 0.4 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0) + invitation.wave;
+    leftArm.current.rotation.x = -stride * 0.7 - stretch * .6;
+    rightArm.current.rotation.x = stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.35 : 0) - swing * 1.35;
+    leftArm.current.rotation.z = -0.12 - stretch * 1.8 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
+    rightArm.current.rotation.z = 0.12 + selection * 0.4 + stretch * 1.8 + swing * .35 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0) + invitation.wave;
     leftLeg.current.position.x = status === "playing" ? -0.16 : -0.12;
     rightLeg.current.position.x = status === "playing" ? 0.16 : 0.12;
-    if (!document.hidden && (moving || invitation.animating || idleTime < 2.3 && idleTime >= -0.72 && !a.reduced || a.selected > 0 || a.result > 0)) invalidate();
+    if (enabled && (moving || invitation.animating || a.selected > 0 || a.result > 0)) invalidate();
   });
   const { skin, hair, shirt, trousers } = avatarAppearance(index, player.teamId, muted);
   const ringColor = selected ? "#e4fc86" : status === "playing" ? "#84ded0" : status === "played_this_round" ? "#c8a86a" : "#e6cb85";
@@ -123,7 +105,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
       <group ref={leftArm} position={[-0.28, 0.84, 0]} rotation={[0, 0, -0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
       <group ref={rightArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}>
         <mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
-        {(status === "playing" || status === "reserved") && <mesh position={[0.02, -0.38, 0.14]} rotation={[Math.PI / 2, 0, -0.18]} scale={[0.13, 0.19, 0.025]}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color={player.teamId === "WHITE" ? "#c69e53" : "#789e90"} /></mesh>}
+        <mesh position={[0.02, -0.38, 0.14]} rotation={[Math.PI / 2, 0, -0.18]} scale={[0.13, 0.19, 0.025]}><sphereGeometry args={[1, 8, 6]} /><meshStandardMaterial color={player.teamId === "WHITE" ? "#c69e53" : "#789e90"} /></mesh>
       </group>
       <group ref={leftLeg} position={[-0.12, 0.4, 0]}><mesh geometry={legGeometry}><meshStandardMaterial color={trousers} /></mesh></group>
       <group ref={rightLeg} position={[0.12, 0.4, 0]}><mesh geometry={legGeometry}><meshStandardMaterial color={trousers} /></mesh></group>

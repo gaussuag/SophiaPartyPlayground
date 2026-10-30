@@ -1,12 +1,23 @@
 "use client";
 import { ArrowDownToLine, ChevronRight, Flag, Trophy } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { project, type EventState } from "../src/modules/competition";
 import type { EventSession, SessionView } from "../src/modules/session";
-import { phases, reasonNames } from "./MatchPanel";
+import { reasonNames } from "./MatchPanel";
+import { matchStatus } from "./match-presentation";
 import { AdminTools } from "./AdminTools";
 export function Schedule({ state, onSelect }: { state: EventState; onSelect: (roundId: string, courtId: string) => void }) {
+  const current = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Run after the enclosing dialog opens. Polling scores must not reset browsing.
+    const frame = requestAnimationFrame(() => {
+      const target = current.current, scroll = target?.closest<HTMLElement>("[data-drawer-scroll]");
+      if (target && scroll) scroll.scrollTop += target.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 12;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [state.activeRoundId]);
   const matches = state.rounds.flatMap(r => project(state, { roundId: r.id }).matches);
-  return <section className="schedule-section"><div className="section-heading"><div><p className="eyebrow">A DAY ON COURT</p><h2>今天怎么打</h2></div><span className="count-tag">7 轮 · 20 场</span></div><div className="warmup-row"><span>13:00—13:40</span><strong>一起热身</strong><small>三块场地自由活动</small></div>{state.rounds.map(r => <div className={`schedule-round ${r.id === state.activeRoundId ? "active" : ""}`} key={r.id}><header><span>{String(r.number).padStart(2, "0")}</span><div><h3>第 {r.number} 轮</h3><small>{r.plannedStart}—{r.plannedEnd} · {r.phase === "CLOSED" ? "已完成" : r.phase === "OPEN" ? "进行中" : "待开始"}</small></div></header><div>{state.courts.map(c => { const m = matches.find(m => m.roundId === r.id && m.courtId === c.id); const result = m?.result; return <button key={c.id} onClick={() => onSelect(r.id, c.id)}><span>{c.number} 号场</span><strong>{m?.label ?? "休息 / 观赛"}</strong><small>{result ? `${result.whiteScore} : ${result.blackScore}` : m ? m.phase === "PLANNING" ? m.planningLabel : phases[m.phase] : "—"}</small><ChevronRight size={15} /></button>; })}</div></div>)}</section>;
+  return <section className="schedule-section"><div className="section-heading"><div><p className="eyebrow">A DAY ON COURT</p><h2>今天怎么打</h2></div><span className="count-tag">7 轮 · 20 场</span></div><div className="warmup-row"><span>13:00—13:40</span><strong>一起热身</strong><small>三块场地自由活动</small></div>{state.rounds.map(r => <div className={`schedule-round ${r.id === state.activeRoundId ? "active" : ""}`} key={r.id} ref={r.id === state.activeRoundId ? current : undefined}><header><span>{String(r.number).padStart(2, "0")}</span><div><h3>第 {r.number} 轮</h3><small>{r.plannedStart}—{r.plannedEnd} · {r.phase === "CLOSED" ? "已完成" : r.phase === "OPEN" ? "当前轮" : "待开始"}</small></div></header><div>{state.courts.map(c => { const m = matches.find(m => m.roundId === r.id && m.courtId === c.id); const result = m?.result; return <button key={c.id} onClick={() => onSelect(r.id, c.id)}><span>{c.number} 号场</span><strong>{m?.label ?? "休息 / 观赛"}</strong><small>{result ? `${result.whiteScore} : ${result.blackScore}` : m ? matchStatus(m) : "—"}</small><ChevronRight size={15} /></button>; })}</div></div>)}</section>;
 }
 const actionNames: Record<string, string> = { StartWarmup: "开始热身", OpenFirstRound: "开放第一轮", AssignPlayer: "安排选手", ReplacePlayer: "替换选手", MovePlayer: "移动选手", RemovePlayer: "移出选手", CancelDraft: "取消草稿", StartMatch: "确认上场", UndoStart: "撤销误开赛", BeginResultEntry: "进入录分", UndoEndDeclaration: "撤销误结束", SubmitResult: "确认赛果", CorrectResult: "比分更正", WithdrawCurrentResult: "撤回首次赛果", CorrectRecordedLineup: "更正实际名单", AdvanceRound: "推进轮次", FinishEvent: "结束活动", RestoreEvent: "恢复备份" };
 export function Records({ state, view, session, onSelect }: { state: EventState; view: SessionView; session: EventSession; onSelect: (roundId: string, courtId: string) => void }) {

@@ -56,7 +56,9 @@ document.querySelector('#rejected').onclick = () => run(async () => {
   release(); release = null; await until(() => pose().feedback.includes('未保存'), '失败反馈缺失');
   const corrected = pose(); assert(corrected.walking === 'true' && corrected.position !== before.position, '纠正时发生瞬移');
   await until(() => pose().walking === 'false', '回位未完成'); const arrived = pose();
-  assert(arrived.position === before.position && arrived.revision === before.revision, '拒绝改变了正式位置');
+  const offset = Math.hypot(...arrived.position.split(',').map((n, i) => Number(n) - Number(before.position.split(',')[i])));
+  const saved = (await (await fetch(`/api/events/${eventId}`)).json()).state;
+  assert(offset < .25 && arrived.revision === before.revision && saved.matches.find(m => m.id === 'M-R01-C01').draftSlots.find(s => s.id === 'WHITE-1').playerId === 'W01', '拒绝未回到原权威席位（允许本机就绪偏移）');
   doc().querySelector('[aria-label="收起提示"]').click(); await ready();
   return { case: '明确拒绝：从当前位置走回权威位置', before, pending, corrected, arrived };
 });

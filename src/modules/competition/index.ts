@@ -226,7 +226,7 @@ export function project(state: EventState, viewContext: { roundId?: string } = {
   const matches = state.matches.filter(m => m.roundId === round.id).map(m => {
     let canStart = false;
     if (m.phase === "PLANNING" && m.roundId === state.activeRoundId) { try { checkLineup(state, m); canStart = true; } catch { /* Explain each candidate through decide. */ } }
-    return { ...m, participants: lineup(state, m), result: state.results.find(r => r.id === m.activeResultRevisionId) ?? null, canStart, planningLabel: canStart ? "阵容待确认" : m.draftSlots.some(s => s.playerId) ? "选人中" : "待安排" };
+    return { ...m, participants: lineup(state, m), result: state.results.find(r => r.id === m.activeResultRevisionId) ?? null, canStart, planningLabel: canStart ? "准备完成" : "安排阵容" };
   });
   const completed = matches.filter(m => m.phase === "COMPLETED").length;
   const playerStates: EventProjection["playerStates"] = Object.fromEntries(state.players.map(p => [p.id, { status: "available", label: "可安排" }]));
@@ -234,7 +234,7 @@ export function project(state: EventState, viewContext: { roundId?: string } = {
     const status = match.phase === "PLANNING" ? "reserved" : match.phase === "COMPLETED" ? "played_this_round" : "playing";
     for (const slot of occupiedSlots(state, match)) if (slot.playerId) playerStates[slot.playerId] = { status, matchId: match.id, label: status === "reserved" ? `${state.courts.find(c => c.id === match.courtId)?.number} 号场占位` : status === "playing" ? "比赛中" : "本轮已参赛" };
   }
-  const roundLabel = round.phase === "CLOSED" ? "本轮已结束" : completed === matches.length ? "等待本轮确认" : round.phase === "UPCOMING" ? "尚未开始" : matches.some(m => m.phase !== "PLANNING") ? "比赛中" : "准备中";
+  const roundLabel = round.phase === "CLOSED" ? "本轮已结束" : completed === matches.length ? "等待本轮确认" : round.phase === "UPCOMING" ? "尚未开始" : "当前轮";
   return { round, roundLabel, matches, completed, total: matches.length, canAdvance: state.phase === "ACTIVE" && round.phase === "OPEN" && round.id === state.activeRoundId && completed === matches.length, isCurrent: round.id === state.activeRoundId, playerStates };
 }
 

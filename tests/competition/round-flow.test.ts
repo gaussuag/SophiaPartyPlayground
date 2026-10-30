@@ -89,9 +89,9 @@ describe("collaborative preparation and explicit round confirmation", () => {
     expect(verifySnapshot(state)).toBeNull();
   });
   it("labels preparation, play and final-round 2/2 without auto-closing", () => {
-    let state = readyForRound(1); expect(project(state).roundLabel).toBe("准备中");
+    let state = readyForRound(1); expect(project(state).roundLabel).toBe("当前轮");
     state = step(arrange(state, first), { type: "StartMatch", matchId: first });
-    expect(project(state).roundLabel).toBe("比赛中");
+    expect(project(state).roundLabel).toBe("当前轮");
     state = completeRound(readyForRound(7));
     expect(project(state)).toMatchObject({ total: 2, completed: 2, canAdvance: true, roundLabel: "等待本轮确认" });
     expect(state.rounds[6].phase).toBe("OPEN");

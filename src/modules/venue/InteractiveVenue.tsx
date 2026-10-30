@@ -10,6 +10,7 @@ import { ScenePlay, ScenePlayLabels } from "./ScenePlay";
 import { ScenePlayController } from "./scene-play";
 import { VenuePerformance } from "./venue-performance";
 import { VenueInput, groundAt, type PointerSample } from "./venue-input";
+import { LocalChoreography } from "./local-choreography";
 import type { VenueProps } from "./model";
 import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, isBenchPoint, overview, worldLayout } from "./world";
 
@@ -57,6 +58,7 @@ export function Venue(props: VenueProps) {
   const [play] = useState(() => new ScenePlayController());
   const [timing] = useState(() => new VenuePerformance(typeof window !== "undefined" && new URLSearchParams(window.location.search).has("venueMetrics")));
   const [input] = useState(() => new VenueInput(motion));
+  const [choreography] = useState(() => new LocalChoreography());
   const previousView = useRef({ key: props.cameraRequest.key, layout, measured: false });
   useEffect(() => {
     const previous = previousView.current;
@@ -101,7 +103,7 @@ export function Venue(props: VenueProps) {
     const observer = new ResizeObserver(entries => { const box = entries[0].borderBoxSize[0]; setEditorSize({ width: box.inlineSize, height: box.blockSize }); });
     observer.observe(node); return () => observer.disconnect();
   }, [props.editor?.matchId]);
-  useEffect(() => { if (props.editor || lost) input.cancel(); }, [props.editor, lost, input]);
+  useEffect(() => { if (props.editor || lost || props.animationActive === false) { input.cancel(); play.cancel(); } }, [props.editor, lost, input, play, props.animationActive]);
 
   function projectPointer(clientX: number, clientY: number): Point | null {
     return input.ground({ x: clientX, y: clientY });
@@ -136,7 +138,7 @@ export function Venue(props: VenueProps) {
     return found;
   }
   function begin(playerId: string, event: PointerEvent) {
-    if (event.button === 0 && !props.editor) input.claimPlayer(sample(event), playerId);
+    if (event.button === 0 && !props.editor) { choreography.interact({ pressed: playerId }); input.claimPlayer(sample(event), playerId); }
   }
   const isWalking = (playerId: string) => !!anchors.get(`player:${playerId}`)?.parent?.userData.walking;
   function benchTarget(playerId: string, point: Point) {
@@ -155,6 +157,7 @@ export function Venue(props: VenueProps) {
         capture: id => { try { root.current?.setPointerCapture(id); } catch { /* Native cancellation can precede React's event. */ } },
         release: id => { if (root.current?.hasPointerCapture(id)) root.current.releasePointerCapture(id); },
         activity(mode, id) {
+          choreography.interact({ pressed: id ?? null });
           setPressedPlayerId(id ?? null); setOrbiting(mode === "orbit" || mode === "pan");
           if (mode !== "player") { dragPoint.current = null; draggingPlayer.current = null; setDragging(false); setHovered(null); }
         },
@@ -250,11 +253,11 @@ export function Venue(props: VenueProps) {
       }} fallback={<span>三维球馆画布</span>}>
         <ambientLight intensity={1.65} /><directionalLight position={[6, 15, 10]} intensity={2.2} color="#fff1d2" /><directionalLight position={[-10, 5, -7]} intensity={0.5} color="#c7e4da" />
         <ContextRecovery onLost={() => { cancel(); play.cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
-        <Scene props={props} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} pressedPlayerId={pressedPlayerId} timing={timing} />
-        <ScenePlay controller={play} layout={layout} anchors={anchors} disabled={!!props.editor || lost} />
-        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} />
+        <Scene props={props} choreography={choreography} activityActive={props.animationActive !== false && !props.editor && !lost} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} pressedPlayerId={pressedPlayerId} timing={timing} />
+        <ScenePlay controller={play} layout={layout} anchors={anchors} disabled={!!props.editor || lost || props.animationActive === false} />
+        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} choreography={choreography} />
       </Canvas>
-      <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}<ScenePlayLabels controller={play} elements={elements} disabled={!!props.editor || lost} /></div>
+      <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}<ScenePlayLabels controller={play} elements={elements} disabled={!!props.editor || lost || props.animationActive === false} /></div>
       {!props.editor && <div hidden ref={node => hud.bind("element", node)} data-scene-ui data-camera-ui className="world-camera-controls" aria-label="球馆视角"><button className="camera-heading" aria-label="视角回正" onClick={() => { const home = overview(layout); motion.move({ ...motion.snapshot(), yaw: home.yaw, pitch: home.pitch }); invalidate.current?.(); }}><Compass ref={node => hud.bind("compass", node)} size={17} /></button><button ref={node => hud.bind("minus", node)} aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output ref={node => hud.bind("scale", node)}>1.0×</output><button ref={node => hud.bind("plus", node)} aria-label="放大球馆" onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label="恢复三场全景" onClick={() => { cancel(); motion.move(frameOverview(layout, motion.snapshot())); invalidate.current?.(); }}><Scan size={16} />全景</button></div>}
       <output hidden aria-hidden="true" data-venue-metrics data-world-courts={props.state.courts.length} data-world-layout={JSON.stringify(props.state.courts.map(c => [c.id, courtCenter(c.number, layout)]))} data-record-revision={props.state.revision} ref={metrics} />
     </SceneBoundary>

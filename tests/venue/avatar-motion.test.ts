@@ -19,6 +19,16 @@ function finish(motion: AvatarMotion) {
 }
 
 describe("avatar walking through venue aisles", () => {
+  it("an assignment starts at the visible wandering pose and confirmation never absorbs it twice", () => {
+    const layout = worldLayout(390, 844), start: Point = [-10.8, .07, 8.4], visible: Point = [-10.61, .07, 8.16], target: Point = [-10.1, .18, 3.15];
+    const motion = new AvatarMotion(start, Math.PI, "live");
+    motion.retarget(target, Math.PI, layout, "live", false, visible);
+    expect(motion.position).toEqual(visible);
+    motion.step(1 / 60); const walking = [...motion.position];
+    motion.retarget(target, Math.PI, layout, "live", false, visible);
+    expect(motion.position).toEqual(walking);
+    finish(motion); expect(motion.position).toEqual(target);
+  });
   for (const [width, height] of [[390, 844], [390, 600], [1024, 768]]) {
     const layout = worldLayout(width, height);
     it(`${width}×${height}: waiting, every seat and cross-court routes never cross a net`, () => {

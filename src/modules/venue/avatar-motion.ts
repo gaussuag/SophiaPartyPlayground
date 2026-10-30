@@ -72,13 +72,16 @@ export class AvatarMotion {
   get walking() { return this.route.length > 0; }
   get moving() { return this.walking || Math.abs(angleDelta(this.destinationYaw, this.yaw)) > 0.005; }
   get destination() { return copy(this.target); }
-  retarget(target: Point, yaw: number, layout: WorldLayout, context: string, reduced = false) {
+  retarget(target: Point, yaw: number, layout: WorldLayout, context: string, reduced = false, visibleFrom?: Point) {
     const reset = context !== this.context;
     this.context = context;
     const changed = distance(this.target, target) > 0.001 || this.target[1] !== target[1];
     this.target = copy(target); this.destinationYaw = yaw;
     if (reset || reduced) this.snap();
-    else if (changed) this.route = avatarRoute(this.position, target, layout);
+    else if (changed) {
+      if (visibleFrom) this.position = copy(visibleFrom);
+      this.route = avatarRoute(this.position, target, layout);
+    }
   }
   snap() { this.position = copy(this.target); this.yaw = this.destinationYaw; this.route = []; }
   step(delta: number, reduced = false) {

@@ -7,7 +7,9 @@ import type { VenueProps } from "./model";
 import { BOARD_SIZE, benchMarkerPosition, boardCenter, cameraView, courtCenter, playerPlacement, slotPosition, type Point, type WorldLayout } from "./world";
 import type { CameraMotion } from "./camera-motion";
 import type { CameraHud } from "./camera-hud";
-import { Avatar, useAvatarAmbient } from "./Avatar";
+import { Avatar } from "./Avatar";
+import { RallyBalls } from "./RallyBalls";
+import type { LocalChoreography } from "./local-choreography";
 import { AvatarResults } from "./avatar-results";
 import type { VenuePerformance } from "./venue-performance";
 export type { Point } from "./world";
@@ -119,19 +121,31 @@ function DragGhost({ point }: { point: MutableRefObject<Point | null> }) {
   </group>;
 }
 
-export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport, pressedPlayerId, timing }: {
+export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, layout, motion, hud, editorSize, viewport, pressedPlayerId, timing, choreography, activityActive }: {
   props: VenueProps; anchors: Anchors; begin: (id: string, event: PointerEvent) => void;
   dragging: boolean; dragPoint: MutableRefObject<Point | null>; hovered: string | null;
   layout: WorldLayout; motion: CameraMotion; hud: CameraHud; editorSize: { width: number; height: number }; viewport: { height: number; top: number };
   pressedPlayerId?: string | null;
   timing: VenuePerformance;
+  choreography: LocalChoreography; activityActive: boolean;
 }) {
   const { state, view } = props;
   const avatarView = props.arrangementView?.round.id === view.round.id ? props.arrangementView : view;
   const candidateKey = props.slotSelection ? `${props.slotSelection.matchId}:${props.slotSelection.slotId}` : undefined;
   const [results] = useState(() => new AvatarResults());
   const invalidate = useThree(s => s.invalidate);
-  const ambient = useAvatarAmbient();
+  useEffect(() => { choreography.sync(state, view, layout); invalidate(); }, [choreography, state, view, layout, invalidate]);
+  useEffect(() => {
+    choreography.interact({ locked: [props.selection?.playerId, ...(props.candidatePlayerIds ?? []), ...(props.pending?.playerIds ?? [])].filter((id): id is string => !!id) });
+    invalidate();
+  }, [choreography, props.selection?.playerId, props.candidatePlayerIds, props.pending?.playerIds, invalidate]);
+  useEffect(() => {
+    const media = matchMedia("(prefers-reduced-motion: reduce)");
+    const refresh = () => { choreography.configure(activityActive && !document.hidden, media.matches); invalidate(); };
+    refresh(); document.addEventListener("visibilitychange", refresh); media.addEventListener("change", refresh);
+    return () => { choreography.configure(false, media.matches); document.removeEventListener("visibilitychange", refresh); media.removeEventListener("change", refresh); };
+  }, [choreography, activityActive, invalidate]);
+  useFrame((_, delta) => { if (choreography.step(delta)) invalidate(); }, -2);
   const avatarContext = `${state.id}:${state.generation}:${view.round.id}:${layout.portrait}:${layout.courtSpacing}`;
   useEffect(() => { results.observe(state, view); invalidate(); }, [state, view, results, invalidate]);
   const { width: floorWidth, length: floorLength } = layout;
@@ -151,11 +165,12 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (p.teamId !== chosenSlot.sideId || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} choreography={choreography} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
     })}
     {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={benchMarkerPosition(side)} ref={refFor(anchors, `bench:${side}`)} />)}
     {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * 9.9]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
     {dragging && <DragGhost point={dragPoint} />}
+    <RallyBalls choreography={choreography} />
   </>;
 }
 
@@ -170,6 +185,9 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
       if (timing.enabled && id.startsWith("player:")) {
         element.dataset.walking = String(!!node.parent?.userData.walking);
         element.dataset.inviting = String(!!node.parent?.userData.inviting);
+        element.dataset.ambientWalking = String(!!node.parent?.userData.ambientWalking);
+        element.dataset.localAction = String(node.parent?.userData.localAction ?? "rest");
+        element.dataset.localHeld = String(!!node.parent?.userData.localHeld);
         element.dataset.worldPosition = `${point.x.toFixed(3)},${point.y.toFixed(3)},${point.z.toFixed(3)}`;
       }
       point.project(camera);
@@ -184,7 +202,7 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
   return null;
 }
 
-export function SceneMetrics({ target, motion, timing }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion; timing: VenuePerformance }) {
+export function SceneMetrics({ target, motion, timing, choreography }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion; timing: VenuePerformance; choreography: LocalChoreography }) {
   const gl = useThree(s => s.gl);
   useEffect(() => {
     if (!timing.enabled) return;
@@ -197,12 +215,19 @@ export function SceneMetrics({ target, motion, timing }: { target: { current: HT
     return () => { gl.render = render; };
   }, [gl, timing]);
   useFrame(() => timing.frame(performance.now()), -100);
-  useFrame(({ gl, camera }) => { queueMicrotask(() => { if (target.current) {
+  useFrame(({ gl, camera }) => { if (!timing.enabled) return; queueMicrotask(() => { if (target.current) {
     target.current.dataset.drawCalls = String(gl.info.render.calls); target.current.dataset.triangles = String(gl.info.render.triangles);
     const navigation = motion.value;
     target.current.dataset.cameraZoom = navigation.zoom.toFixed(2); target.current.dataset.cameraYaw = navigation.yaw.toFixed(3); target.current.dataset.cameraPitch = navigation.pitch.toFixed(3);
     target.current.dataset.cameraMoving = String(motion.moving);
     target.current.dataset.renderZoom = String((camera as OrthographicCamera).zoom);
+    if (timing.enabled) {
+      target.current.dataset.localAnimationActive = String(choreography.enabled);
+      target.current.dataset.localAnimationReduced = String(choreography.reduced);
+      target.current.dataset.localBallCount = String(choreography.enabled ? choreography.balls.length : 0);
+      target.current.dataset.courtProgrammes = JSON.stringify(choreography.programmes);
+      target.current.dataset.localBalls = JSON.stringify(choreography.balls);
+    }
     timing.publish(target.current, performance.now());
   } }); });
   return null;

@@ -19,6 +19,8 @@ export type VenueProps = {
   cameraRequest: { courtId: string | null; key: number };
   selection: PlayerSelection | null; slotSelection: SlotSelection | null;
   candidatePlayerIds?: string[];
+  /** Pauses browser-local decoration only; never changes business state. */
+  animationActive?: boolean;
   placements: Placement[]; onIntent: (intent: VenueIntent) => void;
   editable: boolean; canWrite: boolean; readOnly: boolean; canConfirm: boolean; canCorrect: boolean; editingMatchId?: string;
   pending?: { playerId?: string; playerIds?: string[]; matchId?: string; slotId?: string; unknown: boolean };

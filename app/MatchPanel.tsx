@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { CompetitionCommand, EventProjection, EventState, MatchView, Participant, Slot } from "../src/modules/competition";
 import type { EventSession, SessionView } from "../src/modules/session";
 import { canExecute } from "../src/modules/records/permissions";
-export const phases = { PLAYING: "比赛中", AWAITING_RESULT: "比赛中", COMPLETED: "比赛结束", PLANNING: "准备中" };
+import { matchStatus } from "./match-presentation";
 export const reasonNames: Record<string, string> = { ACTUAL_NOT_STARTED: "实际尚未开打", ACCIDENTAL_END: "误触结束", SCORE_ENTRY_ERROR: "比分录错", SIDES_SWAPPED: "双方填反", REVERT_CORRECTION: "撤销上次更正", RESULT_ENTERED_TOO_EARLY: "提前误录赛果", RECORDED_LINEUP_ERROR: "实际名单录错" };
 export type LineupEdit = { matchId: string; lineupRevisionId: string; participants: { slotId: string; playerId: string }[] };
 export type Ask = (title: string, body: ReactNode, label: string, command: CompetitionCommand) => void;
@@ -33,7 +33,7 @@ export function MatchPanel({ state, view, session, projection, match, slots, onA
   const clearEdit = () => { setEdit(null); setHint(""); };
   const prefix = "第 " + projection.round.number + " 轮 · " + state.courts.find(c => c.id === match.courtId)!.number + " 号场 · " + match.label;
   return <section className="match-panel" aria-label={match.label + "比赛操作"}>
-    <div className="match-panel-heading"><div><p className="eyebrow">第 {projection.round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场</p><h2>{match.label}</h2></div><span className={"phase-badge " + match.phase.toLowerCase()}>{phases[match.phase]}</span></div>
+    <div className="match-panel-heading"><div><p className="eyebrow">第 {projection.round.number} 轮 · {state.courts.find(c => c.id === match.courtId)!.number} 号场</p><h2>{match.label}</h2></div><span className={"phase-badge " + match.phase.toLowerCase()}>{matchStatus(match)}</span></div>
     {match.result && <div className="final-score"><span>白队 <b>{match.result.whiteScore}</b></span><em>:</em><span><b>{match.result.blackScore}</b> 黑队</span><small><Flag size={13} />{match.result.winnerTeamId === "WHITE" ? "白队" : "黑队"}获胜</small></div>}
     <LineupNames participants={namesFor(state, slots.filter(s => s.playerId))} />
     {!readOnly && (match.phase === "PLANNING" && projection.isCurrent || edit && canCorrect) && <button className="button secondary" onClick={onArrange}>到场内安排 <ArrowRight size={16} /></button>}

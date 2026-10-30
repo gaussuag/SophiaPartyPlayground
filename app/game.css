@@ -23,6 +23,7 @@
 .game-hud>*{pointer-events:auto}
 .game-context{position:absolute;z-index:12;top:calc(72px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;width:max-content;max-width:calc(100% - 28px);pointer-events:none}
 .game-context>*{pointer-events:auto}
+.game-step{margin:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 13px;border-radius:15px;background:#f9fbf0c9;color:#274a36;text-align:center;font-size:12px;pointer-events:none}.game-step strong{font-weight:650}.game-step span{font-size:11px;color:#536a4d}
 .game-focus-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:24px;min-height:44px;padding:0 3px;font-size:13px}
 .game-focus-bar>button:first-child{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 10px;font-size:11px;font-weight:600}.game-focus-bar small{font-size:11px;font-weight:450;color:#758468}
 .game-focus-bar>.icon-button{width:44px;height:44px}

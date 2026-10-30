@@ -1,5 +1,11 @@
 # venue Module
 
+2026-10-30 本机演出：可选 `animationActive` 表达球馆是否在前台且未被面板遮住／未手动暂停。`LocalChoreography` 只消费确认视图和固定世界布局，生成有界姿态及球轨迹；不接触 session、网络、缓存或比赛决定。准备期 1v1／1v2／2v1 一球，2v2 两球；比赛（含旧 AWAITING_RESULT）一球，真实单打不补人，赛后及历史轮不拉球。场次＋阵容＋phase＋generation 标识演出，无关 revision 不重播。
+
+候场动作按真实占位计算，独立随机短走／停留／伸展／看球／轻挥拍；个人偏移限定在 x±0.26、z±0.4。`AvatarMotion` 仍独占转场路线，接收可见起点避免从候场走动跳回原点；未到位或预测位置与确认位置不同的角色暂停装饰活动和相关球。Avatar 将转场与本机姿态合成到唯一 playerId 根对象，`walking` 只表示转场；`ambientWalking` 不影响可选资格。按下即冻结目标和姓名，抬手后短暂保留以覆盖原生 click；选中／候选期间保持稳定。
+
+`Scene` 在同一个 R3F useFrame 中采样演出，`RallyBalls` 复用最多六个球和阴影；没有额外 RAF、动画计时器或逐帧 React 状态更新。离开球馆、页面隐藏及卸载停用，返回按当前确认视图恢复；系统减少动态效果时静止并隐藏演出球。更多菜单可单独暂停／恢复本机动画，赛事同步仍照常。诊断数据仅在 venueMetrics 开启时采集。依据及取舍见 [研究](../../../docs/development/local-court-animation-research-2026-10-30.md)，验证见 [交付](../../../docs/delivery/local-court-animation-2026-10-30.md)。
+
 公开 Interface：index.tsx 的 Venue 及交互类型。输入 state、view、courtId、cameraRequest、selection、slotSelection、placements、editable、canWrite、readOnly、canConfirm、canCorrect 和可选 arrangementView／candidatePlayerIds／editingMatchId／editor／pending；输出 court／player／slot／place／bench／start／scoreboard 意图。app/placements.ts 用 competition.decide 生成合法位置及其反向候选名单，venue 不复制资格规则。candidatePlayerIds 只表达当前席位的可选提示，不赋予权限。pending 描述本机待保存反馈；arrangementView 是 session 预测的准备期人物目标，只交给 Avatar，不用于记分牌、资格、赛果或管理操作。
 
 courtId 只表达业务操作上下文；cameraRequest 是带序号的本机镜头请求。editor 仅提供 matchId 与应用管理的牌面内容，venue 不持有 session 或写入比分。场内记分牌的几何体和 DOM 牌面绑定同一个 matchId。
