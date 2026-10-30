@@ -127,6 +127,7 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   timing: VenuePerformance;
 }) {
   const { state, view } = props;
+  const avatarView = props.arrangementView?.round.id === view.round.id ? props.arrangementView : view;
   const [results] = useState(() => new AvatarResults());
   const invalidate = useThree(s => s.invalidate);
   const ambient = useAvatarAmbient();
@@ -145,11 +146,11 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
     <mesh geometry={walkways} position={[0, 0.04, 0]}><meshStandardMaterial color="#e0d2ae" roughness={1} /></mesh>
     {courtPositions.map(({ court, position }) => <Court key={court.id} number={court.number} position={position} match={view.matches.find(m => m.courtId === court.id)} props={props} anchors={anchors} hovered={hovered} editorSize={editorSize} layout={layout} />)}
     {state.players.map((p, index) => {
-      const { position, facing, onCourt } = playerPlacement(state, view, p.id, layout);
+      const { position, facing, onCourt } = playerPlacement(state, avatarView, p.id, layout);
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (p.teamId !== chosenSlot.sideId || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={view.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} />;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} />;
     })}
     {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={benchMarkerPosition(side, layout)} ref={refFor(anchors, `bench:${side}`)} />)}
     {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * (portrait ? floorLength / 2 - 1.1 : 9.9)]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}

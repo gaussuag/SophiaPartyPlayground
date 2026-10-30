@@ -14,10 +14,12 @@ export type VenueIntent =
   | { type: "scoreboard"; matchId: string };
 export type VenueProps = {
   state: EventState; view: EventProjection; courtId: string | null;
+  /** Local planning poses only; never used for court state or available actions. */
+  arrangementView?: EventProjection;
   cameraRequest: { courtId: string | null; key: number };
   selection: PlayerSelection | null; slotSelection: SlotSelection | null;
   placements: Placement[]; onIntent: (intent: VenueIntent) => void;
   editable: boolean; canWrite: boolean; readOnly: boolean; canConfirm: boolean; canCorrect: boolean; editingMatchId?: string;
-  pending?: { playerId?: string; matchId?: string; slotId?: string; unknown: boolean };
+  pending?: { playerId?: string; playerIds?: string[]; matchId?: string; slotId?: string; unknown: boolean };
   editor?: { matchId: string; content: ReactNode };
 };

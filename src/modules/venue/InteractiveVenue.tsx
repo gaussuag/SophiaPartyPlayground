@@ -194,9 +194,10 @@ export function Venue(props: VenueProps) {
     const target = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
     const mismatch = !!target && (target.sideId !== player.teamId || !!target.gender && target.gender !== player.gender);
     const locked = status.status === "playing" || status.status === "played_this_round";
+    const pending = props.pending?.playerIds?.includes(player.id) || props.pending?.playerId === player.id;
     labels.push({
       key: `player:${player.id}`,
-      content: <button className={`game-player-label ${player.teamId.toLowerCase()} ${selected || pressedPlayerId === player.id ? "selected" : ""} ${locked || mismatch ? "unavailable" : ""} ${props.pending?.playerId === player.id ? "pending" : ""}`} data-player-id={player.id} aria-busy={props.pending?.playerId === player.id} aria-pressed={selected} aria-label={`选择角色 ${player.name} ${player.id}${locked ? `，${status.label}` : ""}`} onClick={e => { if (e.detail === 0) props.onIntent({ type: "player", playerId: player.id }); }}><span>{player.name}</span>{locked && <LockKeyhole size={9} aria-hidden="true" />}</button>,
+      content: <button className={`game-player-label ${player.teamId.toLowerCase()} ${selected || pressedPlayerId === player.id ? "selected" : ""} ${locked || mismatch ? "unavailable" : ""} ${pending ? "pending" : ""}`} data-player-id={player.id} aria-busy={pending} aria-pressed={selected} aria-label={`选择角色 ${player.name} ${player.id}${locked ? `，${status.label}` : ""}`} onClick={e => { if (e.detail === 0) props.onIntent({ type: "player", playerId: player.id }); }}><span>{player.name}</span>{locked && <LockKeyhole size={9} aria-hidden="true" />}</button>,
     });
   }
   for (const target of props.placements) {
