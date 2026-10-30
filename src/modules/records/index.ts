@@ -1,6 +1,6 @@
 // Server-only entrypoint. App routes inject the real D1 binding and trusted identity.
 import { createEvent, decide, verifySnapshot, matchPoints, type EventState, type RuleVersion } from "../competition";
-import { envelopeSchema, type Backup, type Receipt, type Role } from "./protocol";
+import { envelopeSchema, resetSchema, type Backup, type Receipt, type Role } from "./protocol";
 import { canExecute } from "./permissions";
 export type { Receipt, Role, CommandEnvelope, Backup } from "./protocol";
 
@@ -40,7 +40,7 @@ async function fingerprint(value: unknown) { return [...new Uint8Array(await cry
 function receiptFor(aggregate: Aggregate, commandId: string, actorId: string, hash: string): Receipt | undefined {
   const receipt = Object.hasOwn(aggregate.receipts, commandId) ? aggregate.receipts[commandId] : undefined;
   if (receipt && (receipt.actorId !== actorId || receipt.requestHash !== hash)) throw new RecordsError("COMMAND_ID_REUSED", "同一操作编号不能用于不同账号或不同请求", 409);
-  if (receipt?.status === "SUPERSEDED_BY_RESTORE") throw new RecordsError("RESTORE_RELOAD_REQUIRED", "活动已从备份恢复，请重新载入并核对；旧操作不会重放", 409, aggregate.state.revision);
+  if (receipt?.status === "SUPERSEDED_BY_RESTORE") throw new RecordsError("RESTORE_RELOAD_REQUIRED", "活动已重置或从备份恢复，请重新载入并核对；旧操作不会重放", 409, aggregate.state.revision);
   return receipt;
 }
 async function compareAndSave(context: RecordsContext, aggregate: Aggregate, expectedRevision: number) {
@@ -72,7 +72,7 @@ export async function execute(context: RecordsContext, input: unknown) {
   const aggregate = await load(context, envelope.eventId);
   const existing = receiptFor(aggregate, envelope.commandId, actorId, hash);
   if (existing) return { ...(await readEvent(context, envelope.eventId)), receipt: existing, replayed: true };
-  if (aggregate.state.generation !== envelope.expectedGeneration) throw new RecordsError("RESTORE_RELOAD_REQUIRED", "活动已恢复，请重新载入并核对", 409, aggregate.state.revision);
+  if (aggregate.state.generation !== envelope.expectedGeneration) throw new RecordsError("RESTORE_RELOAD_REQUIRED", "活动已重置或恢复，请重新载入并核对", 409, aggregate.state.revision);
   if (aggregate.state.revision !== envelope.expectedRevision) throw new RecordsError("REVISION_CONFLICT", "其他设备已更新记录，请核对后重新操作", 409, aggregate.state.revision);
   const decision = decide(aggregate.state, envelope.command, { now: context.now, actorId, commandId: envelope.commandId });
   if (!decision.ok) throw new RecordsError(decision.error.code, decision.error.message, 422);
@@ -130,6 +130,36 @@ export async function restoreEvent(context: RecordsContext, eventId: string, inp
     const latest = await load(context, eventId); const raced = receiptFor(latest, input.commandId, context.actorId, hash);
     if (raced) return { state: publicState(latest.state), role: context.role, receipt: raced };
     throw new RecordsError("REVISION_CONFLICT", "恢复期间有其他操作，请重新核对", 409);
+  }
+  return { state: publicState(state), role: context.role, receipt };
+}
+
+/** Reset only mutable competition facts. Keep this event's actual roster,
+ * schedule and identity rather than silently importing today's template. */
+export async function resetEvent(context: RecordsContext, eventId: string, raw: unknown) {
+  authorize(context, true); validId(eventId);
+  const parsed = resetSchema.safeParse(raw);
+  if (!parsed.success || parsed.data.confirmEventId !== eventId) throw new RecordsError("MAINTENANCE_REQUIRED", "请明确确认重置同一活动的全部比赛数据");
+  const input = parsed.data, hash = await fingerprint(input), current = await load(context, eventId);
+  const existing = receiptFor(current, input.commandId, context.actorId, hash);
+  if (existing) return { state: publicState(current.state), role: context.role, receipt: existing };
+  if (current.state.revision !== input.expectedRevision || current.state.generation !== input.expectedGeneration) throw new RecordsError("REVISION_CONFLICT", "确认期间记录已变化，请重新核对后重置", 409, current.state.revision);
+  const state = structuredClone(current.state);
+  state.phase = "PREPARED"; state.activeRoundId = null;
+  state.rounds = state.rounds.map(r => ({ ...r, phase: "UPCOMING", openedAt: null, closedAt: null }));
+  state.matches = state.matches.map(m => ({ ...m, phase: "PLANNING", draftSlots: m.draftSlots.map(s => ({ ...s, playerId: null })), activeLineupRevisionId: null, activeResultRevisionId: null, startedAt: null, endDeclaredAt: null }));
+  state.lineups = []; state.results = [];
+  state.revision++; state.generation++; state.updatedAt = context.now;
+  state.audit.push({ commandId: input.commandId, actorId: context.actorId, type: "ResetEvent", recordedAt: context.now, changedIds: [eventId], reason: null });
+  const receipts: Record<string, Receipt> = Object.create(null);
+  for (const [id, receipt] of Object.entries(current.receipts)) receipts[id] = { ...receipt, status: "SUPERSEDED_BY_RESTORE" };
+  const receipt: Receipt = { commandId: input.commandId, actorId: context.actorId, requestHash: hash, appliedRevision: state.revision, generation: state.generation, resultRefs: [eventId], status: "APPLIED" };
+  receipts[input.commandId] = receipt;
+  const updated: Aggregate = { state, receipts, beforeRestore: { state: current.state, receipts: current.receipts } };
+  if (!await compareAndSave(context, updated, input.expectedRevision)) {
+    const latest = await load(context, eventId), raced = receiptFor(latest, input.commandId, context.actorId, hash);
+    if (raced) return { state: publicState(latest.state), role: context.role, receipt: raced };
+    throw new RecordsError("REVISION_CONFLICT", "重置期间有其他操作，请重新核对", 409, latest.state.revision);
   }
   return { state: publicState(state), role: context.role, receipt };
 }

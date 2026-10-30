@@ -185,7 +185,9 @@ export function Venue(props: VenueProps) {
     const action = !match ? "休息区" : match.phase === "PLANNING" ? props.readOnly ? "查看球场" : ready ? canStart ? "确认上场" : "等待确认" : "安排阵容" : match.phase === "PLAYING" || match.phase === "AWAITING_RESULT" ? props.readOnly ? "比赛进行中" : "录入赛果" : props.canCorrect ? "更正比分" : "查看赛果";
     return { key: `court:${c.id}`, className: "board-anchor", content: <button data-scene-ui className={`world-scoreboard ${match?.phase.toLowerCase() ?? "rest"} ${canStart ? "ready" : ""}`} aria-label={`${c.number} 号场 · ${action}`} title={`${c.number} 号场 · ${match?.label ?? "休息区"} · ${action}`} disabled={locked} onClick={() => props.onIntent(!match || match.phase === "PLANNING" && !canStart ? { type: "court", courtId: c.id } : canStart ? { type: "start", matchId: match!.id } : { type: "scoreboard", matchId: match!.id })}>
       <span className="board-face"><b>{String(c.number).padStart(2, "0")}</b>
-        {match?.result ? <strong className="board-result">{match.result.whiteScore}<i>:</i>{match.result.blackScore}</strong> : <span className="board-action">{match?.phase === "PLANNING" && !ready ? match.label : match?.phase === "PLAYING" && props.readOnly ? "比赛中" : action}</span>}
+        {match?.result ? <svg className="board-result" viewBox="0 0 64 22" role="img" aria-label={`白队 ${match.result.whiteScore}，黑队 ${match.result.blackScore}`}>
+          <text x="32" y="16.5" textAnchor="middle" textLength={String(match.result.whiteScore).length + String(match.result.blackScore).length > 4 ? 62 : undefined} lengthAdjust="spacingAndGlyphs">{match.result.whiteScore} : {match.result.blackScore}</text>
+        </svg> : <span className="board-action">{match?.phase === "PLANNING" && !ready ? match.label : match?.phase === "PLAYING" && props.readOnly ? "比赛中" : action}</span>}
         {canStart ? <Check size={14} aria-hidden="true" /> : match?.result && props.canCorrect ? <Pencil size={13} aria-hidden="true" /> : match ? <ArrowUpRight size={13} aria-hidden="true" /> : null}
       </span>
     </button> };

@@ -18,7 +18,7 @@ describe("paddle-centred contact and end-row waiting", () => {
     for (const yaw of [0,.35,Math.PI,-2.7]) for (const lift of [0,.19,.225]) {
       const root = new Group(), body = new Group(), arm = new Group(), grip = new Group();
       root.position.set(8.6,.18,-3.15); root.scale.setScalar(AVATAR_SCALE);
-      body.position.y=lift; body.rotation.y=yaw; arm.position.set(...RIGHT_SHOULDER); arm.rotation.set(-.85,0,.12);
+      body.position.y=lift; body.rotation.y=yaw; arm.position.set(...RIGHT_SHOULDER); arm.rotation.set(-.85,0,-.12);
       grip.position.set(...PADDLE_MOUNT.position); grip.rotation.set(...PADDLE_MOUNT.rotation);
       root.add(body); body.add(arm); arm.add(grip); root.updateMatrixWorld(true);
       const actual=grip.localToWorld(new Vector3(...PADDLE_FACE)).toArray() as Point;

@@ -6,6 +6,7 @@ import type { PlayerSelection, SelectionBasis, SlotSelection, VenueIntent } from
 import { placementCandidates, placementCommand, placementTargets } from "./placements";
 import { SlotPicker } from "./SlotPicker";
 import { ScoreboardEditor, scoreTarget, type ScoreTarget } from "./ScoreboardEditor";
+import { ResetEventDialog } from "./ResetEventDialog";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { GameDrawer } from "./GameDrawer";
 import { LineupNames, MatchPanel, namesFor, type LineupEdit } from "./MatchPanel";
@@ -34,6 +35,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const [selection, setSelection] = useState<PlayerSelection | null>(null);
   const [pickedSlot, setSlotFocus] = useState<SlotSelection | null>(null);
   const [score, setScore] = useState<ScoreTarget | null>(null);
+  const [resetBasis, setResetBasis] = useState<SelectionBasis | null>(null);
   const [confirm, setConfirm] = useState<Confirmation | null>(null);
   const [lineupEdit, setLineupEdit] = useState<LineupEdit | null>(null);
   const [hint, setHint] = useState("");
@@ -84,6 +86,14 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
     }
     previousActive.current = state?.activeRoundId;
   }, [state?.activeRoundId, viewedRoundId]);
+
+  const previousGeneration = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (previousGeneration.current !== undefined && previousGeneration.current !== state?.generation) {
+      setViewedRoundId(null); setCourtId(null); setSelection(null); setSlotFocus(null); setLineupEdit(null); setScore(null); setConfirm(null); setResetBasis(null); setHint("");
+    }
+    previousGeneration.current = state?.generation;
+  }, [state?.generation]);
 
   function clearSelection() { setSelection(null); setSlotFocus(null); setHint(""); }
   function flyTo(id: string | null) { setCameraRequest(previous => ({ courtId: id, key: previous.key + 1 })); }
@@ -257,9 +267,10 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       {panel === "records" && <Records state={state} view={view} session={session} onSelect={selectMatch} />}
       {panel === "match" && focused && <MatchPanel state={state} view={view} session={session} projection={projection} match={focused} slots={slots}
         onArrange={() => { setPanel(null); clearSelection(); }} edit={edit} setEdit={editLineup} hint={hint} setHint={setHint} ask={ask} openScore={m => void openScore(m)} />}
-      {panel === "tools" && <div className="game-tools"><p className="tool-identity">{view.role === "admin" ? "活动管理" : view.role === "operator" ? "操作员" : view.role === "participant" ? "参赛协作" : view.role === "guest" ? "访客协作" : "观赛"}{localDevelopment && <small>本地演练</small>}</p>{focused && <button onClick={() => setPanel("match")}><Ellipsis size={18} />{state.courts.find(c => c.id === focused.courtId)!.number} 号场{canCorrect ? "详情与纠错" : "详情"}</button>}<button onClick={() => { setPanel(null); setShowHelp(true); }}><Info size={18} />操作说明</button><button onClick={() => void session.refresh()}><RefreshCw size={18} />同步记录</button><button aria-pressed={animationsPaused} onClick={() => { setAnimationsPaused(value => !value); setPanel(null); }}>{animationsPaused ? <Play size={18} /> : <Pause size={18} />}{animationsPaused ? "恢复场景动画" : "暂停场景动画"}</button>{canManage && state.phase === "PREPARED" && <button disabled={!canWrite} onClick={async () => { if (await session.dispatch({ type: "StartWarmup" })) setPanel(null); }}><Flag size={18} />开始热身</button>}{anonymous ? <a target="_top" href={"/signin-with-chatgpt?return_to=" + returnTo}><LogIn size={18} />管理者登录</a> : <a target="_top" href={"/signout-with-chatgpt?return_to=" + returnTo}><LogOut size={18} />退出登录</a>}<small className="tool-sync-time">{view.lastSyncedAt ? "最后同步 " + new Date(view.lastSyncedAt).toLocaleTimeString("zh-CN") : "尚未同步"} · v{state.revision}</small></div>}
+      {panel === "tools" && <div className="game-tools"><p className="tool-identity">{view.role === "admin" ? "活动管理" : view.role === "operator" ? "操作员" : view.role === "participant" ? "参赛协作" : view.role === "guest" ? "访客协作" : "观赛"}{localDevelopment && <small>本地演练</small>}</p>{focused && <button onClick={() => setPanel("match")}><Ellipsis size={18} />{state.courts.find(c => c.id === focused.courtId)!.number} 号场{canCorrect ? "详情与纠错" : "详情"}</button>}<button onClick={() => { setPanel(null); setShowHelp(true); }}><Info size={18} />操作说明</button><button onClick={() => void session.refresh()}><RefreshCw size={18} />同步记录</button><button aria-pressed={animationsPaused} onClick={() => { setAnimationsPaused(value => !value); setPanel(null); }}>{animationsPaused ? <Play size={18} /> : <Pause size={18} />}{animationsPaused ? "恢复场景动画" : "暂停场景动画"}</button>{canManage && state.phase === "PREPARED" && <button disabled={!canWrite} onClick={async () => { if (await session.dispatch({ type: "StartWarmup" })) setPanel(null); }}><Flag size={18} />开始热身</button>}{view.role === "admin" && <button disabled={!canWrite} onClick={() => { setPanel(null); clearSelection(); setResetBasis({ revision: state.revision, generation: state.generation }); }}><RotateCcw size={18} />重置比赛数据</button>}{anonymous ? <a target="_top" href={"/signin-with-chatgpt?return_to=" + returnTo}><LogIn size={18} />管理者登录</a> : <a target="_top" href={"/signout-with-chatgpt?return_to=" + returnTo}><LogOut size={18} />退出登录</a>}<small className="tool-sync-time">{view.lastSyncedAt ? "最后同步 " + new Date(view.lastSyncedAt).toLocaleTimeString("zh-CN") : "尚未同步"} · v{state.revision}</small></div>}
       {!localDevelopment && panel === "tools" && <a className="game-setup-link" href={"/setup?event=" + encodeURIComponent(eventId)}>身份与权限</a>}
     </GameDrawer>}
+    {resetBasis && session && view && <ResetEventDialog session={session} view={view} basis={resetBasis} onClose={() => setResetBasis(null)} onComplete={() => { setResetBasis(null); flyTo(null); }} />}
     {confirm && session && <ConfirmDialog title={confirm.title} actionLabel={confirm.label} busy={busy} onClose={() => setConfirm(null)} onConfirm={async () => { const saving = session.dispatch(confirm.command, confirm.basis); if (session.getView().arrangement) { setConfirm(null); clearSelection(); } const ok = await saving; setConfirm(null); clearSelection(); if (ok && confirm.command.type === "CorrectRecordedLineup") setLineupEdit(null); }}>{confirm.body}</ConfirmDialog>}
     {profile && <ConfirmDialog title={profile.name} actionLabel="返回球馆" cancelLabel={null} busy={false} onClose={() => setProfileId(null)} onConfirm={() => setProfileId(null)}><p>{profile.teamId === "FREE" ? "自由阵营 · 可代表黑白任一队" : profile.teamId === "WHITE" ? "白队" : "黑队"} · {profile.gender === "MALE" ? "男" : "女"}</p><p>{projection?.playerStates[profile.id].label}</p></ConfirmDialog>}
     {showHelp && <ConfirmDialog title="安排一场比赛" actionLabel="回到球馆" cancelLabel={null} busy={false} onClose={() => setShowHelp(false)} onConfirm={() => setShowHelp(false)}><ol className="help-steps"><li>单指划空地旋转视角；双指缩放、移动；点全景复位。</li><li>点球友再点场内位置，或直接拖入；开赛前可移到其他场地，拖到前后两排候场区即可下场。</li><li>阵容齐备后，由活动管理者确认上场；确认后锁住阵容。</li><li>所有访客可点记分牌录分，确认有效比分后本场结束，选手留场。</li><li>本轮赛果齐备后，由活动管理者确认本轮结束；新轮回候场，历史轮恢复原对阵。</li></ol></ConfirmDialog>}

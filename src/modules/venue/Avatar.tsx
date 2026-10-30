@@ -106,8 +106,8 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     leftLeg.current.rotation.x = angel ? airborne.leg : stride; rightLeg.current.rotation.x = angel ? airborne.leg : -stride;
     leftArm.current.rotation.x = -stride * 0.7 - stretch * .6;
     rightArm.current.rotation.x = -0.22 + stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.35 : 0) - swing * 1.35;
-    leftArm.current.rotation.z = -0.12 - stretch * 1.8 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
-    rightArm.current.rotation.z = 0.12 + selection * 0.4 + stretch * 1.8 + swing * .35 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0) + invitation.wave;
+    leftArm.current.rotation.z = 0.12 + stretch * 1.8 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
+    rightArm.current.rotation.z = -0.12 - selection * 0.4 - stretch * 1.8 - swing * .35 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0) - invitation.wave;
     rightArm.current.rotation.y = 0;
     if (stroke) rightArm.current.rotation.set(...stroke.arm);
     leftLeg.current.position.x = status === "playing" ? -0.16 : -0.12;
@@ -126,8 +126,8 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     <group ref={body} rotation={[0, facing, 0]}>
       {angel && <AngelWings pose={flight} />}
       <mesh geometry={torsoGeometry} position={[0, 0.68, 0]}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
-      <group ref={leftArm} position={[-0.28, 0.84, 0]} rotation={[0, 0, -0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
-      <group ref={rightArm} position={RIGHT_SHOULDER} rotation={[0, 0, 0.12]}>
+      <group ref={leftArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>
+      <group name="right-arm" ref={rightArm} position={RIGHT_SHOULDER} rotation={[0, 0, -0.12]}>
         <mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
         <Paddle playerId={player.id} skin={skin} />
       </group>

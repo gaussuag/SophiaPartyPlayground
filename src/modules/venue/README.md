@@ -67,3 +67,5 @@ sunlight 管理静态 ShaderMaterial 缓存：世界位置／法向、顶点色�
 拍面触球：paddle-pose 是 Avatar 缩放、右肩、握柄、拍面和球半径的共同来源。RallyTimeline 只提供 sample(clock)，内部管理固定接触姿态、就位、引拍／随挥、落地与过网弧线；相邻来球／出球共用同一接触帧，三人或双打换搭档不会跳点，接触缓存有界。LocalChoreography 在原 useFrame 内推进各 lane，真实阵容／状态仍由 courtProgrammes 决定；任何无关 revision 不重置时间轴。
 
 Avatar 在拉球时直接使用同一姿态的偏移、朝向、手臂与悬浮高度，取消这段路径的第二次平滑与重心偏移，避免拍面与预定接触点分离；普通候场、走动、举手和飞行仍沿原机制。RallyBalls 沿用六球池，增加短尾迹及 0.1 秒轻微触球圈，没有新计时器／网络。LabelProjection 的实际 paddleCenter 只在 venueMetrics 开启时取世界矩阵，供浏览器验收；生产常态不做这项诊断读取。
+
+2026-10-31：修正人物自身的右手定义（正面 +Z，右侧 -X），共享 RIGHT_SHOULDER 与握拍／挥拍参数同步镜像，拍头向右外侧倾角约 34°。RallyTimeline 与实际 Avatar 共用新拍面，保持触球一致。紧凑牌面采用固定场号、独立比例比分字区、操作图标三列；SVG 文本随可用宽度适配，超过两位的数值压缩字形而不改变业务值，完整双方比分有可访问名称。最小点击高度仍为 44px。

@@ -39,7 +39,7 @@ export function connect(eventId: string, options: Options = {}) {
     if (view.state && incoming.state.revision < view.state.revision) return;
     const restored = view.state && incoming.state.generation !== view.state.generation;
     const lastSyncedAt = new Date().toISOString();
-    emit({ state: incoming.state, role: incoming.role, lastSyncedAt, notFound: false, ...(restored ? { status: "conflict" as const, errorCode: "RESTORE_RELOAD_REQUIRED", message: "活动已从备份恢复，请重新核对；旧操作不会自动重放" } : {}) });
+    emit({ state: incoming.state, role: incoming.role, lastSyncedAt, notFound: false, ...(restored ? { status: "conflict" as const, errorCode: "RESTORE_RELOAD_REQUIRED", message: "活动已重置或从备份恢复，请重新核对；旧操作不会自动重放" } : {}) });
     try { await cache.saveSnapshot(incoming.state); await cache.saveSyncTime(lastSyncedAt); } catch { emit({ message: "已读取共享记录；本机缓存暂时不可用" }); }
   }
   async function refresh(acknowledge = false) {
@@ -68,7 +68,7 @@ export function connect(eventId: string, options: Options = {}) {
         try {
           const result = await data<{ receipt: { appliedRevision: number; status: string } | null }>(await request(`${base}/receipts/${encodeURIComponent(envelope.commandId)}`));
           if (result.receipt) {
-            if (result.receipt.status === "SUPERSEDED_BY_RESTORE") { await clearPending(envelope.commandId); emit({ status: "conflict", errorCode: "RESTORE_RELOAD_REQUIRED", message: "原操作已被备份恢复替代，请重新核对" }); }
+            if (result.receipt.status === "SUPERSEDED_BY_RESTORE") { await clearPending(envelope.commandId); emit({ status: "conflict", errorCode: "RESTORE_RELOAD_REQUIRED", message: "原操作已被重置或备份恢复替代，请重新核对" }); }
             else {
               etag = null; await refresh();
               // A receipt can arrive before the corresponding read. Keep the pose
@@ -92,9 +92,10 @@ export function connect(eventId: string, options: Options = {}) {
     if (sending || persisting || reconciling) return false;
     sending = true; emit({ status: "saving", message: "正在同步", errorCode: null });
     try {
-      const restore = "restore" in envelope;
-      const payload = restore ? { ...envelope.restore, commandId: envelope.commandId, expectedRevision: envelope.expectedRevision, expectedGeneration: envelope.expectedGeneration } : envelope;
-      const result = await data(await request(`${base}/${restore ? "restore" : "commands"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+      const operation = "restore" in envelope ? "restore" : "reset" in envelope ? "reset" : "commands";
+      const maintenance = "restore" in envelope ? envelope.restore : "reset" in envelope ? envelope.reset : null;
+      const payload = maintenance ? { ...maintenance, commandId: envelope.commandId, expectedRevision: envelope.expectedRevision, expectedGeneration: envelope.expectedGeneration } : envelope;
+      const result = await data(await request(`${base}/${operation}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
       prediction.clear(envelope.commandId);
       await accept(result); await clearPending(envelope.commandId);
       emit({ status: "synced", message: "已同步", errorCode: null }); return true;
@@ -126,11 +127,11 @@ export function connect(eventId: string, options: Options = {}) {
     emit({ drafts: { ...view.drafts, [draft.matchId]: draft } });
     try { await cache.saveDraft(draft); } catch { emit({ message: "本机草稿暂时无法持久保存，请保持页面打开", errorCode: "DRAFT_STORAGE_UNAVAILABLE" }); }
   }
-  async function restore(backup: Backup): Promise<boolean> {
+  async function maintenance(operation: { restore: { confirmEventId: string; maintenance: true; backup: Backup } } | { reset: { confirmEventId: string; maintenance: true } }, basis?: Pick<EventState, "revision" | "generation">): Promise<boolean> {
     if (!view.state || view.role !== "admin" || view.status !== "synced" || !view.cacheReady || sending || persisting || reconciling || view.pending.length || !isOnline()) return false;
-    const envelope: PendingEnvelope = { eventId, commandId: commandId(), expectedRevision: view.state.revision, expectedGeneration: view.state.generation, restore: { confirmEventId: eventId, maintenance: true, backup } };
+    const envelope: PendingEnvelope = { eventId, commandId: commandId(), expectedRevision: basis?.revision ?? view.state.revision, expectedGeneration: basis?.generation ?? view.state.generation, ...operation };
     persisting = true; emit({ status: "saving", message: "正在同步", errorCode: null });
-    try { await cache.savePending(envelope); } catch { emit({ status: "synced", message: "无法保留恢复操作编号，本次未发送", errorCode: "LOCAL_STORAGE_UNAVAILABLE" }); return false; }
+    try { await cache.savePending(envelope); } catch { emit({ status: "synced", message: "无法保留维护操作编号，本次未发送", errorCode: "LOCAL_STORAGE_UNAVAILABLE" }); return false; }
     finally { persisting = false; }
     emit({ pending: [...view.pending, envelope] }); return send(envelope);
   }
@@ -154,7 +155,8 @@ export function connect(eventId: string, options: Options = {}) {
     ready, getView: () => view, subscribe: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); }, dispatch,
     refresh: async () => { etag = null; await refresh(true); await reconcile(); },
     retryPending: async () => { await reconcile(); const envelope = view.pending[0]; return envelope && view.state?.revision === envelope.expectedRevision && view.state.generation === envelope.expectedGeneration && isOnline() ? send(envelope) : false; },
-    saveDraft, clearDraft, restore,
+    saveDraft, clearDraft, restore: (backup: Backup) => maintenance({ restore: { confirmEventId: eventId, maintenance: true, backup } }),
+    reset: (basis: Pick<EventState, "revision" | "generation">) => maintenance({ reset: { confirmEventId: eventId, maintenance: true } }, basis),
     dispose: () => { disposed = true; clearInterval(interval); listeners.clear(); cache.close(); if (typeof window !== "undefined") { window.removeEventListener("online", onNetwork); window.removeEventListener("offline", onNetwork); document.removeEventListener("visibilitychange", onVisibility); } },
   };
 }

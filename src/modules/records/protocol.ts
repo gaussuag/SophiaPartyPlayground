@@ -29,4 +29,6 @@ export type Receipt = { commandId: string; actorId: string; requestHash: string;
 export type Role = "viewer" | "guest" | "participant" | "operator" | "admin";
 export type Backup = { format: "sophia-party-backup-v1"; exportedAt: string; eventId: string; schemaVersion: 1; revision: number; aggregate: { state: EventState; receipts: Record<string, Receipt> } };
 export type RestoreEnvelope = { eventId: string; commandId: string; expectedRevision: number; expectedGeneration: number; restore: { confirmEventId: string; maintenance: true; backup: Backup } };
-export type PendingEnvelope = CommandEnvelope | RestoreEnvelope;
+export const resetSchema = z.object({ commandId: id, expectedRevision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER), expectedGeneration: z.number().int().nonnegative(), confirmEventId: id.max(80), maintenance: z.literal(true) }).strict();
+export type ResetEnvelope = { eventId: string; commandId: string; expectedRevision: number; expectedGeneration: number; reset: { confirmEventId: string; maintenance: true } };
+export type PendingEnvelope = CommandEnvelope | RestoreEnvelope | ResetEnvelope;

@@ -9,7 +9,7 @@ export type RallyBall = {
   impact?: { center: Point; normal: Point; strength: number };
 };
 type Contact = { id: string; offset: Point; yaw: number; lift: number; center: Point; normal: Point; ball: Point };
-const ready: Point = [-.22, 0, .12], windup: Point = [.14, -.48, -.06], follow: Point = [-1.5, .32, .22];
+const ready: Point = [-.22, 0, -.12], windup: Point = [.14, .48, .06], follow: Point = [-1.5, -.32, -.22];
 const mix = (a: Point, b: Point, t: number): Point => a.map((v, i) => v + (b[i] - v) * t) as Point;
 const smooth = (t: number) => { const u = Math.max(0, Math.min(1, t)); return u * u * (3 - 2 * u); };
 const angle = (a: number, b: number, t: number) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * t;

@@ -50,3 +50,7 @@
 - venue/paddle-contact.test.ts：以真实 Three Group 层级独立核对接触点；1v1／1v2／2v1／双打／Sophia 的球面贴拍、连续边界、错峰热身、过网与落地；全员初始和跨轮候场只在两排。
 - [拍面触球回归](browser/paddle-contact-harness.html)：开发服务 /tests/browser/paddle-contact-harness.html?event=local-新的编号。实际场景与 D1、两个客户端，读取真实 paddleCenter 矩阵，采样接触帧误差、四人双球／三人单球／Sophia／比赛单球及录分清理。检查下场目标、可见到位和无动画写入。该量化补充不代替 Safari 实机观感。
 - short-routes.test.ts 与 short-routes-harness 已更新为前后排停留；原侧边最近点距离门槛不再代表新的范围约束。
+
+- records/reset.test.ts：真实 D1 的管理员重置、四种非管理员拒绝、严格确认、旧／新赛制保留、积分清零、恢复点、幂等／并发与旧命令失效。
+- session/reset.test.ts：仅 admin 发送、确认版本冲突、响应丢失后刷新读取原回执且不再重置。
+- [比分牌与重置回归](browser/scoreboard-reset-harness.html)：本地独立活动，四种视口三块两位数比分完整且可读；真实管理员菜单、取消无写入、确认清空、匿名拒绝与隐藏、两客户端、旧确认拒绝及完整备份恢复。非 Safari 实机。

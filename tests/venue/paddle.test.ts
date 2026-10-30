@@ -3,6 +3,7 @@ import { Euler, Vector3 } from "three";
 import { createEvent } from "../../src/modules/competition";
 import { avatarAppearance } from "../../src/modules/venue/avatar-appearance";
 import { PADDLE_MOUNT, PADDLE_TIP, paddleAppearance, paddleGeometry, paddleMaterial } from "../../src/modules/venue/paddle-model";
+import { RIGHT_SHOULDER } from "../../src/modules/venue/paddle-pose";
 const players = createEvent("local-paddle-model", "2026-10-30T00:00:00Z").players;
 describe("shared procedural pickleball equipment", () => {
   it("gives every current player a distinct stable palette, independent of side or roster order", () => {
@@ -24,7 +25,13 @@ describe("shared procedural pickleball equipment", () => {
   });
   it("holds the blade above and in front of the grip rather than flat along the forearm", () => {
     const tip = new Vector3(...PADDLE_TIP).applyEuler(new Euler(...PADDLE_MOUNT.rotation));
-    expect(tip.y).toBeGreaterThan(.4); expect(tip.z).toBeGreaterThan(.15); expect(tip.x).toBeGreaterThan(.10);
+    expect(tip.y).toBeGreaterThan(.32); expect(tip.z).toBeGreaterThan(.15); expect(tip.x).toBeLessThan(-.22);
+  });
+  it("holds every paddle in the anatomical right hand and opens the blade further outward", () => {
+    // Faces point toward local +Z; anatomical right is local -X.
+    expect(RIGHT_SHOULDER[0]).toBeLessThan(0);
+    const tip = new Vector3(...PADDLE_TIP).applyEuler(new Euler(...PADDLE_MOUNT.rotation));
+    expect(tip.x).toBeLessThan(-.22); expect(tip.y).toBeGreaterThan(.32); expect(tip.z).toBeGreaterThan(.15);
   });
   it("reuses buffers and one material; alternating players cannot recolour an existing paddle", () => {
     const first = paddleGeometry("W01", "#d8aa82"), before = Array.from(first.getAttribute("color").array);

@@ -162,3 +162,11 @@ Player.teamId 与 Participant.teamId 表示 WHITE／BLACK／FREE 的名单阵营
 matchPoints 与 teamStandings 为 competition 的纯查询 Interface。每场仅使用 activeResultRevisionId 对应的 ResultRevision 与其 lineupRevisionId 判断 Sophia 是否参赛。更正比分、名单更正、撤回和恢复后自动重新计算，不写入另一套积分累计表，不为动画或积分新增轮询。CSV 与浏览器使用同一查询，旧 v1 不追溯套用新积分。
 
 正式默认编号为 sophia-sunshine-cup-v2，隔离验收为 sophia-sunshine-cup-v2-acceptance；原测试活动不导入。上线通过现有管理员、默认关闭的初始化窗口幂等补建，随后关闭窗口；不会每次部署重置数据。生产身份与公开协作权限保持原配置。
+
+## 受控重置（2026-10-31）
+
+records.resetEvent 对 POST /api/events/[eventId]/reset 使用严格小请求：commandId、expectedRevision、expectedGeneration、confirmEventId、maintenance=true。可信 actorId／admin 在服务端校验；拒绝客户端自报角色、整份快照和其他字段。
+
+重置保留当前快照的名单和赛程，避免旧活动被当前模板替换；只清空动态比赛事实。新 generation、revision、ResetEvent 审计、回执及 beforeRestore 恢复点在同一条件 UPDATE 保存。回执兼容保留 SUPERSEDED_BY_RESTORE 状态与 RESTORE_RELOAD_REQUIRED 错误码，文案统一为“重置或恢复”；旧 generation 的命令不能重放。
+
+重置前状态复用 beforeRestore 单一最近维护恢复点，GET backup?beforeRestore=1 仍仅 admin；没有 schema 迁移、数据库删除或部署初始化。session 将 ResetEnvelope 与 RestoreEnvelope 通过同一持久化 pending／回执核对通道发送，超时不自动再次重置。公开读取不包含恢复点和私有回执。

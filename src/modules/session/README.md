@@ -18,3 +18,6 @@
 
 依据：[数据与同步](../../../docs/architecture/data-and-sync.md)、[验证清单](../../../docs/delivery/validation-and-release.md)。
 
+
+2026-10-31：reset(basis) 为管理员维护入口，basis 固定到打开确认时的 revision／generation。ResetEnvelope 通过与 restore 相同的 pending、持久化编号、超时、查回执和冲突通道处理，不进入公开 dispatch 或本机排阵预测。generation 改变后页面关闭过期操作并重建第一轮；旧比分草稿保持原代绑定，不自动重放。
+

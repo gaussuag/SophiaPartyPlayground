@@ -1,12 +1,12 @@
 import { Euler, Vector3 } from "three";
 import type { Point } from "./world";
 export const AVATAR_SCALE = 1.55;
-export const RIGHT_SHOULDER: Point = [.28, .84, 0];
-export const PADDLE_MOUNT = { position: [.015, -.315, .065] as Point, rotation: [.52, .12, -.32] as Point };
+export const RIGHT_SHOULDER: Point = [-.28, .84, 0];
+export const PADDLE_MOUNT = { position: [-.015, -.315, .065] as Point, rotation: [.52, -.12, .60] as Point };
 export const PADDLE_TIP = [0, .51, 0] as const;
 export const PADDLE_FACE: Point = [0, .31, .0235];
 export const BALL_RADIUS = .105;
-export const STRIKE_ARM: Point = [-.85, 0, .12];
+export const STRIKE_ARM: Point = [-.85, 0, -.12];
 /** Same hierarchy as Avatar -> body -> right arm -> Paddle. Contact uses the
  * ball surface against the front face, not a point near the player's torso. */
 export function paddleContact(root: Point, yaw: number, lift: number, arm: Point = STRIKE_ARM) {
