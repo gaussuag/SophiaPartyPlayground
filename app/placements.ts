@@ -1,6 +1,6 @@
-import { decide, type CompetitionCommand, type EventProjection, type EventState } from "../src/modules/competition";
+import { decide, type CompetitionCommand, type EventProjection, type EventState, type Player } from "../src/modules/competition";
 import type { LineupEdit } from "./MatchPanel";
-import type { Placement, SelectionBasis } from "../src/modules/venue";
+import type { Placement, SelectionBasis, SlotSelection } from "../src/modules/venue";
 
 function candidate(state: EventState, target: Pick<Placement, "matchId" | "slotId" | "occupantId">, playerId: string): CompetitionCommand {
   const destination = state.matches.find(m => m.id === target.matchId)!;
@@ -33,4 +33,18 @@ export function placementTargets(state: EventState, view: EventProjection, playe
 export function placementCommand(state: EventState, target: Placement, playerId: string, basis: SelectionBasis): CompetitionCommand | null {
   if (basis.revision !== state.revision || basis.generation !== state.generation || !target.allowed) return null;
   return candidate(state, target, playerId);
+}
+
+/** Inverse of the scene's legal targets, using the same commands and rules. */
+export function placementCandidates(state: EventState, view: EventProjection, selection: SlotSelection | null, edit: LineupEdit | null = null): Player[] {
+  if (!selection || selection.basis.revision !== state.revision || selection.basis.generation !== state.generation) return [];
+  const target = placementTargets(state, view, null, edit).find(t => t.matchId === selection.matchId && t.slotId === selection.slotId);
+  if (!target) return [];
+  return state.players.filter(player => {
+    if (player.id === target.occupantId) return false;
+    const command: CompetitionCommand = edit
+      ? { type: "CorrectRecordedLineup", ...edit, participants: edit.participants.map(p => p.slotId === target.slotId ? { ...p, playerId: player.id } : p), reason: "RECORDED_LINEUP_ERROR" }
+      : candidate(state, target, player.id);
+    return decide(state, command, { now: state.updatedAt, actorId: "preview", commandId: "preview" }).ok;
+  });
 }

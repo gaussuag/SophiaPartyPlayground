@@ -3,6 +3,7 @@
 检查命令见 [package.json](../package.json) scripts，测试选择与超时以 [vitest.config.ts](../vitest.config.ts) 为准，实际数量以当前 runner 输出为准。[CI](../.github/workflows/ci.yml) 自动运行现有检查；完整验收范围见 [validation-and-release.md](../docs/delivery/validation-and-release.md)。
 
 - competition/：通过 decide／project 验证业务不变量、转换、更正和整轮可行性；包括场景安排到命令的映射。
+- competition/placements.test.ts：同时覆盖席位头像候选与场景落点；候选队伍／性别、准备中原子移人、已开赛排除、整轮可行性、旧版本／恢复、历史名单更正均从同一业务规则得到。
 - competition/round-flow.test.ts：原子跨场移动、源／目的开赛锁、直接录分、旧状态兼容、赛后留场／新轮候场／历史恢复与第七轮 2/2；调用 Scene 实际共用的 playerPlacement，不另写一份场景逻辑。
 - records/：使用真实本地 D1 验证权限、条件写入、并发、幂等、故障与备份恢复。
 - records/ 新协作场景：guest／participant 排阵／首次录分与管理操作拒绝；录分并发、移动与开赛并发、原子失败和重试；permissions 检查可信身份分类及不因匿名协作或普通登录取得管理权限。
@@ -11,6 +12,7 @@
 - venue/：验证固定场地坐标、镜头放大后世界布局不变、缩放／平移边界，以及五种视口中牌框不压住比赛区域且本场入口仍可见；真实拾取与显示仍用浏览器操作检查。
 - venue/gesture-controller.test.ts：直接调用真实 React／R3F 接入的指针拥有者，覆盖触界超额反向、up 末样本、多指与第三指、取消、原生 DOMRect accessor、implicit capture 转交、重复提交和 resize 落点。
 - venue/avatar-*.test.ts：路线避网、转向到位、改目标、多人独立、结果去重、恢复与减少动态效果；authority 检查通过 session、实际 playerPlacement 和 AvatarMotion 验证即时预测、确认不停步、失败平滑纠正、未知结果／原编号重试、回执领先读取、双客户端与确认缓存隔离，以及持久化间隙的重复提交防护。
+- venue/avatar-attention.test.ts：候选举手有限结束、重复渲染不续播、切席位重播、关闭／隐藏／减少动态效果取消且保留静态选人提示。
 - venue/scene-play.test.ts：三种有限互动的复位、取消、点击／滑动仲裁及 320×568 起的触区与底部 dock 留白。
 - fixtures/：从原始模板构建隔离的测试活动。
 - [verify-local.mjs](../scripts/verify-local.mjs)：针对开发服务和真实本地 D1 做完整 HTTP 演练；自动创建独立活动。
@@ -23,4 +25,4 @@
 
 测试从公开 Interface 观察外部行为；真实数据库语义用真实本地 D1 验证。测试活动明确 eventId 和本地 URL，与正式活动分开。生成日志与截图置于忽略的输出目录；实际 iPhone 检查单独记录设备、步骤、结果与未测项。
 
-[排阵即时动画 harness](browser/optimistic-harness.html) 在开发服务用 `/tests/browser/optimistic-harness.html?event=local-...` 打开；活动需已开放第一轮、W01 尚未安排。按 1 → 4 执行真实页面的延迟保存、拒绝回位、成功响应丢失和未送达原编号重试，读取真实模型位置与正式记录版本。故障仅注入 harness 内的 iframe fetch，不进入产品或生产构建；仍不等同于实际 iPhone 验收。
+[排阵即时动画 harness](browser/optimistic-harness.html) 在开发服务用 `/tests/browser/optimistic-harness.html?event=local-...` 打开；活动需已开放第一轮、W01 尚未安排。按 1 → 5 执行延迟保存、拒绝回位、成功响应丢失、未送达原编号重试，以及头像候选／场景高亮／走动中触摸／Escape／另一客户端修改后旧选位失效，读取人物锚点与正式版本。故障仅注入 harness 内的 iframe fetch，不进入产品或生产构建；仍不等同于实际 iPhone 验收。

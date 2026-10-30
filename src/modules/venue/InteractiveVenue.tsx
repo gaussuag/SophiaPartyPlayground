@@ -138,6 +138,7 @@ export function Venue(props: VenueProps) {
   function begin(playerId: string, event: PointerEvent) {
     if (event.button === 0 && !props.editor) input.claimPlayer(sample(event), playerId);
   }
+  const isWalking = (playerId: string) => !!anchors.get(`player:${playerId}`)?.parent?.userData.walking;
   function benchTarget(playerId: string, point: Point) {
     const player = props.state.players.find(p => p.id === playerId);
     const reserved = props.view.isCurrent && props.view.playerStates[playerId]?.status === "reserved";
@@ -147,7 +148,7 @@ export function Venue(props: VenueProps) {
   useLayoutEffect(() => {
     input.bind(
       () => ({ layout, bounds: root.current!.getBoundingClientRect(), editable: props.editable,
-        draggablePlayerIds: props.editingMatchId ? undefined : props.state.players.filter(p => ["available", "reserved"].includes(props.view.playerStates[p.id].status)).map(p => p.id),
+        draggablePlayerIds: props.state.players.filter(p => !isWalking(p.id) && (props.editingMatchId || ["available", "reserved"].includes(props.view.playerStates[p.id].status))).map(p => p.id),
         disabled: !!props.editor || lost, basis: { revision: props.state.revision, generation: props.state.generation } }),
       {
         invalidate: () => invalidate.current?.(),
@@ -157,7 +158,7 @@ export function Venue(props: VenueProps) {
           setPressedPlayerId(id ?? null); setOrbiting(mode === "orbit" || mode === "pan");
           if (mode !== "player") { dragPoint.current = null; draggingPlayer.current = null; setDragging(false); setHovered(null); }
         },
-        select: playerId => props.onIntent({ type: "player", playerId }),
+        select: playerId => { if (!isWalking(playerId)) props.onIntent({ type: "player", playerId }); },
         drag(playerId, x, y) {
           if (!props.editable) return;
           if (draggingPlayer.current !== playerId) { draggingPlayer.current = playerId; setDragging(true); props.onIntent({ type: "player", playerId, dragging: true }); }
@@ -195,9 +196,10 @@ export function Venue(props: VenueProps) {
     const mismatch = !!target && (target.sideId !== player.teamId || !!target.gender && target.gender !== player.gender);
     const locked = status.status === "playing" || status.status === "played_this_round";
     const pending = props.pending?.playerIds?.includes(player.id) || props.pending?.playerId === player.id;
+    const candidate = props.candidatePlayerIds?.includes(player.id);
     labels.push({
       key: `player:${player.id}`,
-      content: <button className={`game-player-label ${player.teamId.toLowerCase()} ${selected || pressedPlayerId === player.id ? "selected" : ""} ${locked || mismatch ? "unavailable" : ""} ${pending ? "pending" : ""}`} data-player-id={player.id} aria-busy={pending} aria-pressed={selected} aria-label={`选择角色 ${player.name} ${player.id}${locked ? `，${status.label}` : ""}`} onClick={e => { if (e.detail === 0) props.onIntent({ type: "player", playerId: player.id }); }}><span>{player.name}</span>{locked && <LockKeyhole size={9} aria-hidden="true" />}</button>,
+      content: <button className={`game-player-label ${player.teamId.toLowerCase()} ${selected || pressedPlayerId === player.id ? "selected" : ""} ${locked || mismatch ? "unavailable" : ""} ${pending ? "pending" : ""} ${candidate ? "candidate" : ""}`} data-player-id={player.id} data-candidate={!!candidate} aria-busy={pending} aria-pressed={selected} aria-label={`选择角色 ${player.name} ${player.id}${locked ? `，${status.label}` : ""}`} onClick={e => { if (e.detail === 0 && !isWalking(player.id)) props.onIntent({ type: "player", playerId: player.id }); }}><span>{player.name}</span>{locked && <LockKeyhole size={9} aria-hidden="true" />}</button>,
     });
   }
   for (const target of props.placements) {
@@ -211,9 +213,8 @@ export function Venue(props: VenueProps) {
   for (const side of ["WHITE", "BLACK"] as const) {
     const person = props.selection && props.state.players.find(p => p.id === props.selection!.playerId && p.teamId === side);
     const returning = person && props.editable && !props.editingMatchId && props.view.playerStates[person.id].status === "reserved";
-    labels.push({ key: `bench:${side}`, content: returning
-      ? <button data-scene-ui data-camera-ui className={`game-bench-marker return-target ${side.toLowerCase()} ${hovered === `bench:${side}` ? "selected" : ""}`} aria-label={`让 ${person.name} 回候场`} onClick={() => props.onIntent({ type: "bench", playerId: person.id, basis: props.selection!.basis })}><RotateCcw size={14} />回候场</button>
-      : <span className={`game-bench-marker ${side.toLowerCase()}`}><i />{side === "WHITE" ? "白队" : "黑队"}</span> });
+    if (returning) labels.push({ key: `bench:${side}`, className: "bench-anchor", content:
+      <button data-scene-ui data-camera-ui className={`game-bench-marker return-target ${side.toLowerCase()} ${hovered === `bench:${side}` ? "selected" : ""}`} aria-label={`让 ${person.name} 回候场`} onClick={() => props.onIntent({ type: "bench", playerId: person.id, basis: props.selection!.basis })}><RotateCcw size={14} />回候场</button> });
   }
 
   const fallback = <div className="scene-fallback"><p>球馆暂时无法显示</p><button className="button secondary" onClick={() => { setLost(false); setSceneRevision(n => n + 1); }}>重建场景</button></div>;

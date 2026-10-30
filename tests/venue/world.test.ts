@@ -3,6 +3,14 @@ import { OrthographicCamera, Plane, Raycaster, Vector2, Vector3 } from "three";
 import { BOARD_SIZE, MAX_PITCH, MAX_ZOOM, MIN_PITCH, MIN_ZOOM, boardCenter, cameraView, constrainNavigation, courtCenter, courtNavigation, frameOverview, orbitNavigation, overview, worldLayout, type Navigation, type Point } from "../../src/modules/venue/world";
 
 describe("continuous three-court world", () => {
+  it("uses the same horizontal court row on phone, landscape and desktop", () => {
+    const views = [[320, 568], [390, 844], [844, 390], [1440, 900]].map(([w, h]) => [1, 2, 3].map(n => courtCenter(n, worldLayout(w, h))));
+    for (const positions of views) {
+      expect(positions).toEqual(views[0]);
+      expect(positions.map(p => p[2])).toEqual([0, 0, 0]);
+      expect(positions[0][0]).toBeLessThan(positions[1][0]); expect(positions[1][0]).toBeLessThan(positions[2][0]);
+    }
+  });
   it.each([[390, 844], [320, 568], [1440, 900]])("keeps distinct court and scoreboard positions while navigating %i×%i", (width, height) => {
     const layout = worldLayout(width, height);
     const before = [1, 2, 3].map(n => ({ court: courtCenter(n, layout), board: boardCenter(n, layout) }));

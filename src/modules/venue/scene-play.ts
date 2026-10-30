@@ -75,8 +75,8 @@ export class PlayTap {
 
 export function playPositions(layout: WorldLayout): Record<PlayId, Point> {
   // The front apron is outside the last baseline and outside both player aisles.
-  const z = layout.portrait ? layout.courtSpacing + 6.65 : 10.1;
-  const spread = layout.compact ? 4.1 : 3.6;
+  const z = 13.6;
+  const spread = layout.compact ? 4.5 : 3.6;
   const xs = layout.portrait ? [-spread, 0, spread] : [-5.4, 1.8, 9];
   return { ball: [xs[0], 0.1, z], mascot: [xs[1], 0.1, z], fan: [xs[2], 0.1, z] };
 }

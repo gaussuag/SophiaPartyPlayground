@@ -5,11 +5,11 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import type { EventProjection, Player } from "../competition";
 import type { Anchors } from "./Scene";
 import { AvatarMotion } from "./avatar-motion";
+import { AvatarAttention } from "./avatar-attention";
+import { avatarAppearance } from "./avatar-appearance";
 import type { AvatarResults } from "./avatar-results";
 import type { Point, WorldLayout } from "./world";
 
-const skins = ["#d99b77", "#f4c7a1", "#b97a56", "#e2ad88", "#eac7a5", "#ca9274", "#f4d2b3"];
-const hairs = ["#34302a", "#60422b", "#252b31", "#846045", "#383331", "#5b4436", "#c4955a"];
 const headGeometry = new SphereGeometry(0.24, 12, 10);
 const hairGeometry = new SphereGeometry(0.249, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55);
 const torsoGeometry = new CapsuleGeometry(0.215, 0.3, 3, 8);
@@ -37,17 +37,20 @@ export function useAvatarAmbient(): AvatarAmbient {
   return ambient;
 }
 
-export function Avatar({ player, index, position, selected, muted, onCourt, status, anchors, begin, layout, context, facing, results, ambient }: {
+export function Avatar({ player, index, position, selected, muted, onCourt, status, anchors, begin, layout, context, facing, results, ambient, candidateKey }: {
   player: Player; index: number; position: Point; selected: boolean; muted: boolean; onCourt: boolean;
   status: EventProjection["playerStates"][string]["status"]; anchors: Anchors;
   begin: (playerId: string, event: PointerEvent) => void;
   layout: WorldLayout; context: string; facing: number; results: AvatarResults; ambient: AvatarAmbient;
+  candidateKey?: string;
 }) {
   const root = useRef<Group>(null), body = useRef<Group>(null), head = useRef<Group>(null);
   const leftArm = useRef<Group>(null), rightArm = useRef<Group>(null), leftLeg = useRef<Group>(null), rightLeg = useRef<Group>(null);
+  const invitationRing = useRef<Group>(null);
   const invalidate = useThree(s => s.invalidate);
   const [initial] = useState(position);
   const [motion] = useState(() => new AvatarMotion(position, facing, context));
+  const [attention] = useState(() => new AvatarAttention());
   const animation = useRef({ selected: 0, result: 0, resultKind: "acknowledge", resultToken: 0, reduced: false });
   const [x, y, z] = position;
   useEffect(() => {
@@ -56,11 +59,13 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     invalidate();
   }, [motion, x, y, z, facing, layout, context, invalidate]);
   useEffect(() => { animation.current.selected = selected && !animation.current.reduced ? 0.5 : 0; invalidate(); }, [selected, invalidate]);
+  useEffect(() => { attention.cue(candidateKey ?? null, animation.current.reduced); invalidate(); }, [candidateKey, attention, invalidate]);
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const reset = () => {
       animation.current.reduced = media.matches;
       motion.snap();
+      attention.cancelMotion();
       animation.current.result = 0; animation.current.selected = 0;
       animation.current.resultToken = results.get(player.id)?.token ?? 0;
       invalidate();
@@ -68,10 +73,11 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     reset();
     document.addEventListener("visibilitychange", reset); media.addEventListener("change", reset);
     return () => { document.removeEventListener("visibilitychange", reset); media.removeEventListener("change", reset); };
-  }, [motion, invalidate, results, player.id]);
+  }, [motion, attention, invalidate, results, player.id]);
   useFrame((_, delta) => {
     if (!root.current || !body.current || !head.current || !leftArm.current || !rightArm.current || !leftLeg.current || !rightLeg.current) return;
     const a = animation.current, dt = Math.min(delta, 0.05);
+    const invitation = attention.step(delta, a.reduced, document.hidden);
     const reaction = results.get(player.id);
     if (reaction && reaction.token !== a.resultToken) { a.resultToken = reaction.token; a.result = a.reduced || document.hidden ? 0 : 1.35; a.resultKind = reaction.kind; }
     const oldDistance = motion.travelled;
@@ -86,6 +92,8 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     const cheer = a.result > 0 ? Math.sin(Math.min(1, a.result / 0.28) * Math.PI / 2) : 0;
     root.current.position.set(...motion.position);
     root.current.userData.walking = motion.moving;
+    root.current.userData.inviting = invitation.animating;
+    if (invitationRing.current) invitationRing.current.scale.setScalar(invitation.ringScale);
     body.current.rotation.y = motion.yaw;
     body.current.position.y = walking ? Math.abs(Math.sin(phase)) * 0.035 : breath * 0.012;
     body.current.rotation.z = walking ? Math.sin(phase) * 0.025 : breath * (index % 2 ? 0.014 : -0.014);
@@ -96,15 +104,18 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     leftArm.current.rotation.x = -stride * 0.7;
     rightArm.current.rotation.x = stride * 0.7 - selection * 0.45 - (status === "playing" ? 0.2 : 0);
     leftArm.current.rotation.z = -0.12 - (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
-    rightArm.current.rotation.z = 0.12 + selection * 0.4 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0);
+    rightArm.current.rotation.z = 0.12 + selection * 0.4 + (a.resultKind === "celebrate" ? cheer * 2.2 : 0) + invitation.wave;
     leftLeg.current.position.x = status === "playing" ? -0.16 : -0.12;
     rightLeg.current.position.x = status === "playing" ? 0.16 : 0.12;
-    if (!document.hidden && (moving || idleTime < 2.3 && idleTime >= -0.72 && !a.reduced || a.selected > 0 || a.result > 0)) invalidate();
+    if (!document.hidden && (moving || invitation.animating || idleTime < 2.3 && idleTime >= -0.72 && !a.reduced || a.selected > 0 || a.result > 0)) invalidate();
   });
-  const shirt = player.teamId === "WHITE" ? muted ? "#d8dac6" : "#fff8de" : muted ? "#546751" : "#233d33";
-  const trousers = player.teamId === "WHITE" ? "#8f9b7c" : "#1e302a";
+  const { skin, hair, shirt, trousers } = avatarAppearance(index, player.teamId, muted);
   const ringColor = selected ? "#e4fc86" : status === "playing" ? "#84ded0" : status === "played_this_round" ? "#c8a86a" : "#e6cb85";
   return <group ref={root} position={initial} scale={1.55} userData={{ playerId: player.id }} onPointerDown={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); begin(player.id, event.nativeEvent); }}>
+    {candidateKey && <group ref={invitationRing} position={[0, 0.028, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.5, 0.62, 32]} /><meshBasicMaterial color="#e8ff89" transparent opacity={0.95} depthWrite={false} /></mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.5, 24]} /><meshBasicMaterial color="#e2fa91" transparent opacity={0.24} depthWrite={false} /></mesh>
+    </group>}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}><circleGeometry args={[0.34, 20]} /><meshBasicMaterial color="#435740" transparent opacity={0.13} depthWrite={false} /></mesh>
     {(selected || status !== "available") && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}><ringGeometry args={[selected ? 0.38 : 0.35, selected ? 0.49 : 0.39, 24]} /><meshBasicMaterial color={ringColor} transparent opacity={muted && !selected ? 0.55 : 0.95} /></mesh>}
     <group ref={body} rotation={[0, facing, 0]}>
@@ -117,12 +128,12 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
       <group ref={leftLeg} position={[-0.12, 0.4, 0]}><mesh geometry={legGeometry}><meshStandardMaterial color={trousers} /></mesh></group>
       <group ref={rightLeg} position={[0.12, 0.4, 0]}><mesh geometry={legGeometry}><meshStandardMaterial color={trousers} /></mesh></group>
       <group ref={head} position={[0, 1.16, 0]}>
-        <mesh geometry={headGeometry}><meshStandardMaterial color={skins[index % 7]} /></mesh>
-        <mesh geometry={hairGeometry} position={[0, 0.04, 0]} rotation={[0, index * 0.7, index % 3 === 0 ? 0.18 : 0]}><meshStandardMaterial color={hairs[index % 7]} /></mesh>
+        <mesh geometry={headGeometry}><meshStandardMaterial color={skin} /></mesh>
+        <mesh geometry={hairGeometry} position={[0, 0.04, 0]} rotation={[0, index * 0.7, index % 3 === 0 ? 0.18 : 0]}><meshStandardMaterial color={hair} /></mesh>
         <mesh geometry={eyesGeometry}><meshBasicMaterial color="#3d352d" /></mesh>
       </group>
     </group>
     <mesh position={[0, 0.8, 0]} visible={false}><boxGeometry args={[1, 1.8, 0.8]} /><meshBasicMaterial /></mesh>
-    <group position={onCourt ? [0, -0.1, 0] : [0, 1.8, 0]} ref={node => { if (node) anchors.set(`player:${player.id}`, node); else anchors.delete(`player:${player.id}`); }} />
+    <group position={onCourt || player.teamId === "WHITE" ? [0, -0.1, 0] : [0, 1.8, 0]} ref={node => { if (node) anchors.set(`player:${player.id}`, node); else anchors.delete(`player:${player.id}`); }} />
   </group>;
 }

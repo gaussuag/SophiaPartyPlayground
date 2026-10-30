@@ -128,16 +128,17 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
 }) {
   const { state, view } = props;
   const avatarView = props.arrangementView?.round.id === view.round.id ? props.arrangementView : view;
+  const candidateKey = props.slotSelection ? `${props.slotSelection.matchId}:${props.slotSelection.slotId}` : undefined;
   const [results] = useState(() => new AvatarResults());
   const invalidate = useThree(s => s.invalidate);
   const ambient = useAvatarAmbient();
   const avatarContext = `${state.id}:${state.generation}:${view.round.id}:${layout.portrait}:${layout.courtSpacing}`;
   useEffect(() => { results.observe(state, view); invalidate(); }, [state, view, results, invalidate]);
-  const { portrait, width: floorWidth, length: floorLength } = layout;
+  const { width: floorWidth, length: floorLength } = layout;
   const courtPositions = state.courts.map(c => ({ court: c, position: courtCenter(c.number, layout) }));
   const editorCourt = props.editor && state.courts.find(c => view.matches.find(m => m.id === props.editor!.matchId)?.courtId === c.id);
   const rigEditor = useMemo(() => editorCourt ? { number: editorCourt.number, height: editorSize.height, viewportHeight: viewport.height, viewportTop: viewport.top } : undefined, [editorCourt, editorSize.height, viewport.height, viewport.top]);
-  const walkways = useMemo(() => mergeGeometries((portrait ? [-1, 1].map(s => new BoxGeometry(2.5, 0.03, floorLength - 0.5).translate(s * 5.4, 0, 0)) : [-1, 1].map(s => new BoxGeometry(floorWidth - 0.4, 0.03, 2.6).translate(0, 0, s * 8.4)))), [portrait, floorLength, floorWidth]);
+  const walkways = useMemo(() => mergeGeometries([-1, 1].map(s => new BoxGeometry(floorWidth - 0.4, 0.03, 2.6).translate(0, 0, s * 8.4))), [floorWidth]);
   useEffect(() => () => walkways.dispose(), [walkways]);
   return <>
     <Rig layout={layout} motion={motion} hud={hud} timing={timing} editor={rigEditor} />
@@ -150,10 +151,10 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
       const unavailable = view.playerStates[p.id].status !== "available" && view.playerStates[p.id].status !== "reserved";
       const chosenSlot = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
       const mismatch = !!chosenSlot && (p.teamId !== chosenSlot.sideId || !!chosenSlot.gender && p.gender !== chosenSlot.gender);
-      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} />;
+      return <Avatar key={p.id} player={p} index={index} position={position} onCourt={onCourt} selected={props.selection?.playerId === p.id || pressedPlayerId === p.id} muted={unavailable && !props.editingMatchId || mismatch} status={avatarView.playerStates[p.id].status} anchors={anchors} begin={begin} layout={layout} context={avatarContext} facing={facing} results={results} ambient={ambient} candidateKey={props.candidatePlayerIds?.includes(p.id) ? candidateKey : undefined} />;
     })}
-    {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={benchMarkerPosition(side, layout)} ref={refFor(anchors, `bench:${side}`)} />)}
-    {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * (portrait ? floorLength / 2 - 1.1 : 9.9)]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
+    {(["WHITE", "BLACK"] as TeamId[]).map(side => <group key={side} position={benchMarkerPosition(side)} ref={refFor(anchors, `bench:${side}`)} />)}
+    {[-1, 1].map(n => <group key={n} position={[n * (floorWidth / 2 - 0.8), 0.4, n * 9.9]}><mesh><boxGeometry args={[0.35, 0.9, 0.35]} /><meshStandardMaterial color="#9b8156" /></mesh><mesh position={[0, 1.1, 0]}><icosahedronGeometry args={[0.8, 1]} /><meshStandardMaterial color="#6b8e56" /></mesh></group>)}
     {dragging && <DragGhost point={dragPoint} />}
   </>;
 }
@@ -168,6 +169,7 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
       node.updateWorldMatrix(true, false); node.getWorldPosition(point);
       if (timing.enabled && id.startsWith("player:")) {
         element.dataset.walking = String(!!node.parent?.userData.walking);
+        element.dataset.inviting = String(!!node.parent?.userData.inviting);
         element.dataset.worldPosition = `${point.x.toFixed(3)},${point.y.toFixed(3)},${point.z.toFixed(3)}`;
       }
       point.project(camera);

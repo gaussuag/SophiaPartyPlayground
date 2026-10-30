@@ -101,7 +101,6 @@ describe("local scene activities", () => {
       }
       expect(Math.abs(position[0]) + 0.8).toBeLessThan(layout.width / 2);
       expect(position[2] + 0.8).toBeLessThanOrEqual(layout.floorCenterZ + layout.length / 2 + 0.2);
-      if (layout.portrait) expect(Math.abs(position[0])).toBeLessThan(4.2);
     }
   });
 });

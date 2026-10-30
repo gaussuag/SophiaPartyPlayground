@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { AvatarMotion, avatarRoute } from "../../src/modules/venue/avatar-motion";
-import { courtCenter, worldLayout, type Point } from "../../src/modules/venue/world";
+import { courtCenter, playerPlacement, worldLayout, type Point } from "../../src/modules/venue/world";
+import { project } from "../../src/modules/competition";
+import { readyForRound } from "../fixtures/event";
 
 function crossesNet(from: Point, to: Point, layout: ReturnType<typeof worldLayout>) {
   return [1, 2, 3].some(number => {
@@ -24,7 +26,8 @@ describe("avatar walking through venue aisles", () => {
         const [x, y, z] = courtCenter(number, layout);
         return [-1.5, 1.5].flatMap(dx => [-3.15, 3.15].map(dz => [x + dx, y + 0.06, z + dz] as Point));
       });
-      for (let i = -3; i <= 3; i++) for (const side of [-1, 1]) points.push(layout.portrait ? [side * 5.4, 0.07, i * layout.courtSpacing / 3] : [i * 3.6, 0.07, side * 8.4]);
+      const state = readyForRound(1);
+      points.push(...state.players.map(player => playerPlacement(state, project(state), player.id, layout).position));
       for (const from of points) for (const to of points) {
         const route = avatarRoute(from, to, layout);
         expect(route.at(-1) ?? from).toEqual(to);

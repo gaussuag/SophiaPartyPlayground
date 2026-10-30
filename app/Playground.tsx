@@ -3,7 +3,8 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "rea
 import { ArrowRight, Check, ChevronDown, CloudCheck, CloudOff, Ellipsis, Flag, Info, LayoutGrid, List, LoaderCircle, LogIn, LogOut, RefreshCw, RotateCcw, Trophy, X } from "lucide-react";
 import { project, type CompetitionCommand, type MatchView } from "../src/modules/competition";
 import type { PlayerSelection, SelectionBasis, SlotSelection, VenueIntent } from "../src/modules/venue";
-import { placementCommand, placementTargets } from "./placements";
+import { placementCandidates, placementCommand, placementTargets } from "./placements";
+import { SlotPicker } from "./SlotPicker";
 import { ScoreboardEditor, scoreTarget, type ScoreTarget } from "./ScoreboardEditor";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { GameDrawer } from "./GameDrawer";
@@ -30,7 +31,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const [courtId, setCourtId] = useState<string | null>(null);
   const [cameraRequest, setCameraRequest] = useState<{ courtId: string | null; key: number }>({ courtId: null, key: 0 });
   const [selection, setSelection] = useState<PlayerSelection | null>(null);
-  const [slotFocus, setSlotFocus] = useState<SlotSelection | null>(null);
+  const [pickedSlot, setSlotFocus] = useState<SlotSelection | null>(null);
   const [score, setScore] = useState<ScoreTarget | null>(null);
   const [confirm, setConfirm] = useState<Confirmation | null>(null);
   const [lineupEdit, setLineupEdit] = useState<LineupEdit | null>(null);
@@ -40,6 +41,8 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const [slowCommandId, setSlowCommandId] = useState<string | null>(null);
 
   const state = view?.state;
+  const slotFocus = pickedSlot && state && pickedSlot.basis.revision === state.revision && pickedSlot.basis.generation === state.generation ? pickedSlot : null;
+  const staleSlot = !!pickedSlot && !slotFocus;
   const readOnly = view?.role === "viewer";
   const anonymous = !view || view.role === "viewer" || view.role === "guest";
   const canWrite = !!view && view.role !== "viewer" && view.status === "synced" && view.cacheReady && !view.pending.length;
@@ -63,6 +66,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       : focused.participants.find(p => p.slotId === s.id)?.playerId ?? null,
   })) : [];
   const targets = state && projection && !readOnly ? placementTargets(state, projection, selection?.playerId ?? null, edit) : [];
+  const candidates = state && projection ? placementCandidates(state, projection, slotFocus, edit) : [];
   // Only avatar poses use the local arrangement preview. Controls, corrections,
   // scoreboards and all rule decisions continue to use confirmed state.
   const envelope = view?.pending[0];
@@ -175,7 +179,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       else { setCourtId(target.courtId); setSlotFocus({ matchId: target.matchId, slotId: target.slotId, basis: { revision: state.revision, generation: state.generation } }); setHint(""); }
       return;
     }
-    if (!canArrange || !edit && !["available", "reserved"].includes(projection.playerStates[intent.playerId].status)) { if (!intent.dragging) setProfileId(intent.playerId); return; }
+    if (!canArrange || !edit && !["available", "reserved"].includes(projection.playerStates[intent.playerId].status)) return;
     if (slotFocus && !intent.dragging) { await place(intent.playerId, slotFocus.matchId, slotFocus.slotId, slotFocus.basis); return; }
     setSlotFocus(null); setSelection({ playerId: intent.playerId, basis: { revision: state.revision, generation: state.generation } }); setHint("");
   }
@@ -186,7 +190,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
   const returnTo = encodeURIComponent("/?event=" + eventId);
   const busy = view?.status === "saving";
   const savingMessage = arrangementId ? slowCommandId === arrangementId ? "正在同步安排" : "" : view?.message;
-  const message = busy ? savingMessage : hint || (view && (view.status === "offline" || view.status === "conflict" || view.status === "unknown-outcome" || view.errorCode) ? view.message : "");
+  const message = busy ? savingMessage : hint || (staleSlot ? "记录已更新，请重新点选位置" : view && (view.status === "offline" || view.status === "conflict" || view.status === "unknown-outcome" || view.errorCode) ? view.message : "");
   const allClosed = state?.phase === "ACTIVE" && state.rounds.every(r => r.phase === "CLOSED");
   const profile = state?.players.find(p => p.id === profileId);
   function startMatch(match: MatchView) {
@@ -200,6 +204,7 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       ? <main className="game-stage" aria-label="Sophia 三维球馆">
           <Suspense fallback={<div className="game-loading"><LoaderCircle size={24} /></div>}>
             <Venue state={state} view={projection} arrangementView={arrangementView} courtId={courtId} cameraRequest={cameraRequest} selection={selection} slotSelection={slotFocus} placements={targets}
+              candidatePlayerIds={canArrange ? candidates.map(p => p.id) : []}
               pending={projection.isCurrent && (envelope || view.arrangement) ? { playerId: pendingPlayer, playerIds: view.arrangement?.playerIds, matchId: pendingMatch, slotId: pendingSlot, unknown: view.status === "unknown-outcome" } : undefined}
               editable={canArrange && !score} canWrite={canWrite} readOnly={!!readOnly} canConfirm={canManage} canCorrect={canCorrect} editingMatchId={edit?.matchId} onIntent={i => void onIntent(i)}
               editor={score ? { matchId: score.matchId, content: <ScoreboardEditor key={score.matchId} target={score} session={session} view={view} onClose={() => setScore(null)} onRebind={setScore} /> } : undefined} />
@@ -219,13 +224,13 @@ export function Playground({ defaultEventId, localDevelopment }: { defaultEventI
       <div className="game-header-actions"><button className={"icon-button sync-icon " + (view?.status ?? "loading")} aria-label={"同步记录：" + (view?.message ?? "连接中")} onClick={() => void session?.refresh()}>{busy || view?.status === "loading" ? <LoaderCircle size={19} className="spin" /> : view?.status === "offline" || view?.status === "unknown-outcome" ? <CloudOff size={20} /> : <CloudCheck size={20} />}</button><button className="icon-button" disabled={!!score} aria-label="更多选项" onClick={() => setPanel("tools")}><Ellipsis size={22} /></button></div>
     </header>
     <output className="sr-only" aria-live="polite">{view?.message}</output>
-    {message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>}
+    {message && <div className="game-toast" role="status" aria-live="polite"><span>{message}</span>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : view?.status === "unknown-outcome" ? <button className="text-button" onClick={() => void session?.retryPending()}>核对重试</button> : view?.status === "offline" && !hint ? <button className="text-button" onClick={() => void session?.refresh()}>重连</button> : <button className="icon-button" aria-label="收起提示" onClick={() => { setHint(""); if (staleSlot) setSlotFocus(null); if (view?.errorCode || view?.status === "conflict") void session?.refresh(); }}><X size={15} /></button>}</div>}
     {state && projection && view && session && <><div className="game-context">
       {edit && <div className="game-edit-banner"><span>更正参赛者</span><button className="icon-button" aria-label="取消名单更正" onClick={() => editLineup(null)}><X size={16} /></button></div>}
     </div>{!score && <div className="game-hud">
       {!edit && viewedRoundId && viewedRoundId !== state.activeRoundId && state.activeRoundId && <button className="game-current-link" onClick={() => chooseRound(state.activeRoundId!)}>返回当前轮 <ArrowRight size={13} /></button>}
       {selection && chosenPlayer ? <div className="game-selection-bar"><i className={"team-dot " + chosenPlayer.teamId.toLowerCase()} /><strong>{chosenPlayer.name}</strong>{reservation && !edit && <button className="return-player" aria-label={"移出 " + chosenPlayer.name} disabled={!canWrite} onClick={() => void returnToBench(chosenPlayer.id, selection.basis)}><RotateCcw size={15} />回候场</button>}<button className="icon-button" aria-label="查看球友资料" onClick={() => setProfileId(chosenPlayer.id)}><Info size={17} /></button><button className="icon-button" aria-label="取消选择球友" onClick={clearSelection}><X size={18} /></button></div>
-        : slotFocus && chosenPosition ? <div className="game-selection-bar"><i className={"team-dot " + chosenPosition.sideId.toLowerCase()} /><strong>{chosenPosition.sideId === "WHITE" ? "白队" : "黑队"} · {chosenPosition.gender === "MALE" ? "男" : chosenPosition.gender === "FEMALE" ? "女" : "不限性别"}</strong><button className="icon-button" aria-label="取消位置选择" onClick={clearSelection}><X size={18} /></button></div>
+        : slotFocus && chosenPosition ? <SlotPicker key={`${slotFocus.matchId}:${slotFocus.slotId}`} target={chosenPosition} courtNumber={state.courts.find(c => c.id === chosenPosition.courtId)!.number} players={candidates} roster={state.players} disabled={!canArrange} onClose={clearSelection} onChoose={playerId => void place(playerId, slotFocus.matchId, slotFocus.slotId, slotFocus.basis)} />
         : canManage && <div className="game-primary-action">
           {edit ? <button className="button primary" disabled={!canWrite} onClick={() => ask("确认实际参赛者", <><p>第 {projection.round.number} 轮 · {state.courts.find(c => c.id === focused!.courtId)!.number} 号场 · {focused!.label}</p><LineupNames participants={namesFor(state, slots)} /></>, "保存名单更正", { type: "CorrectRecordedLineup", ...edit, reason: "RECORDED_LINEUP_ERROR" })}>保存名单更正 <Check size={17} /></button>
             : state.phase === "PREPARED" || state.phase === "WARMUP" ? <button className="button primary" disabled={!canWrite} onClick={() => ask("开始第一轮", <p>开放三块球场的正式比赛。</p>, "开放第一轮", { type: "OpenFirstRound" })}>开始第一轮 <ArrowRight size={17} /></button>

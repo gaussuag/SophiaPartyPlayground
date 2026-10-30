@@ -46,33 +46,31 @@ export function orbitNavigation(nav: Navigation, dx: number, dy: number, height:
 // Layout depends on the viewport only. Selecting a court never moves an entity.
 export function worldLayout(width: number, height: number) {
   const portrait = width / height < 1.1;
-  const compact = portrait && height < 680;
+  const compact = portrait;
   const cameraOffset: Point = portrait ? [3, 36, 42] : [14, 28, 32];
   const [x, y, z] = cameraOffset;
   const distance = Math.hypot(x, y, z), horizontal = Math.hypot(x, z);
   const cameraUp: Point = [-y * x / (distance * horizontal), horizontal / distance, -y * z / (distance * horizontal)];
-  const depthProjection = -cameraUp[2];
-  // Reserve a visible strip for each compact sign, rather than drawing it over a court.
-  const baseZoom = Math.min(width / (portrait ? 18.8 : 32), portrait ? Math.max(8, (height - (compact ? 316 : 276)) / (3 * 10.7 * depthProjection)) : height / 25);
-  const courtSpacing = portrait ? Math.max(15, 10.7 + 44 / (baseZoom * depthProjection)) : 7.2;
+  // All viewports share one horizontal world. The camera fits the courts and
+  // roster; peripheral landscaping can extend to the edges of a narrow screen.
+  const baseZoom = Math.min((width - 24) / (portrait ? 26 : 36), height / 30);
+  const courtSpacing = 8.6;
   const boardHeight = Math.max(0.9, BOARD_SIZE.frameHeight / (2 * baseZoom) * cameraUp[1] + 0.16);
-  const boardOffset: Point = portrait ? [0, boardHeight, -courtSpacing / 2 + boardHeight * cameraUp[1] / depthProjection] : [-0.1, boardHeight, -12.7];
-  const top = (1.5 * courtSpacing * depthProjection + 0.12 * cameraUp[1]) * baseZoom + BOARD_SIZE.frameHeight / 2;
-  const bottom = ((courtSpacing + 5.35) * depthProjection - 0.12 * cameraUp[1] + 2.9 * Math.abs(cameraUp[0])) * baseZoom;
-  const desktopTop = ((boardOffset[0] - 7.2) * cameraUp[0] + (0.12 + boardHeight) * cameraUp[1] + boardOffset[2] * cameraUp[2]) * baseZoom + BOARD_SIZE.frameHeight / 2;
+  const boardOffset: Point = [-0.1, boardHeight, -14.4];
+  const signTop = ((boardOffset[0] - courtSpacing) * cameraUp[0] + (0.12 + boardHeight) * cameraUp[1] + boardOffset[2] * cameraUp[2]) * baseZoom + BOARD_SIZE.frameHeight / 2;
   return {
     portrait, compact, courtSpacing, cameraOffset, cameraUp, boardOffset,
     viewportWidth: width, viewportHeight: height,
-    framingY: portrait ? (top - bottom) / 2 - (compact ? 32 : 8) : Math.max(0, 64 - height / 2 + desktopTop),
-    width: portrait ? 14.5 : 28,
-    length: portrait ? 2 * courtSpacing + 16 : 25,
-    floorCenterZ: portrait ? 0 : -1.5,
+    framingY: Math.max(0, 68 - height / 2 + signTop) - (portrait && height < 680 ? 40 : 0),
+    width: 30,
+    length: 31.4,
+    floorCenterZ: -0.8,
     baseZoom,
   };
 }
 
 export function courtCenter(number: number, layout: WorldLayout): Point {
-  return layout.portrait ? [0, 0.12, (number - 2) * layout.courtSpacing] : [(number - 2) * 7.2, 0.12, 0];
+  return [(number - 2) * layout.courtSpacing, 0.12, 0];
 }
 export function boardCenter(number: number, layout: WorldLayout): Point {
   const center = courtCenter(number, layout);
@@ -83,15 +81,13 @@ export function slotPosition(slot: Slot, slots: Slot[]): Point {
   const index = side.findIndex(s => s.id === slot.id);
   return [side.length === 1 ? 0 : index === 0 ? -1.5 : 1.5, 0.06, slot.sideId === "WHITE" ? 3.15 : -3.15];
 }
-export function benchMarkerPosition(side: TeamId, layout: WorldLayout): Point {
-  return layout.portrait ? [side === "WHITE" ? -5.4 : 5.4, 0.1, -layout.courtSpacing * 1.45] : [0, 0.1, side === "WHITE" ? 10.3 : -10.3];
+export function benchMarkerPosition(side: TeamId): Point {
+  return [0, 0.1, side === "WHITE" ? 12.6 : -10.3];
 }
 export function isBenchPoint(point: Point, side: TeamId, layout: WorldLayout): boolean {
-  const marker = benchMarkerPosition(side, layout);
+  const marker = benchMarkerPosition(side);
   if (Math.hypot(point[0] - marker[0], point[2] - marker[2]) < 1.8) return true;
-  return layout.portrait
-    ? Math.abs(point[0] - (side === "WHITE" ? -5.4 : 5.4)) <= 1.3 && Math.abs(point[2]) <= layout.length / 2 - 0.2
-    : Math.abs(point[2] - (side === "WHITE" ? 8.4 : -8.4)) <= 1.4 && Math.abs(point[0]) <= layout.width / 2 - 0.2;
+  return Math.abs(point[2] - (side === "WHITE" ? 8.4 : -8.4)) <= 1.4 && Math.abs(point[0]) <= layout.width / 2 - 0.2;
 }
 
 /** The viewed round's authoritative lineup is also the post-result tableau. */
@@ -106,10 +102,9 @@ export function playerPlacement(state: EventState, view: EventProjection, player
     position = center.map((n, i) => n + point[i]) as Point;
   } else {
     const teamIndex = state.players.filter(p => p.teamId === player.teamId).findIndex(p => p.id === playerId);
-    position = layout.portrait ? [player.teamId === "WHITE" ? -5.4 : 5.4, 0.07, (teamIndex - 3) * layout.courtSpacing / 3]
-      : [(teamIndex - 3) * 3.6, 0.07, player.teamId === "WHITE" ? 8.4 : -8.4];
+    position = [(teamIndex - 3) * 3.6, 0.07, player.teamId === "WHITE" ? 8.4 : -8.4];
   }
-  const facing = match || !layout.portrait ? player.teamId === "WHITE" ? Math.PI : 0 : player.teamId === "WHITE" ? Math.PI / 2 : -Math.PI / 2;
+  const facing = player.teamId === "WHITE" ? Math.PI : 0;
   return { position, facing, onCourt: !!match };
 }
 export function courtNavigation(number: number, layout: WorldLayout, current = overview(layout)): Navigation {
@@ -121,9 +116,9 @@ export function courtNavigation(number: number, layout: WorldLayout, current = o
   const xs = corners.map(p => dot(p, right)), ys = corners.map(p => dot(p, view.up));
   const boardX = dot(layout.boardOffset, right), boardY = dot(layout.boardOffset, view.up);
   const spanX = Math.max(...xs, boardX) - Math.min(...xs, boardX), spanY = Math.max(...ys, boardY) - Math.min(...ys, boardY);
-  const top = layout.viewportHeight < 500 ? 60 : 124, bottom = layout.viewportHeight < 500 ? 68 : 112;
+  const top = layout.viewportHeight < 500 ? 60 : 104, bottom = layout.portrait ? Math.min(300, layout.viewportHeight * 0.4) : 112;
   const width = layout.viewportWidth - 32, height = layout.viewportHeight - top - bottom;
-  const desired = layout.baseZoom * (layout.portrait ? 1.7 : layout.baseZoom < 28 ? 1.3 : 1.5);
+  const desired = layout.baseZoom * (layout.portrait ? 2.8 : 1.5);
   const halfWidth = BOARD_SIZE.frameWidth * 1.3 / 2, halfHeight = BOARD_SIZE.frameHeight * 1.3 / 2;
   const scale = Math.min(desired, Math.max(1, width - 2 * halfWidth) / spanX, Math.max(1, height - 2 * halfHeight) / spanY);
   const zoom = clampZoom(scale / layout.baseZoom), physicalZoom = layout.baseZoom * zoom;

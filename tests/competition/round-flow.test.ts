@@ -99,8 +99,8 @@ describe("collaborative preparation and explicit round confirmation", () => {
   it.each([[390, 844], [1385, 892]])("returns only to the correct team's candidate area at %sx%s", (width, height) => {
     const layout = worldLayout(width, height);
     for (const side of ["WHITE", "BLACK"] as const) {
-      expect(isBenchPoint(benchMarkerPosition(side, layout), side, layout)).toBe(true);
-      expect(isBenchPoint(benchMarkerPosition(side, layout), side === "WHITE" ? "BLACK" : "WHITE", layout)).toBe(false);
+      expect(isBenchPoint(benchMarkerPosition(side), side, layout)).toBe(true);
+      expect(isBenchPoint(benchMarkerPosition(side), side === "WHITE" ? "BLACK" : "WHITE", layout)).toBe(false);
       for (const court of [1, 2, 3]) expect(isBenchPoint(courtCenter(court, layout), side, layout)).toBe(false);
     }
   });
