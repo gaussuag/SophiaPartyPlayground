@@ -26,3 +26,24 @@
 证据在忽略目录 outputs/completion/；凭据只走官方helper stdin，不进入文件／提交。
 
 最终稳定代码第二次真实七轮回归（local-r21-completion-2）已通过，revision117；历史原阵容姓名／比分、0悬浮姓名／13真实角色、重播无业务写入再次确认。402×744与320×568构图、拖动旋转与全景恢复已检查；控制台error为空。仅测试代码中一次从工具DOM快照读取iframe内部失败，改用真实页面回归和截图核对，没有修改服务端或声称该读取通过。
+
+## 版本21发布结果
+
+- 已通过官方source workflow构建、提交并推送源码 3619a4d408e0b7edf551345f364a7ec54de412b9，包体86文件／3788800字节；保存版本21，原生部署succeeded。
+- saved version：appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_f6bedd2278d08191bbec4d9bf27b7ef8
+- deployment：appgdep_6ae551951a8c819183efbc47786a29f7，env_set_revision=5；get_site确认public、最新版本21，正式URL https://sophia-sunshine-cup.gaussuag777.chatgpt.site 。
+- 生产页面／API／setup 200；匿名StartRound、重置、伪造管理操作401，生产初始化404；非法请求403／400／413后SSR正常，开发身份与server实现未进入客户端。JS/CSS gzip445968字节，比版本20增加546字节，无新资源下载。
+- 公开HTTP无Cookie、真实身份或bypass：根页／活动／CSV 200，无登录跳转；管理、备份、重置、整轮确认401，伪造身份忽略，初始化窗口仍关闭。此证据不冒充独立未登录浏览器。
+- 原交付窗口刷新后实际显示完赛／谢谢每一位，白15:黑13；两队列队、Sophia中央飞行与彩带、零悬浮姓名牌及重播入口正常，控制台error为空。实际线上截图outputs/completion/site-v21.jpg。
+- 官方准备先遇到短期源码凭据过期，续签同一Site后，Windows无法直接spawn npm参数数组；改为已验证的Node构建命令成功，没有创建新Site、重复版本或提前部署。
+
+四个活动发布前后完整公开状态SHA-256一致：
+
+| 活动 | revision／赛果版本 | SHA-256 |
+| --- | --- | --- |
+| sophia-sunshine-cup-v2 | 139／21 | 04f2317df6f8cb03cb8e1fc71a57069ef01744bbd1e452dc052b1efa4bd67bda |
+| sophia-sunshine-cup-v2-acceptance | 9／2 | d0e6f14cf3a761b88d1adf7ee25c9961148fb4b192a70d3cb318902b600a3e58 |
+| sophia-sunshine-cup | 107／9 | df4f0f9a8d62d69f68adcca0d1963ae7fe4521a335496f13b104ac8ca021a79a |
+| sophia-sunshine-cup-acceptance | 22／3 | f130499a76b0838c46cc081e8caae17417842f49a966e55e37a81fbb2a014be8 |
+
+正式活动revision139、21场赛果未变；本次未写任何线上比赛命令，全部演练使用本地独立活动。真实iPhone Safari观感、触控／后台和长期性能仍由用户发布后验收。
