@@ -4,7 +4,7 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 
 ## 当前交付状态
 
-- 2026-10-31 完赛跟随姓名与入口精简已实现：删除重播，13姓名跟随队列外侧／Sophia身体旁的空隙，避让模型与其他姓名，保持当前近景。254项检查通过，正在完成最终七轮、生产和发布验证。见 [本次交付](docs/delivery/completion-names-2026-10-31.md)。
+- 2026-10-31 原 public Site **版本23已发布**：删除完赛重播，13姓名在人物外侧／Sophia身体旁空隙跟随，模型与姓名避让，保留当前近景。254项检查、两次完整七轮、生产与公开权限验证通过，四活动摘要不变。见 [本次交付](docs/delivery/completion-names-2026-10-31.md)。
 
 - 2026-10-31 原 public Site **版本22已发布**：完赛队列围拢、默认镜头拉近，双方错开举拍欢迎，Sophia近距离飞行撒暖色彩带。250项检查、完整七轮双客户端、生产与公开权限验证通过，四活动摘要不变。见 [本次交付](docs/delivery/completion-warm-closeup-2026-10-31.md)。
 
@@ -40,14 +40,14 @@ Sophia 组织的匹克球活动管理网页，代码仓库为 SophiaPartyPlaygro
 - 已建立代码、数据、测试及资源目录；目录中的 README 是实现职责说明。
 - 已实现 Vinext + React + TypeScript + Three.js／R3F 应用、真实本地 D1 权威存储及四个业务 Module。
 - 三场地、新赛制七轮二十一场、角色排阵、录分、更正、同步、积分、导出和受控恢复已接通；旧二十场仍可读取恢复。
-- TypeScript 检查和当前 250 项自动检查通过；已移除三个场边互动的 14 项专属测试，新增 v2 名单／积分／恢复／天使检查。真实 HTTP＋D1 二十场、双客户端、排阵恢复及本机演出的历史证据保留；最新追加六种视口的状态区／工具条避让与选人回归。
+- TypeScript 检查和当前 254 项自动检查通过；已移除三个场边互动的 14 项专属测试，新增 v2 名单／积分／恢复／天使检查。真实 HTTP＋D1 二十场、双客户端、排阵恢复及本机演出的历史证据保留；最新追加六种视口的状态区／工具条避让与选人回归。
 - 界面以连续三场地 3D 球馆为主，通过缩放和平移查看单场，直接点人物／拖入场内位置。确认上场、录分和更正均从场内记分牌进入；见 [连续球馆与记分牌验证](docs/delivery/ui-continuous-venue-2026-10-29.md)，前次记录保留在 [界面优化记录](docs/delivery/ui-game-first-2026-10-29.md)。
 - 记分牌已缩为场边单行操作牌，桌面移到候场区后方，竖屏留在场间空隙；见 [场边记分牌优化](docs/delivery/ui-courtside-scoreboard-2026-10-29.md)。
 - 单指旋转按固定枢轴直接跟手，双指缩放平移；回正、全景和球场近景使用统一过渡。人物资料卡居中，轮次／设置仍从底部弹出。最新 [旋转响应诊断与优化](docs/delivery/ui-orbit-response-2026-10-30.md) 记录了 iPhone 17 反馈及官方参考；前次记录见 [触控与人物弹窗优化](docs/delivery/ui-touch-orbit-2026-10-30.md)。
 - 已提供同 Wi-Fi 的 iPhone 体验入口，普通设备默认只读，专用链接获得临时演练权限；启动、关闭与实机检查见 [iPhone Wi-Fi 指南](docs/delivery/iphone-wifi-preview.md)。
 - P2 已做桌面窄屏原型验证；P6 可执行的本地检查已通过。用户授权真实 iPhone Safari、现场网络及长时间性能检查后置到 Site 发布后，仍记为未测。
 - 已完成默认关闭的生产初始化窗口、本站身份核对页、独立正式／验收配置和匿名 HTTP 检查脚本；见 [P6–P7 发布准备](docs/delivery/p6-p7-release-preparation-2026-10-29.md)。
-- ChatGPT Sites 最新版本22已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。整轮统一确认保持；完赛默认镜头更近、两队围拢并共同欢迎Sophia，暖色彩带与柔和地面效果已上线，保留胜队轻效及本机重播。250项检查、真实七轮与窄屏回归、生产及公开权限检查通过，正式21场记录前后摘要一致。见 [本次交付](docs/delivery/completion-warm-closeup-2026-10-31.md)。实际iPhone的触控、观感和长时间性能仍待用户体验。
+- ChatGPT Sites 最新版本23已成功部署为 public：[Sophia Sunshine Cup](https://sophia-sunshine-cup.gaussuag777.chatgpt.site)。完赛跟随姓名及避让已上线，删除重播按钮，保留近景、双方欢迎和彩带。254项检查、七轮与窄屏回归、生产及公开权限验证通过，正式FINISHED／revision140／21场记录前后摘要一致。见 [本次交付](docs/delivery/completion-names-2026-10-31.md)。实际iPhone体验仍待用户验收。
 
 ## 从这里开始
 
