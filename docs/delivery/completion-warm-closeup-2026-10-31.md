@@ -19,3 +19,23 @@
 发布复用既有Site、DB与运行时身份，不调用线上初始化、重置或比赛命令。输出证据保存在outputs/completion-warm/，凭据不落盘；原未跟踪Avatar研究稿保留。
 
 最终真实七轮回归 local-r22-warm-1 已通过（revision117）：一次整轮确认、匿名管理拒绝、21场七轮、13真实角色／零姓名牌／零比赛球／112彩带、同分14:14、更正黑胜15:13、历史原阵容姓名比分恢复、刷新及本机重播无写入。双客户端事实一致；控制台error为空。
+
+## 版本22生产与发布
+
+- 官方source workflow已构建、提交并推送源码 1b3ff2a67634173eb7a82caaa40f9c6d6f1e1acf，随后保存版本22并部署成功。归档86文件／3788800字节，SHA-256 83d643f86349e786e5309d8aa76b52cb9a37ab72a0f1ef5b9210ece57b8974a6。
+- saved version：appgprj_6ae3626384448191b8fb8eecc7af7ced~appgver_7823572e470c81918eb541b091896f4e
+- deployment：appgdep_6ae5554ae4248191a726941cef8166d2，原生succeeded，env_set_revision=5；get_site确认public、最新版本22。实际URL https://sophia-sunshine-cup.gaussuag777.chatgpt.site 。
+- 生产页面／API／setup 200；匿名整轮确认、重置及伪造管理写入401，初始化404；非法请求403／400／413后SSR正常，无开发身份或server实现泄漏。JS/CSS gzip446328字节，比版本21增加360字节。构建仅保留既有大chunk提示，无构建或着色器错误。
+- 公开HTTP无Cookie／真实身份／bypass：根页、活动和CSV 200，无登录跳转；管理、备份、重置、整轮确认401，初始化关闭，伪造身份忽略。HTTP检查不冒充独立未登录浏览器。
+- 原交付窗口刷新：默认近景约1.5倍（桌面原约1.0倍），白15:黑13；队列更近、双方举拍与轻跃、Sophia中央飞行和更集中暖色彩带正常，控制台error为空。截图outputs/completion-warm/site-v22.jpg。
+
+四个活动发布前后完整公开状态SHA-256一致：
+
+| 活动 | revision／赛果版本数 | SHA-256 |
+| --- | --- | --- |
+| sophia-sunshine-cup-v2 | 139／21 | 04f2317df6f8cb03cb8e1fc71a57069ef01744bbd1e452dc052b1efa4bd67bda |
+| sophia-sunshine-cup-v2-acceptance | 9／2 | d0e6f14cf3a761b88d1adf7ee25c9961148fb4b192a70d3cb318902b600a3e58 |
+| sophia-sunshine-cup | 107／9 | df4f0f9a8d62d69f68adcca0d1963ae7fe4521a335496f13b104ac8ca021a79a |
+| sophia-sunshine-cup-acceptance | 22／3 | f130499a76b0838c46cc081e8caae17417842f49a966e55e37a81fbb2a014be8 |
+
+正式活动revision139与21场赛果完整保留。本次未调用任何线上比赛命令，回归使用本地独立活动。250项检查、桌面浏览器与手机CSS视口不替代真实iPhone Safari观感、触控、后台／锁屏及持续性能验收，仍由用户在发布后体验。原Avatar研究稿未修改，凭据／数据库／演练导出未进入提交。
