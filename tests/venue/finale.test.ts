@@ -6,6 +6,7 @@ import { planFinale, sampleFinale, angelFinale, confettiPose, FINALE_CONFETTI_CO
 import { LocalChoreography } from "../../src/modules/venue/local-choreography";
 import { AvatarPlacements } from "../../src/modules/venue/avatar-placements";
 import { worldLayout, completionNavigation, cameraView } from "../../src/modules/venue/world";
+import { COMPLETION_ARC, COMPLETION_ROW_GAP, COMPLETION_FLIGHT_Z, COMPLETION_FLIGHT_X } from "../../src/modules/venue/completion-layout";
 const layout = worldLayout(390, 844);
 describe("result-driven completion procession", () => {
   it("unlocks only after completion and queues the actual teams face to face without changing records", () => {
@@ -14,9 +15,9 @@ describe("result-driven completion procession", () => {
     expect(plan.winner).toBe("WHITE"); expect(Object.keys(plan.placements)).toHaveLength(state.players.length); expect(plan.angel).toBe("B01");
     for (const team of ["WHITE", "BLACK"] as const) {
       const positions = state.players.filter(p => p.teamId === team).map(p => plan.placements[p.id]);
-      expect(new Set(positions.map(p => p.position[0])).size).toBe(1);
-      expect(Math.abs(positions[0].position[0])).toBe(COMPLETION_COLUMN_X);
-      for (let i = 1; i < positions.length; i++) expect(positions[i].position[2] - positions[i - 1].position[2]).toBeGreaterThan(3);
+      expect(new Set(positions.map(p => p.position[0])).size).toBeGreaterThan(1);
+      for (const p of positions) { expect(Math.abs(p.position[0])).toBeGreaterThanOrEqual(COMPLETION_COLUMN_X); expect(Math.abs(p.position[0])).toBeLessThanOrEqual(COMPLETION_COLUMN_X + COMPLETION_ARC); }
+      for (let i = 1; i < positions.length; i++) expect(positions[i].position[2] - positions[i - 1].position[2]).toBeCloseTo(COMPLETION_ROW_GAP);
       expect(Math.sign(Math.sin(positions[0].facing))).toBe(team === "WHITE" ? 1 : -1);
     }
     for (let i = 0; i < 600; i++) expect(sampleFinale(plan, i / 30).balls).toHaveLength(0);
@@ -26,11 +27,11 @@ describe("result-driven completion procession", () => {
     expect(FINALE_CONFETTI_COUNT).toBe(112);
     let min = Infinity, max = -Infinity;
     for (let i = 0; i < 1200; i++) {
-      const p = angelFinale(i / 30); expect(Math.abs(p.offset[0])).toBeLessThanOrEqual(.65); expect(Math.abs(p.offset[2])).toBeLessThanOrEqual(8);
+      const p = angelFinale(i / 30); expect(Math.abs(p.offset[0])).toBeLessThanOrEqual(COMPLETION_FLIGHT_X); expect(Math.abs(p.offset[2])).toBeLessThanOrEqual(COMPLETION_FLIGHT_Z);
       min = Math.min(min, p.offset[2]); max = Math.max(max, p.offset[2]);
       if (i) expect(Math.hypot(...p.offset.map((v, n) => v - angelFinale((i - 1) / 30).offset[n]))).toBeLessThan(.15);
     }
-    expect(min).toBeLessThan(-7.9); expect(max).toBeGreaterThan(7.9);
+    expect(min).toBeLessThan(-3.5); expect(max).toBeGreaterThan(3.5);
     for (let i = 0; i < 112; i++) expect(confettiPose(8.12, i).position.every(Number.isFinite)).toBe(true);
   });
   it.each([[320, 568], [390, 664], [393, 852], [402, 874], [430, 932], [1280, 720]])("frames both queues inside the usable viewport at %ix%i", (width, height) => {
@@ -50,6 +51,19 @@ describe("result-driven completion procession", () => {
       for (const [x, y] of points) { expect(x).toBeGreaterThan(24); expect(x).toBeLessThan(width - 24); expect(y).toBeGreaterThan(190); expect(y).toBeLessThan(height - 110); }
       for (let i = 1; i < points.length; i++) expect(Math.abs(points[i][1] - points[i - 1][1])).toBeGreaterThan(28);
     }
+  });
+  it("uses a closer default camera and staggered welcomes from both real teams", () => {
+    expect(completionNavigation(worldLayout(390, 664)).zoom).toBeGreaterThan(2);
+    expect(completionNavigation(worldLayout(320, 568)).zoom).toBeGreaterThan(1.7);
+    const state = finishedCup(), before = JSON.stringify(state), plan = planFinale(state)!;
+    const a = sampleFinale(plan, 3), b = sampleFinale(plan, 6);
+    for (const team of ["WHITE", "BLACK"] as const) {
+      const ids = state.players.filter(p => p.teamId === team).map(p => p.id);
+      expect(new Set(ids.map(id => a.poses.get(id)!.stretch)).size).toBeGreaterThan(3);
+      expect(ids.some(id => a.poses.get(id)!.stretch !== b.poses.get(id)!.stretch)).toBe(true);
+      for (const id of ids) { expect(a.poses.get(id)!.stretch).toBeGreaterThan(.2); expect(a.poses.get(id)!.offset![1]).toBeGreaterThanOrEqual(0); }
+    }
+    expect(JSON.stringify(state)).toBe(before); expect(a.balls).toHaveLength(0);
   });
   it("replays locally, pauses and clears all effects when returning to a real round", () => {
     const state = finishedCup(), view = project(state), plan = planFinale(state)!, positions = new AvatarPlacements(), c = new LocalChoreography(11);

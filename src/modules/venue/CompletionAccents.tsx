@@ -1,14 +1,21 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { DoubleSide, InstancedMesh, MeshBasicMaterial, Object3D, RingGeometry } from "three";
+import { CircleGeometry, Color, DoubleSide, InstancedMesh, Mesh, MeshBasicMaterial, Object3D, RingGeometry, ShaderMaterial } from "three";
 import type { LocalChoreography } from "./local-choreography";
 const geometry = new RingGeometry(.55, .71, 28);
-const material = new MeshBasicMaterial({ color: "#f2d788", transparent: true, opacity: .34, depthWrite: false, side: DoubleSide });
+const material = new MeshBasicMaterial({ color: "#f2d788", transparent: true, opacity: .44, depthWrite: false, side: DoubleSide });
+const groundGeometry = new CircleGeometry(1, 48);
+const groundMaterial = new ShaderMaterial({ transparent: true, depthWrite: false, side: DoubleSide,
+  uniforms: { warmth: { value: new Color("#ffd99d") } },
+  vertexShader: "varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
+  fragmentShader: "uniform vec3 warmth;varying vec2 vUv;void main(){float a=(1.-smoothstep(.12,.5,length(vUv-.5)))*.22;gl_FragColor=vec4(warmth,a);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}"
+});
 /** Shared, passive geometry; reduced motion keeps a static winner mark. */
 export function CompletionAccents({ choreography, count }: { choreography: LocalChoreography; count: number }) {
-  const mesh = useRef<InstancedMesh>(null), scratch = useRef(new Object3D());
+  const ground = useRef<Mesh>(null), mesh = useRef<InstancedMesh>(null), scratch = useRef(new Object3D());
   useFrame(() => {
     const node = mesh.current, plan = choreography.finale;
+    if (ground.current) { ground.current.visible = !!plan; if (plan) ground.current.scale.set(3.5, Math.max(...Object.values(plan.placements).map(p => Math.abs(p.position[2]))) + 1.4, 1); }
     if (!node) return;
     node.visible = !!plan?.winner;
     if (!plan?.winner) return;
@@ -21,5 +28,5 @@ export function CompletionAccents({ choreography, count }: { choreography: Local
     });
     node.instanceMatrix.needsUpdate = true;
   }, -1);
-  return <instancedMesh ref={mesh} args={[geometry, material, count]} frustumCulled={false} visible={false} dispose={null} raycast={() => {}} />;
+  return <><mesh ref={ground} geometry={groundGeometry} material={groundMaterial} position={[0, .135, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={false} dispose={null} raycast={() => {}} /><instancedMesh ref={mesh} args={[geometry, material, count]} frustumCulled={false} visible={false} dispose={null} raycast={() => {}} /></>;
 }

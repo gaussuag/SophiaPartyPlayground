@@ -4,7 +4,7 @@ import { Color, DoubleSide, InstancedMesh, MeshBasicMaterial, Object3D, PlaneGeo
 import { confettiPose, FINALE_CONFETTI_COUNT } from "./finale";
 import type { LocalChoreography } from "./local-choreography";
 const geometry=new PlaneGeometry(1,1),material=new MeshBasicMaterial({side:DoubleSide,transparent:true,opacity:.95,depthWrite:false,vertexColors:false});
-const colours=["#f4c665","#c5e88c","#ecadce","#9dccdf","#f1e7a2"];
+const colours=["#ffd681","#f4e2a0","#edb3bd","#d9c9f2","#d5e8a5"];
 export function FinaleConfetti({choreography}:{choreography:LocalChoreography}) {
  const mesh=useRef<InstancedMesh>(null),scratch=useRef(new Object3D());
  useEffect(()=>{if(mesh.current){for(let i=0;i<FINALE_CONFETTI_COUNT;i++)mesh.current.setColorAt(i,new Color(colours[i%colours.length]));mesh.current.instanceColor!.needsUpdate=true;}},[]);

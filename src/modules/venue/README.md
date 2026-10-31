@@ -77,3 +77,5 @@ LocalChoreography 在任一当前场次 playing 时让真正场外人物在 z=±
 2026-10-31：Venue 可接收 finale 展示模式，planFinale 仍再次确认权威七轮已关闭／赛果齐备。AvatarPlacements.present 管理独立本机展示目标，进入时从可见位置聚集，退出恢复真实历史；LocalChoreography 使用同一 step／arrivals／暂停路径播放 sampleFinale。胜队六个上限发球源、败队集中、Sophia 平滑起飞并绕场撒彩带；同分双方庆祝。RallyBalls 继续复用六球池；FinaleConfetti 为固定112实例的单个 InstancedMesh，无独立时钟、计时器或网络。颜色与几何共享，姓名随Sophia高空位置投影。三场地布局、触控缩放旋转和真实身份保留。
 
 2026-10-31 完赛更新：planFinale仍校验七轮已关闭且只消费真实名单／有效积分，改为固定两纵队；sampleFinale返回零球、中央飞行和轻举拍。completionNavigation按队列及完整飞行高度适配顶部和底部安全区，只在进入／全景／重播时定位，不跟随演出强制移动镜头。完赛无悬浮姓名／实体牌面，中场表面临时作为仪式通道，退出恢复原场地。CompletionAccents为共享光圈实例，replayFinale只复位本机时钟。原内部finale标识保留兼容，面向用户只称完赛。
+
+2026-10-31 完赛近景：completion-layout统一共享弧形队列间距、窄飞行通道与实际包络。world的completionNavigation取队列和飞行投影并集，减少无用远景；sampleFinale让双方异步举拍、轻跃并响应Sophia经过。CompletionAccents追加一个静态暖色地面Shader；112彩带仍用原实例池，无新加载器、时钟或请求。普通比赛模型、布局和相机不变。
