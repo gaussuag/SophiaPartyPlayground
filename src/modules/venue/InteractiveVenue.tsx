@@ -11,7 +11,7 @@ import { VenueInput, groundAt, type PointerSample } from "./venue-input";
 import { LocalChoreography } from "./local-choreography";
 import { canRepresentSide, roundStartStatus, finaleOutcome } from "../competition";
 import type { VenueProps } from "./model";
-import { cameraView, clampZoom, constrainNavigation, courtCenter, courtNavigation, frameOverview, isBenchPoint, overview, worldLayout } from "./world";
+import { cameraView, clampZoom, completionNavigation, constrainNavigation, courtCenter, courtNavigation, frameOverview, isBenchPoint, overview, worldLayout } from "./world";
 
 type ScreenPoint = { x: number; y: number };
 const sample = (e: { pointerId: number; clientX: number; clientY: number }): PointerSample => ({ id: e.pointerId, x: e.clientX, y: e.clientY });
@@ -57,10 +57,10 @@ export function Venue(props: VenueProps) {
   const [timing] = useState(() => new VenuePerformance(typeof window !== "undefined" && new URLSearchParams(window.location.search).has("venueMetrics")));
   const [input] = useState(() => new VenueInput(motion));
   const [choreography] = useState(() => new LocalChoreography());
-  const previousView = useRef({ key: props.cameraRequest.key, layout, measured: false });
+  const previousView = useRef({ key: props.cameraRequest.key, layout, measured: false, finale: !!props.finale });
   useEffect(() => {
     const previous = previousView.current;
-    if (previous.key === props.cameraRequest.key && previous.layout === layout) return;
+    if (previous.key === props.cameraRequest.key && previous.layout === layout && previous.finale === !!props.finale) return;
     input.cancel();
     const changed = previous.key !== props.cameraRequest.key;
     const court = changed ? props.state.courts.find(c => c.id === props.cameraRequest.courtId) : undefined;
@@ -72,10 +72,11 @@ export function Venue(props: VenueProps) {
     const right: Point = [Math.cos(current.yaw), 0, -Math.sin(current.yaw)];
     const resized = { ...current, zoom: current.zoom * previous.layout.baseZoom / layout.baseZoom,
       center: current.center.map((n, i) => n + right[i] * dx - view.up[i] * dy) as Point };
-    motion.move(court ? courtNavigation(court.number, layout, current) : !changed && sameOrientation && previous.measured ? constrainNavigation(resized, layout) : overview(layout), !changed);
-    previousView.current = { key: props.cameraRequest.key, layout, measured: true };
+    const completion = () => completionNavigation(layout, Math.max(...["WHITE", "BLACK"].map(team => props.state.players.filter(p => p.teamId === team).length)));
+    motion.move(props.finale && (!previous.finale || changed || !previous.measured || !sameOrientation) ? completion() : court ? courtNavigation(court.number, layout, current) : !changed && sameOrientation && previous.measured ? constrainNavigation(resized, layout) : overview(layout), !changed);
+    previousView.current = { key: props.cameraRequest.key, layout, measured: true, finale: !!props.finale };
     invalidate.current?.();
-  }, [layout, motion, input, props.cameraRequest.key, props.cameraRequest.courtId, props.state.courts]);
+  }, [layout, motion, input, props.cameraRequest.key, props.cameraRequest.courtId, props.state.courts, props.finale, props.state.players]);
 
   useEffect(() => {
     const node = root.current; if (!node) return;
@@ -179,7 +180,7 @@ export function Venue(props: VenueProps) {
   const roundReady = roundStartStatus(props.view).canStart;
   const ending = props.finale ? finaleOutcome(props.state) : null;
   const labels: { key: string; className?: string; editor?: boolean; content: ReactNode }[] = props.state.courts.map(c => {
-    if (ending?.unlocked) return { key: `court:${c.id}`, className: "board-anchor", content: <div className="world-scoreboard finale-board" role="img" aria-label={c.number === 2 ? "谢幕彩蛋" : `${c.number === 1 ? "白队" : "黑队"} ${c.number === 1 ? ending.totals.WHITE : ending.totals.BLACK} 分`}><span className="board-face"><b>{c.number === 1 ? "白" : c.number === 3 ? "黑" : "✦"}</b><span className="board-action">{c.number === 2 ? "谢谢每一位" : `${c.number === 1 ? ending.totals.WHITE : ending.totals.BLACK} 分`}</span></span></div> };
+    if (ending?.unlocked) return { key: `court:${c.id}`, className: "board-anchor", content: null };
     const match = props.view.matches.find(m => m.courtId === c.id);
     if (match && props.editor?.matchId === match.id) return { key: `court:${c.id}`, className: "board-anchor editing-board", editor: true, content: props.editor.content };
     const ready = match?.phase === "PLANNING" && match.canStart && props.view.isCurrent && props.state.phase === "ACTIVE";
@@ -195,7 +196,7 @@ export function Venue(props: VenueProps) {
       </span>
     </button> };
   });
-  for (const player of props.state.players) {
+  for (const player of props.finale ? [] : props.state.players) {
     const status = props.view.playerStates[player.id];
     const selected = props.selection?.playerId === player.id;
     const target = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
@@ -257,10 +258,14 @@ export function Venue(props: VenueProps) {
         <ambientLight intensity={1.65} /><directionalLight position={[6, 15, 10]} intensity={2.2} color="#fff1d2" /><directionalLight position={[-10, 5, -7]} intensity={0.5} color="#c7e4da" />
         <ContextRecovery onLost={() => { cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
         <Scene props={props} choreography={choreography} activityActive={props.animationActive !== false && !props.editor && !lost} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} pressedPlayerId={pressedPlayerId} timing={timing} />
-        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} choreography={choreography} />
+        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} choreography={choreography} anchors={anchors} />
       </Canvas>
       <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}</div>
-      {!props.editor && <div hidden ref={node => hud.bind("element", node)} data-scene-ui data-camera-ui className="world-camera-controls" aria-label="球馆视角"><button className="camera-heading" aria-label="视角回正" onClick={() => { const home = overview(layout); motion.move({ ...motion.snapshot(), yaw: home.yaw, pitch: home.pitch }); invalidate.current?.(); }}><Compass ref={node => hud.bind("compass", node)} size={17} /></button><button ref={node => hud.bind("minus", node)} aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output ref={node => hud.bind("scale", node)}>1.0×</output><button ref={node => hud.bind("plus", node)} aria-label="放大球馆" onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label="恢复三场全景" onClick={() => { cancel(); motion.move(frameOverview(layout, motion.snapshot())); invalidate.current?.(); }}><Scan size={16} />全景</button></div>}
+      {!props.editor && <div hidden ref={node => hud.bind("element", node)} data-scene-ui data-camera-ui className="world-camera-controls" aria-label="球馆视角"><button className="camera-heading" aria-label="视角回正" onClick={() => { const home = props.finale ? completionNavigation(layout) : overview(layout); motion.move({ ...motion.snapshot(), yaw: home.yaw, pitch: home.pitch }); invalidate.current?.(); }}><Compass ref={node => hud.bind("compass", node)} size={17} /></button><button ref={node => hud.bind("minus", node)} aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output ref={node => hud.bind("scale", node)}>1.0×</output><button ref={node => hud.bind("plus", node)} aria-label="放大球馆" onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label={props.finale ? "恢复完赛全景" : "恢复三场全景"} onClick={() => { cancel(); motion.move(props.finale ? completionNavigation(layout) : frameOverview(layout, motion.snapshot())); invalidate.current?.(); }}><Scan size={16} />全景</button></div>}
+      {ending?.unlocked && <>
+        <section className="completion-heading" aria-label="完赛结果"><h1>谢谢每一位</h1><p>白 {ending.totals.WHITE} : 黑 {ending.totals.BLACK}<span>{ending.winner ? ending.winner === "WHITE" ? "白队获胜" : "黑队获胜" : "双方共同庆祝"}</span></p><ul className="sr-only">{props.state.players.map(p => <li key={p.id}>{p.name}，{p.teamId === "WHITE" ? "白队" : p.teamId === "BLACK" ? "黑队" : "自由阵营"}</li>)}</ul></section>
+        <button className="completion-replay" data-scene-ui data-camera-ui onClick={() => { input.cancel(); choreography.replayFinale(); motion.move(completionNavigation(layout)); invalidate.current?.(); }}><RotateCcw size={18} />重播完赛演出</button>
+      </>}
       <output hidden aria-hidden="true" data-venue-metrics data-world-courts={props.state.courts.length} data-world-layout={JSON.stringify(props.state.courts.map(c => [c.id, courtCenter(c.number, layout)]))} data-record-revision={props.state.revision} ref={metrics} />
     </SceneBoundary>
   </div>;

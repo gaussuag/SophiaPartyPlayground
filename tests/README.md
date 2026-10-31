@@ -62,3 +62,5 @@
 - competition/round-start-finale.test.ts、records/round-start.test.ts：整轮未排齐拒绝、唯一阵容／单revision、兼容已开始比赛、新旧七轮、晚解锁、同分、可信权限、并发／幂等／无部分提交。
 - venue/finale.test.ts：全员角色、仅胜队发球、最多六球、Sophia飞行、固定彩带池、暂停／减少动态效果及历史清理；fixtures/finished-cup.ts 仅构建有效七轮，避免导入测试文件重复注册。
 - [整轮确认与谢幕浏览器验收](browser/round-finale-harness.html)：新的 local 活动、真实D1／HTTP，两客户端统一一次确认、完整21场七轮、末轮确认前隐藏、自动进入、白胜／同分／黑胜、更正换位、历史退出重进、刷新恢复与无动画写入。旧 cup-v2-harness 的逐场确认 UI 为历史流程，新统一开赛界面以此入口验证；旧协议 HTTP 和单元回归继续保留。
+
+2026-10-31：round-finale-harness现覆盖两队列队、中央飞行、零球、姓名隐藏／历史恢复和本机重播，仍验证完整七轮、同分、更正与两端共享事实。completion-preview.html?event=local-已有完赛活动只读展示实际402×744／390×664／320×568／430×844内部视口，外层仅缩放截图；不初始化、不修改活动。finale.test覆盖队列、连续飞行通道及六尺寸安全区。

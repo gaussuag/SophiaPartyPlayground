@@ -37,6 +37,18 @@ export function frameOverview(layout: WorldLayout, direction: Pick<Navigation, "
   const nav = overview(layout, direction);
   return { ...nav, zoom: clampZoom(cameraView(nav, layout).fit) };
 }
+/** Completion framing fits the two queues between the existing header and dock. */
+export function completionNavigation(layout: WorldLayout, rows = 6): Navigation {
+  const pitch = Math.PI * 45 / 180, yaw = 0;
+  const halfLength = Math.max(8.5, (rows - 1) * 3.05 / 2 + .9);
+  const top = halfLength * Math.sin(pitch) + 5.5 * Math.cos(pitch), bottom = -halfLength * Math.sin(pitch);
+  const pixels = Math.min((layout.viewportWidth - 40) / 10.4, Math.max(180, layout.viewportHeight - 350) / (top - bottom));
+  const zoom = clampZoom(Math.min(2.2, pixels / layout.baseZoom));
+  const pose = { center: [0, 0, 0] as Point, zoom, yaw, pitch };
+  const up = cameraView(pose, layout).up;
+  pose.center = up.map(n => n * ((top + bottom) / 2 + 25 / (layout.baseZoom * zoom))) as Point;
+  return pose;
+}
 export function orbitNavigation(nav: Navigation, dx: number, dy: number, height: number): Navigation {
   const sensitivity = Math.PI * 2 * 0.65 / Math.max(1, height);
   return { ...nav, yaw: nav.yaw - dx * sensitivity,

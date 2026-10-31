@@ -75,3 +75,12 @@
 .round-lineup-confirm{border-top:1px solid #d5ddc8;padding:8px 0}.round-lineup-confirm h3{font-size:13px;margin:0 0 7px}.finale-board{display:grid;align-items:center;pointer-events:none}.finale-choice{gap:3px!important;font-size:11px!important}
 
 .round-confirm-dialog{padding:16px}.round-confirm-dialog .dialog-heading h2{font-size:18px}.round-confirm-dialog .confirm-content{margin:10px 0;line-height:1.5}.round-confirm-dialog .confirm-content>p{font-size:11px;margin:6px 0}.round-confirm-dialog .round-lineup-confirm{padding:6px 0;margin:0}.round-confirm-dialog .round-lineup-confirm h3{font-size:12px;margin:0 0 4px}.round-confirm-dialog .confirmation-lineups{margin:4px 0;padding:6px 8px;gap:4px}.round-confirm-dialog .confirmation-lineups strong{font-size:12px;text-align:right}.round-confirm-dialog .confirm-actions{margin-top:10px}
+
+/* Completion keeps floating names and duplicate boards out of the performance. */
+.completion-heading{position:absolute;z-index:6;top:139px;left:16px;right:16px;text-align:center;color:#234b39;pointer-events:none}
+.completion-heading h1{font-size:26px;letter-spacing:2px;margin:0 0 7px;font-weight:750}
+.completion-heading p{display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;color:#74816b;margin:0;font-variant-numeric:tabular-nums}
+.completion-heading p>span{border-left:1px solid #a5b69a;padding-left:12px;color:#28543b;font-weight:650}
+.completion-replay{position:absolute;z-index:6;bottom:calc(91px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 19px;border-radius:25px;background:#f8fbeded;border:1px solid #edf2df;color:#31573e;font-size:12px;white-space:nowrap;box-shadow:0 3px 14px #23412a0c;touch-action:manipulation}
+@media(min-width:800px){.completion-heading{top:137px}.completion-heading h1{font-size:30px}.completion-replay{bottom:102px}}
+@media(max-height:620px){.completion-heading{top:129px}.completion-heading h1{font-size:22px;margin-bottom:4px}.completion-heading p{font-size:12px}.completion-replay{bottom:83px}}

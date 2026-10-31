@@ -117,6 +117,7 @@ export class LocalChoreography {
     if (reset) { this.arrivals.clear(); this.pressed = null; this.locked.clear(); }
     for (const id of this.arrivals.keys()) if (!this.actors.has(id)) this.arrivals.delete(id);
   }
+  replayFinale() { if (this.finale) { this.finaleClock = 0; this.ballsValue = []; } }
   step(delta: number): boolean {
     if (!this.enabled) return false;
     const dt = Math.min(.05, Math.max(0, delta));

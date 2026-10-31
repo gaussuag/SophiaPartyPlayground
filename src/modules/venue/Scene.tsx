@@ -13,6 +13,7 @@ import { ParkEnvironment } from "./ParkEnvironment";
 import { COURT_PALETTE, sunlitMaterial } from "./sunlight";
 import { AvatarPlacements } from "./avatar-placements";
 import { planFinale, FINALE_CONFETTI_COUNT } from "./finale";
+import { CompletionAccents } from "./CompletionAccents";
 import { FinaleConfetti } from "./FinaleConfetti";
 import { RallyBalls } from "./RallyBalls";
 import type { LocalChoreography } from "./local-choreography";
@@ -94,16 +95,19 @@ function Scoreboard({ courtId, match, anchors, props, editorSize, layout }: { co
 
 function Court({ number, match, position, props, anchors, hovered, editorSize, layout }: { number: number; match?: MatchView; position: Point; props: VenueProps; anchors: Anchors; hovered: string | null; editorSize: { width: number; height: number }; layout: WorldLayout }) {
   const inactive = !match;
+  const procession = !!props.finale && number === 2;
   const selected = props.courtId === props.state.courts.find(c => c.number === number)!.id;
   return <group position={position} onClick={e => { e.stopPropagation(); props.onIntent({ type: "court", courtId: props.state.courts.find(c => c.number === number)!.id }); }}>
-    <mesh position={[0, -0.12, 0]} material={sunlitMaterial(inactive ? COURT_PALETTE.inactive : selected ? COURT_PALETTE.selected : COURT_PALETTE.surround)} dispose={null}><boxGeometry args={[5.8, 0.22, 10.7]} /></mesh>
+    <mesh position={[0, -0.12, 0]} material={sunlitMaterial(procession ? "#c5d6de" : inactive ? COURT_PALETTE.inactive : selected ? COURT_PALETTE.selected : COURT_PALETTE.surround)} dispose={null}><boxGeometry args={[5.8, 0.22, 10.7]} /></mesh>
+    {!procession && <group>
     <mesh geometry={playingEnds} material={sunlitMaterial(inactive ? "#bdc1cc" : COURT_PALETTE.play)} dispose={null} />
     <mesh geometry={kitchen} material={sunlitMaterial(inactive ? "#bdcbd1" : COURT_PALETTE.kitchen)} dispose={null} />
     <mesh geometry={courtLines}><meshBasicMaterial color={COURT_PALETTE.line} /></mesh>
     <mesh geometry={netPosts}><meshStandardMaterial color="#496375" /></mesh>
     <mesh position={[0, 0.49, 0]}><boxGeometry args={[5.55, 0.7, 0.035]} /><meshStandardMaterial color="#334c61" transparent opacity={0.6} /></mesh>
     <mesh position={[0, 0.86, 0]}><boxGeometry args={[5.65, 0.04, 0.065]} /><meshBasicMaterial color="#fffbe5" /></mesh>
-    <Scoreboard courtId={props.state.courts.find(c => c.number === number)!.id} match={match} anchors={anchors} props={props} editorSize={editorSize} layout={layout} />
+    </group>}
+    {!props.finale && <Scoreboard courtId={props.state.courts.find(c => c.number === number)!.id} match={match} anchors={anchors} props={props} editorSize={editorSize} layout={layout} />}
     {match?.draftSlots.map(slot => {
       const target = props.placements.find(t => t.matchId === match.id && t.slotId === slot.id);
       if (!target) return null;
@@ -188,6 +192,7 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
     {dragging && <DragGhost point={dragPoint} />}
     <RallyBalls choreography={choreography} />
     <FinaleConfetti choreography={choreography} />
+    <CompletionAccents choreography={choreography} count={props.state.players.length} />
   </>;
 }
 
@@ -227,7 +232,7 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
   return null;
 }
 
-export function SceneMetrics({ target, motion, timing, choreography }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion; timing: VenuePerformance; choreography: LocalChoreography }) {
+export function SceneMetrics({ target, motion, timing, choreography, anchors }: { target: { current: HTMLOutputElement | null }; motion: CameraMotion; timing: VenuePerformance; choreography: LocalChoreography; anchors: Anchors }) {
   const gl = useThree(s => s.gl);
   useEffect(() => {
     if (!timing.enabled) return;
@@ -251,6 +256,12 @@ export function SceneMetrics({ target, motion, timing, choreography }: { target:
       target.current.dataset.localAnimationReduced = String(choreography.reduced);
       target.current.dataset.finale = choreography.finale?.key ?? "";
       target.current.dataset.finaleWinner = choreography.finale?.winner ?? "";
+      target.current.dataset.completionTime = choreography.finaleClock.toFixed(3);
+      target.current.dataset.completionAccents = String(choreography.finale?.winners.length ?? 0);
+      target.current.dataset.completionActors = JSON.stringify(choreography.finale ? [...anchors].filter(([id]) => id.startsWith("player:")).map(([id, node]) => {
+        const p = node.parent!.getWorldPosition(new Vector3()), screen = p.clone().project(camera);
+        return { id: id.slice(7), position: p.toArray(), screen: [(screen.x + 1) * gl.domElement.clientWidth / 2, (1 - screen.y) * gl.domElement.clientHeight / 2], flying: !!node.parent?.userData.flying };
+      }) : []);
       target.current.dataset.confettiCount = String(choreography.finale?.angel && choreography.enabled ? FINALE_CONFETTI_COUNT : 0);
       target.current.dataset.localBallCount = String(choreography.enabled ? choreography.balls.length : 0);
       target.current.dataset.courtProgrammes = JSON.stringify(choreography.programmes);
