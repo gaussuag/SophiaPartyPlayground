@@ -1,6 +1,6 @@
 import { useLayoutEffect, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, Vector3, type OrthographicCamera } from "three";
+import { Box3, BoxGeometry, CapsuleGeometry, CylinderGeometry, Group, SphereGeometry, Vector3, type OrthographicCamera } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { canRepresentSide, type MatchView, type RosterTeamId } from "../competition";
 import type { VenueProps } from "./model";
@@ -20,6 +20,8 @@ import type { LocalChoreography } from "./local-choreography";
 import { AvatarResults } from "./avatar-results";
 import type { VenuePerformance } from "./venue-performance";
 export type { Point } from "./world";
+
+import { CompletionNames, type CompletionName } from "./completion-names";
 
 export type Anchors = Map<string, Group>;
 export type Elements = Map<string, HTMLDivElement>;
@@ -196,11 +198,14 @@ export function Scene({ props, anchors, begin, dragging, dragPoint, hovered, lay
   </>;
 }
 
-export function LabelProjection({ anchors, elements, baseZoom, timing }: { anchors: Anchors; elements: Elements; baseZoom: number; timing: VenuePerformance }) {
+export function LabelProjection({ anchors, elements, baseZoom, timing, completion }: { anchors: Anchors; elements: Elements; baseZoom: number; timing: VenuePerformance; completion: boolean }) {
   const point = useMemo(() => new Vector3(), []), paddlePoint = useMemo(() => new Vector3(), []);
+  const bodyBox = useMemo(() => new Box3(), []), corner = useMemo(() => new Vector3(), []), center = useMemo(() => new Vector3(), []);
+  const names = useMemo(() => new CompletionNames(), []), sizes = useRef(new WeakMap<Element, { text: string; viewport: number; width: number; height: number }>());
   useFrame(({ camera, size }) => {
     const started = timing.enabled ? performance.now() : 0;
     camera.updateMatrixWorld();
+    const actors: CompletionName[] = [];
     for (const [id, node] of anchors) {
       const element = elements.get(id); if (!element) continue;
       node.updateWorldMatrix(true, false); node.getWorldPosition(point);
@@ -220,11 +225,39 @@ export function LabelProjection({ anchors, elements, baseZoom, timing }: { ancho
           element.dataset.paddleCenter = paddlePoint.toArray().map(n => n.toFixed(4)).join(",");
         }
       }
+      if (completion && id.startsWith("player:")) {
+        const tag = element.firstElementChild as HTMLElement | null, body = node.parent?.getObjectByName("avatar-body");
+        if (!tag || !body) continue;
+        body.getWorldPosition(point); center.set(0, point.y, point.z).project(camera); point.project(camera);
+        const x = (point.x + 1) * size.width / 2, y = (1 - point.y) * size.height / 2;
+        const former = sizes.current.get(tag), text = tag.textContent ?? "";
+        const measured = former?.text === text && former.width > 0 && former.viewport === size.width ? former : { text, viewport: size.width, width: tag.offsetWidth, height: tag.offsetHeight };
+        sizes.current.set(tag, measured);
+        bodyBox.setFromObject(body);
+        const rect = { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity };
+        for (let i = 0; i < 8; i++) {
+          corner.set(i & 1 ? bodyBox.max.x : bodyBox.min.x, i & 2 ? bodyBox.max.y : bodyBox.min.y, i & 4 ? bodyBox.max.z : bodyBox.min.z).project(camera);
+          const px = (corner.x + 1) * size.width / 2, py = (1 - corner.y) * size.height / 2;
+          rect.left = Math.min(rect.left, px); rect.right = Math.max(rect.right, px); rect.top = Math.min(rect.top, py); rect.bottom = Math.max(rect.bottom, py);
+        }
+        const side = tag.dataset.nameSide, outward = side === "FREE" ? 0 : Math.abs(point.x - center.x) > .01 ? Math.sign(point.x - center.x) : side === "WHITE" ? -1 : 1;
+        actors.push({ id, x, y, width: measured.width, height: measured.height, radius: Math.max(10, 18 * (camera as OrthographicCamera).zoom / baseZoom), outward, body: rect });
+        if (timing.enabled) element.dataset.modelBounds = JSON.stringify(rect);
+        continue;
+      }
       point.project(camera);
       const scale = id.startsWith("court:") && !element.dataset.editor ? Math.min(1.3, Math.max(1, (camera as OrthographicCamera).zoom / baseZoom), (size.width - 24) / BOARD_SIZE.frameWidth) : 1;
       const transform = `translate(${(point.x * size.width / 2 + size.width / 2).toFixed(2)}px,${(-point.y * size.height / 2 + size.height / 2).toFixed(2)}px) translate(-50%,-50%) scale(${scale.toFixed(4)})`;
       if (element.style.transform !== transform) element.style.transform = transform;
       const visibility = Math.abs(point.x) > 1.1 || Math.abs(point.y) > 1.1 || Math.abs(point.z) > 1 ? "hidden" : "visible";
+      if (element.style.visibility !== visibility) element.style.visibility = visibility;
+    }
+    const cameraKey = completion ? [...camera.position.toArray(), ...camera.quaternion.toArray(), (camera as OrthographicCamera).zoom].map(n => n.toFixed(2)).join(":") : "";
+    for (const placement of names.layout(actors, size.width, size.height, cameraKey)) {
+      const element = elements.get(placement.id)!;
+      const transform = `translate(${placement.x.toFixed(2)}px,${placement.y.toFixed(2)}px) translate(-50%,-50%)`;
+      if (element.style.transform !== transform) element.style.transform = transform;
+      const visibility = placement.visible ? "visible" : "hidden";
       if (element.style.visibility !== visibility) element.style.visibility = visibility;
     }
     if (timing.enabled) timing.record("labels", performance.now() - started);

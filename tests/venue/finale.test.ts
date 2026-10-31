@@ -65,13 +65,13 @@ describe("result-driven completion procession", () => {
     }
     expect(JSON.stringify(state)).toBe(before); expect(a.balls).toHaveLength(0);
   });
-  it("replays locally, pauses and clears all effects when returning to a real round", () => {
+  it("pauses and clears all effects when returning to a real round", () => {
     const state = finishedCup(), view = project(state), plan = planFinale(state)!, positions = new AvatarPlacements(), c = new LocalChoreography(11);
     positions.present(state, plan); c.sync(state, view, layout, positions, plan); c.configure(true, false);
     for (let i = 0; i < 180; i++) c.step(1 / 60); expect(c.finaleClock).toBeGreaterThan(2); expect(c.balls).toHaveLength(0);
     const time = c.finaleClock; c.configure(false, false); c.step(1); expect(c.finaleClock).toBe(time);
     c.configure(true, true); c.step(1); expect(c.finaleClock).toBe(time); expect(c.balls).toHaveLength(0);
-    c.configure(true, false); c.replayFinale(); expect(c.finaleClock).toBe(0); c.step(.05); expect(c.finaleClock).toBe(.05);
+    c.configure(true, false); c.step(.05); expect(c.finaleClock).toBeGreaterThan(time);
     positions.sync(state, project(state, { roundId: "R01" }), layout); c.sync(state, project(state, { roundId: "R01" }), layout, positions); c.step(.05); expect(c.finale).toBeUndefined(); expect(c.balls).toHaveLength(0);
   });
 });

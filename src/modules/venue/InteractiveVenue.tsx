@@ -196,7 +196,11 @@ export function Venue(props: VenueProps) {
       </span>
     </button> };
   });
-  for (const player of props.finale ? [] : props.state.players) {
+  for (const player of props.state.players) {
+    if (props.finale) {
+      labels.push({ key: `player:${player.id}`, className: "completion-name-anchor", content: <span className={`completion-player-name ${player.teamId.toLowerCase()}`} data-player-id={player.id} data-name-side={player.teamId}><span className="sr-only">{player.teamId === "WHITE" ? "白队 " : player.teamId === "BLACK" ? "黑队 " : "自由阵营 "}</span>{player.name}</span> });
+      continue;
+    }
     const status = props.view.playerStates[player.id];
     const selected = props.selection?.playerId === player.id;
     const target = props.slotSelection && props.placements.find(t => t.matchId === props.slotSelection!.matchId && t.slotId === props.slotSelection!.slotId);
@@ -258,13 +262,12 @@ export function Venue(props: VenueProps) {
         <ambientLight intensity={1.65} /><directionalLight position={[6, 15, 10]} intensity={2.2} color="#fff1d2" /><directionalLight position={[-10, 5, -7]} intensity={0.5} color="#c7e4da" />
         <ContextRecovery onLost={() => { cancel(); setLost(true); }} onRestored={() => { setLost(false); setSceneRevision(n => n + 1); }} />
         <Scene props={props} choreography={choreography} activityActive={props.animationActive !== false && !props.editor && !lost} anchors={anchors} begin={begin} dragging={dragging} dragPoint={dragPoint} hovered={hovered} layout={layout} motion={motion} hud={hud} editorSize={editorSize} viewport={viewport} pressedPlayerId={pressedPlayerId} timing={timing} />
-        <LabelProjection anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} choreography={choreography} anchors={anchors} />
+        <LabelProjection completion={!!props.finale} anchors={anchors} elements={elements} baseZoom={layout.baseZoom} timing={timing} /><SceneMetrics target={metrics} motion={motion} timing={timing} choreography={choreography} anchors={anchors} />
       </Canvas>
       <div className="projected-labels">{labels.map(label => <div data-editor={label.editor ? "true" : undefined} className={`projected-label ${label.className ?? ""}`} key={label.key} ref={node => { if (node) elements.set(label.key, node); else elements.delete(label.key); }}>{label.content}</div>)}</div>
       {!props.editor && <div hidden ref={node => hud.bind("element", node)} data-scene-ui data-camera-ui className="world-camera-controls" aria-label="球馆视角"><button className="camera-heading" aria-label="视角回正" onClick={() => { const home = props.finale ? completionNavigation(layout) : overview(layout); motion.move({ ...motion.snapshot(), yaw: home.yaw, pitch: home.pitch }); invalidate.current?.(); }}><Compass ref={node => hud.bind("compass", node)} size={17} /></button><button ref={node => hud.bind("minus", node)} aria-label="缩小球馆" onClick={() => zoomBy(1 / 1.25)}><Minus size={16} /></button><output ref={node => hud.bind("scale", node)}>1.0×</output><button ref={node => hud.bind("plus", node)} aria-label="放大球馆" onClick={() => zoomBy(1.25)}><Plus size={16} /></button><button aria-label={props.finale ? "恢复完赛全景" : "恢复三场全景"} onClick={() => { cancel(); motion.move(props.finale ? completionNavigation(layout) : frameOverview(layout, motion.snapshot())); invalidate.current?.(); }}><Scan size={16} />全景</button></div>}
       {ending?.unlocked && <>
         <section className="completion-heading" aria-label="完赛结果"><h1>谢谢每一位</h1><p>白 {ending.totals.WHITE} : 黑 {ending.totals.BLACK}<span>{ending.winner ? ending.winner === "WHITE" ? "白队获胜" : "黑队获胜" : "双方共同庆祝"}</span></p><ul className="sr-only">{props.state.players.map(p => <li key={p.id}>{p.name}，{p.teamId === "WHITE" ? "白队" : p.teamId === "BLACK" ? "黑队" : "自由阵营"}</li>)}</ul></section>
-        <button className="completion-replay" data-scene-ui data-camera-ui onClick={() => { input.cancel(); choreography.replayFinale(); motion.move(completionNavigation(layout)); invalidate.current?.(); }}><RotateCcw size={18} />重播完赛演出</button>
       </>}
       <output hidden aria-hidden="true" data-venue-metrics data-world-courts={props.state.courts.length} data-world-layout={JSON.stringify(props.state.courts.map(c => [c.id, courtCenter(c.number, layout)]))} data-record-revision={props.state.revision} ref={metrics} />
     </SceneBoundary>

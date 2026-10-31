@@ -124,7 +124,7 @@ export function Avatar({ player, index, position, selected, muted, onCourt, stat
     </group>}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}><circleGeometry args={[0.34, 20]} /><meshBasicMaterial color="#435740" transparent opacity={0.13} depthWrite={false} /></mesh>
     {(selected || status !== "available") && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.018, 0]}><ringGeometry args={[selected ? 0.38 : 0.35, selected ? 0.49 : 0.39, 24]} /><meshBasicMaterial color={ringColor} transparent opacity={muted && !selected ? 0.55 : 0.95} /></mesh>}
-    <group ref={body} rotation={[0, facing, 0]}>
+    <group name="avatar-body" ref={body} rotation={[0, facing, 0]}>
       {angel && <AngelWings pose={flight} />}
       <mesh geometry={torsoGeometry} position={[0, 0.68, 0]}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh>
       <group ref={leftArm} position={[0.28, 0.84, 0]} rotation={[0, 0, 0.12]}><mesh geometry={armGeometry}><meshStandardMaterial color={shirt} roughness={0.9} /></mesh></group>

@@ -79,3 +79,5 @@ LocalChoreography 在任一当前场次 playing 时让真正场外人物在 z=±
 2026-10-31 完赛更新：planFinale仍校验七轮已关闭且只消费真实名单／有效积分，改为固定两纵队；sampleFinale返回零球、中央飞行和轻举拍。completionNavigation按队列及完整飞行高度适配顶部和底部安全区，只在进入／全景／重播时定位，不跟随演出强制移动镜头。完赛无悬浮姓名／实体牌面，中场表面临时作为仪式通道，退出恢复原场地。CompletionAccents为共享光圈实例，replayFinale只复位本机时钟。原内部finale标识保留兼容，面向用户只称完赛。
 
 2026-10-31 完赛近景：completion-layout统一共享弧形队列间距、窄飞行通道与实际包络。world的completionNavigation取队列和飞行投影并集，减少无用远景；sampleFinale让双方异步举拍、轻跃并响应Sophia经过。CompletionAccents追加一个静态暖色地面Shader；112彩带仍用原实例池，无新加载器、时钟或请求。普通比赛模型、布局和相机不变。
+
+2026-10-31 完赛姓名：移除重播UI与replayFinale。Avatar的avatar-body仅提供展示投影身份；LabelProjection用当前模型包围盒保护人物，CompletionNames.layout接收屏幕矩形／标签尺寸／相机上下文，输出文字位置。完赛标签无点击热区，外侧近脚后跟随；Sophia避开头部及翅膀。相机变化清候选位、备用位不永久缓存，尺寸用ref缓存，无新RAF、请求或坐标保存；普通比赛标签仍沿原交互。
